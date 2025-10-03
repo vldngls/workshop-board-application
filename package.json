@@ -1,0 +1,14 @@
+{
+  "name": "workshop-board-application",
+  "private": true,
+  "workspaces": ["server", "web"],
+  "scripts": {
+    "web:dev": "npm --prefix web run dev",
+    "web:build": "npm --prefix web run build",
+    "web:start": "npm --prefix web run start",
+    "server:dev": "npm --prefix server run dev",
+    "server:build": "npm --prefix server run build",
+    "server:start": "npm --prefix server run start"
+  }
+}
+
