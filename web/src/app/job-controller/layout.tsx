@@ -2,7 +2,7 @@ import { cookies } from "next/headers"
 import Sidebar from "@/components/Sidebar"
 import type { Role } from "@/types/auth"
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function JobControllerLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
   const role = (cookieStore.get("role")?.value ?? null) as Role | null
   const name = cookieStore.get("name")?.value ?? null

@@ -4,11 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
-    "dev": "tsx src/index.ts",
-    "start": "node dist/index.js"
-  },
+  "dev": "nodemon --exec tsx src/index.ts",
+  "build": "tsc",
+  "start": "node dist/index.js",
+  "seed": "node ./scripts/seed.mjs"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -30,6 +30,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.0",
+    "workshop-board-application": "file:..",
     "zod": "^4.1.11"
   }
 }
