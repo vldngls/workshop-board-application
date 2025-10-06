@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { connectToMongo } from './config/mongo.js';
 import authRouter from './controllers/auth.js';
 import usersRouter from './controllers/users.js';
+import jobOrdersRouter from './controllers/jobOrders.js';
 
 dotenv.config();
 
@@ -22,10 +23,11 @@ app.use(
   })
 );
 
-// Require an API key for all non-public routes
-const apiKey = process.env.API_KEY;
+// JWT authentication for protected routes
+import { verifyToken } from './middleware/auth.js';
+
 app.use((req, res, next) => {
-  // Public routes
+  // Public routes that don't need authentication
   if (
     req.path === '/' ||
     req.path === '/health' ||
@@ -34,37 +36,11 @@ app.use((req, res, next) => {
     return next();
   }
 
-  if (!apiKey) return res.status(500).json({ error: 'Server API key not configured' });
-
-  const key =
-    (req.headers['x-api-key'] as string) ||
-    (req.headers['authorization']?.toString().replace('Bearer ', '') ?? '');
-
-  if (key !== apiKey) return res.status(401).json({ error: 'Unauthorized' });
-
-  next();
+  // All other routes require JWT authentication
+  return verifyToken(req, res, next);
 });
 
-// Simple RBAC stub middleware
-type Role = 'administrator' | 'job-controller' | 'technician';
-declare global {
-  namespace Express {
-    interface Request {
-      userRole?: Role;
-    }
-  }
-}
-
-function requireRole(allowed: Role[]) {
-  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const role = (req.headers['x-role'] as Role) || 'technician';
-    req.userRole = role;
-    if (!allowed.includes(role)) {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-    next();
-  };
-}
+// JWT middleware handles authentication and user context
 
 // Public endpoints
 app.get('/health', (_req, res) => {
@@ -76,8 +52,12 @@ app.get('/', (_req, res) => {
 });
 
 // Routes
-app.use('/auth', authRouter); // login/register without API key
-app.use('/users', usersRouter); // protected by API key
+app.use('/auth', authRouter); // login/register without JWT
+app.use('/users', usersRouter); // protected by JWT
+app.use('/job-orders', jobOrdersRouter); // protected by JWT
+
+// Admin-only endpoint using JWT middleware
+import { requireRole } from './middleware/auth.js';
 
 app.get('/admin-only', requireRole(['administrator']), (_req, res) => {
   res.json({ secret: 'admin data' });

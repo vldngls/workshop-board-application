@@ -21,14 +21,8 @@ export default function Home() {
         <div className="mb-6 animate-pulse-slow">
           <Image src="/globe.svg" alt="Workshop Board" width={80} height={80} priority />
         </div>
-        <h1 className="animate-fade-in text-2xl font-semibold text-[color:var(--color-ford-blue)]">Welcome to the Workshop Board</h1>
+        <h1 className="animate-fade-in text-2xl font-semibold text-ford-blue">Welcome to the Workshop Board</h1>
       </div>
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulseSlow { 0%,100% { opacity: .7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
-        .animate-fade-in { animation: fadeIn 800ms ease-out both; }
-        .animate-pulse-slow { animation: pulseSlow 1600ms ease-in-out infinite; }
-      `}</style>
     </main>
   )
 }

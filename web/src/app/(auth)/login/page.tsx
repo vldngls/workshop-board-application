@@ -14,26 +14,35 @@ export default function LoginPage() {
     setMounted(true)
   }, [])
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    ;(async () => {
+    
+    try {
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       })
+      
       if (!res.ok) {
-        setError("Invalid email or password")
+        const errorData = await res.json()
+        setError(errorData.error || "Invalid email or password")
         return
       }
+      
       const data = await res.json()
-      const role: "administrator" | "job-controller" | "technician" | undefined = data?.role
-      if (role === "administrator") router.push("/admin/workshop")
-      else if (role === "job-controller") router.push("/job-controller/workshop")
-      else if (role === "technician") router.push("/technician/workshop")
-      else router.push("/login")
-    })()
+      
+      if (data.ok && data.role) {
+        // Force a page refresh to ensure cookies are set
+        window.location.href = "/dashboard/workshop"
+      } else {
+        setError("Login failed - no role received")
+      }
+    } catch (err) {
+      console.error("Login error:", err)
+      setError("Network error - please try again")
+    }
   }
 
   return (

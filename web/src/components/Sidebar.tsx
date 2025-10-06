@@ -12,23 +12,23 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
       return {
         title: "Admin",
         items: [
-          { href: "/admin/workshop", label: "Workshop" },
-          { href: "/admin/job-orders", label: "Job Orders" },
-          { href: "/admin/account-management", label: "Account Management" },
+          { href: "/dashboard/workshop", label: "Workshop" },
+          { href: "/dashboard/job-orders", label: "Job Orders" },
+          { href: "/dashboard/account-management", label: "Account Management" },
         ],
       }
     case "job-controller":
       return {
         title: "Job Controller",
         items: [
-          { href: "/job-controller/workshop", label: "Workshop" },
-          { href: "/job-controller/job-orders", label: "Job Orders" },
+          { href: "/dashboard/workshop", label: "Workshop" },
+          { href: "/dashboard/job-orders", label: "Job Orders" },
         ],
       }
     case "technician":
       return {
         title: "Technician",
-        items: [{ href: "/technician/workshop", label: "Workshop" }],
+        items: [{ href: "/dashboard/workshop", label: "Workshop" }],
       }
     default:
       return { title: "", items: [] }
@@ -40,7 +40,7 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 border-r border-neutral-200 bg-white p-4">
+    <aside className="w-64 min-w-64 max-w-64 border-r border-neutral-200 bg-white p-4 flex-shrink-0">
       <div className="mb-6">
         <div className="text-xl font-semibold text-[color:var(--color-ford-blue)]">{title}</div>
         <div className="text-sm text-neutral-500">Workshop Board</div>

@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
+import { cookies } from "next/headers"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000"
-const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || ""
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
 
 export async function GET() {
   try {
-    if (!API_KEY) return NextResponse.json({ error: "API key not configured" }, { status: 500 })
-    const r = await fetch(`${API_BASE}/users`, { headers: { "x-api-key": API_KEY } })
+    // Get JWT token from cookies
+    const cookieStore = await cookies()
+    const token = cookieStore.get('token')?.value
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    const r = await fetch(`${API_BASE}/users`, { 
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      } 
+    })
     const text = await r.text()
     try {
       const data = JSON.parse(text)
@@ -21,11 +33,21 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    if (!API_KEY) return NextResponse.json({ error: "API key not configured" }, { status: 500 })
+    // Get JWT token from cookies
+    const cookieStore = await cookies()
+    const token = cookieStore.get('token')?.value
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
     const body = await req.json()
     const r = await fetch(`${API_BASE}/users`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify(body),
     })
     const text = await r.text()

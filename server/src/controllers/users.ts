@@ -3,10 +3,11 @@ import { connectToMongo } from '../config/mongo.js'
 import { User } from '../models/User.js'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
+import { verifyToken, requireRole } from '../middleware/auth.js'
 
 const router = Router()
 
-router.get('/', async (_req, res) => {
+router.get('/', verifyToken, requireRole(['administrator']), async (_req, res) => {
   await connectToMongo()
   const users = await User.find({}, { name: 1, email: 1, role: 1, pictureUrl: 1 }).sort({ createdAt: -1 }).lean()
   res.json({ users })
@@ -20,7 +21,7 @@ const createSchema = z.object({
   pictureUrl: z.string().url().optional().or(z.literal('')),
 })
 
-router.post('/', async (req, res) => {
+router.post('/', verifyToken, requireRole(['administrator']), async (req, res) => {
   await connectToMongo()
   const parsed = createSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'Invalid payload' })
@@ -40,7 +41,7 @@ const updateSchema = z.object({
   pictureUrl: z.string().url().optional().or(z.literal('')).optional(),
 })
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', verifyToken, requireRole(['administrator']), async (req, res) => {
   await connectToMongo()
   const { id } = req.params
   const parsed = updateSchema.safeParse(req.body)
@@ -56,7 +57,7 @@ router.put('/:id', async (req, res) => {
   res.json({ ok: true })
 })
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verifyToken, requireRole(['administrator']), async (req, res) => {
   await connectToMongo()
   const { id } = req.params
   const result = await User.findByIdAndDelete(id)

@@ -1,8 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-
-type Role = "administrator" | "job-controller" | "technician"
+import type { Role } from "@/types/auth"
 
 type User = {
   _id: string
@@ -12,7 +11,7 @@ type User = {
   pictureUrl?: string | null
 }
 
-export default function AdminAccountManagementPage() {
+export default function AccountManagementPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -245,5 +244,3 @@ function DeleteUserButton({ apiBase, id, onDeleted }: { apiBase: string; id: str
     </span>
   )
 }
-
-
