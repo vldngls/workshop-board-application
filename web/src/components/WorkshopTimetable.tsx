@@ -25,19 +25,19 @@ interface JobOrderWithDetails extends JobOrder {
   createdBy: Technician
 }
 
-const TIME_SLOTS: TimeSlot[] = [
-  { time: '08:00', hour: 8, minute: 0 },
-  { time: '09:00', hour: 9, minute: 0 },
-  { time: '10:00', hour: 10, minute: 0 },
-  { time: '11:00', hour: 11, minute: 0 },
-  { time: '12:00', hour: 12, minute: 0 },
-  { time: '13:00', hour: 13, minute: 0 },
-  { time: '14:00', hour: 14, minute: 0 },
-  { time: '15:00', hour: 15, minute: 0 },
-  { time: '16:00', hour: 16, minute: 0 },
-  { time: '17:00', hour: 17, minute: 0 },
-  { time: '18:00', hour: 18, minute: 0 }
-]
+// Generate time slots every 30 minutes for more granular display
+const generateTimeSlots = (): TimeSlot[] => {
+  const slots: TimeSlot[] = []
+  for (let hour = 7; hour <= 17; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+      slots.push({ time: timeStr, hour, minute })
+    }
+  }
+  return slots
+}
+
+const TIME_SLOTS = generateTimeSlots() // 30-minute intervals from 7:00 AM to 5:00 PM
 
 const STATUS_COLORS = {
   'Incomplete': 'bg-red-100 border-red-300 text-red-800',
@@ -85,11 +85,47 @@ export default function WorkshopTimetable({ date, onDateChange }: WorkshopTimeta
       if (job.assignedTechnician._id !== technicianId) return false
       
       const jobStart = parseTime(job.timeRange.start)
+      const jobEnd = parseTime(job.timeRange.end)
       const slotTime = timeSlot.hour * 60 + timeSlot.minute
       
-      // Show job in the cell that matches its start time
-      return slotTime === jobStart
+      // Show job if the slot time is within the job's time range
+      return slotTime >= jobStart && slotTime < jobEnd
     }) || null
+  }
+
+  const getJobStartSlot = (technicianId: string, job: JobOrderWithDetails): number => {
+    const jobStart = parseTime(job.timeRange.start)
+    return TIME_SLOTS.findIndex(slot => {
+      const slotTime = slot.hour * 60 + slot.minute
+      return slotTime === jobStart
+    })
+  }
+
+  const getJobEndSlot = (technicianId: string, job: JobOrderWithDetails): number => {
+    const jobEnd = parseTime(job.timeRange.end)
+    return TIME_SLOTS.findIndex(slot => {
+      const slotTime = slot.hour * 60 + slot.minute
+      return slotTime === jobEnd
+    })
+  }
+
+  const getJobSpan = (job: JobOrderWithDetails): number => {
+    const startSlot = getJobStartSlot(job.assignedTechnician._id, job)
+    const endSlot = getJobEndSlot(job.assignedTechnician._id, job)
+    return endSlot - startSlot
+  }
+
+  const getJobOffset = (job: JobOrderWithDetails): number => {
+    const jobStart = parseTime(job.timeRange.start)
+    const startSlot = getJobStartSlot(job.assignedTechnician._id, job)
+    
+    if (startSlot === -1) return 0
+    
+    const slotStartTime = TIME_SLOTS[startSlot].hour * 60 + TIME_SLOTS[startSlot].minute
+    const offsetMinutes = jobStart - slotStartTime
+    const offsetPercentage = (offsetMinutes / 30) * 100 // 30 minutes per slot
+    
+    return Math.max(0, offsetPercentage)
   }
 
   const parseTime = (timeStr: string): number => {
@@ -183,7 +219,7 @@ export default function WorkshopTimetable({ date, onDateChange }: WorkshopTimeta
                 {TIME_SLOTS.map((slot) => (
                   <th
                     key={slot.time}
-                    className="w-24 px-2 py-3 text-center text-xs font-medium text-gray-600 border-r"
+                    className="w-20 px-1 py-3 text-center text-xs font-medium text-gray-600 border-r"
                   >
                     {formatTime(slot.time)}
                   </th>
@@ -196,21 +232,34 @@ export default function WorkshopTimetable({ date, onDateChange }: WorkshopTimeta
                   <td className="w-48 px-4 py-3 text-sm font-medium text-gray-900 border-r bg-gray-50 h-20">
                     {technician.name}
                   </td>
-                  {TIME_SLOTS.map((slot) => {
+                  {TIME_SLOTS.map((slot, slotIndex) => {
                     const job = getJobAtTime(technician._id, slot)
+                    const isJobStart = job && getJobStartSlot(technician._id, job) === slotIndex
+                    
                     return (
                       <td
                         key={`${technician._id}-${slot.time}`}
-                        className="w-24 h-20 px-1 py-1 border-r border-b relative"
+                        className="w-20 h-20 px-0 py-0 border-r border-b relative"
                       >
-                        {job ? (
+                        {isJobStart ? (
                           <button
                             onClick={() => handleCellClick(job)}
-                            className={`w-full h-full rounded text-xs font-medium border-2 transition-all hover:shadow-md relative ${STATUS_COLORS[job.status]}`}
-                            title={`${job.jobNumber} - ${job.plateNumber} (${getJobProgress(job).toFixed(0)}% complete)`}
+                            className={`h-full rounded text-xs font-medium border-2 transition-all hover:shadow-md relative ${STATUS_COLORS[job.status]}`}
+                            style={{
+                              width: `${getJobSpan(job) * 80}px`, // 80px per 30-min slot
+                              minWidth: '80px',
+                              position: 'absolute',
+                              left: '0px',
+                              top: '0px',
+                              zIndex: 10
+                            }}
+                            title={`${job.jobNumber} - ${job.plateNumber} (${getJobProgress(job).toFixed(0)}% complete) - ${formatTime(job.timeRange.start)} to ${formatTime(job.timeRange.end)}`}
                           >
                             <div className="truncate font-semibold">{job.jobNumber}</div>
                             <div className="truncate text-xs opacity-75">{job.plateNumber}</div>
+                            <div className="truncate text-xs opacity-60">
+                              {formatTime(job.timeRange.start)}-{formatTime(job.timeRange.end)}
+                            </div>
                             {job.status === 'In Progress' && (
                               <div className="absolute bottom-1 left-1 right-1">
                                 <div className="bg-white bg-opacity-50 rounded-full h-1">
@@ -222,6 +271,9 @@ export default function WorkshopTimetable({ date, onDateChange }: WorkshopTimeta
                               </div>
                             )}
                           </button>
+                        ) : job ? (
+                          // This cell is part of a job but not the start - show as continuation
+                          <div className="w-full h-full bg-transparent"></div>
                         ) : (
                           <div className="w-full h-full bg-gray-50 rounded min-h-[4rem]"></div>
                         )}

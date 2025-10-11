@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { useState } from "react"
 import type { Role } from "@/types/auth"
 
 type NavItem = { href: string; label: string }
@@ -38,6 +39,36 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
 export default function Sidebar({ role, name }: { role: Role | null; name?: string | null }) {
   const { title, items } = getNavForRole(role)
   const pathname = usePathname()
+  const router = useRouter()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  const handleLogout = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoggingOut(true)
+    
+    try {
+      const response = await fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include', // Include cookies
+      })
+      
+      if (response.ok) {
+        // Clear any client-side state if needed
+        // Force a full page reload to ensure all state is cleared
+        window.location.href = '/login'
+      } else {
+        console.error('Logout failed')
+        // Still redirect to login even if logout API fails
+        window.location.href = '/login'
+      }
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Still redirect to login even if logout API fails
+      window.location.href = '/login'
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
 
   return (
     <aside className="w-64 min-w-64 max-w-64 border-r border-neutral-200 bg-white p-4 flex-shrink-0">
@@ -53,8 +84,14 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
           </Link>
         ))}
       </nav>
-      <form action="/api/logout" method="post" className="mt-6">
-        <button className="sidebar-link w-full justify-start text-left" formAction="/api/logout" formMethod="post">Logout</button>
+      <form onSubmit={handleLogout} className="mt-6">
+        <button 
+          type="submit"
+          disabled={isLoggingOut}
+          className="sidebar-link w-full justify-start text-left disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoggingOut ? "Logging out..." : "Logout"}
+        </button>
       </form>
     </aside>
   )
