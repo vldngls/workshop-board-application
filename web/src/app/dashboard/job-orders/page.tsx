@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo, lazy, Suspense, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Toaster } from 'react-hot-toast'
 import type { JobOrder, JobStatus } from "@/types/jobOrder"
 import JobOrderCard from "@/components/JobOrderCard"
@@ -10,7 +11,7 @@ import { useJobOrders } from '@/hooks/useJobOrders'
 const AddJobOrderModal = lazy(() => import("@/components/AddJobOrderModal"))
 
 // Status mapping for display
-const STATUS_LABELS: Record<JobStatus | 'all', string> = {
+const STATUS_LABELS: Record<JobStatus | 'all' | 'hold' | 'carried' | 'important' | 'unclaimed', string> = {
   'all': 'All Statuses',
   'OG': 'On Going',
   'WP': 'Waiting Parts',
@@ -20,15 +21,28 @@ const STATUS_LABELS: Record<JobStatus | 'all', string> = {
   'HI': 'Hold Insurance',
   'FR': 'For Release',
   'FU': 'Finished Unclaimed',
-  'CP': 'Complete'
+  'CP': 'Complete',
+  'hold': 'On Hold (HC/HW/HI/WP)',
+  'carried': 'Carried Over',
+  'important': 'Important',
+  'unclaimed': 'Unclaimed (FU/CP)'
 }
 
 export default function JobOrdersPage() {
+  const searchParams = useSearchParams()
   const [showAddModal, setShowAddModal] = useState(false)
-  const [filter, setFilter] = useState<JobStatus | 'all'>('all')
+  const [filter, setFilter] = useState<JobStatus | 'all' | 'hold' | 'carried' | 'important' | 'unclaimed'>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+
+  // Read filter from URL parameters on mount
+  useEffect(() => {
+    const urlFilter = searchParams?.get('filter')
+    if (urlFilter) {
+      setFilter(urlFilter as any)
+    }
+  }, [searchParams])
 
   // Debounce search term
   useEffect(() => {
@@ -40,30 +54,72 @@ export default function JobOrdersPage() {
     return () => clearTimeout(timeout)
   }, [searchTerm])
 
+  // Determine API status filter based on special filters
+  const getApiStatusFilter = () => {
+    if (filter === 'all' || filter === 'carried' || filter === 'important') {
+      return undefined // Fetch all, filter locally
+    }
+    if (filter === 'hold') {
+      return undefined // Fetch all, filter locally for HC/HW/HI/WP
+    }
+    if (filter === 'unclaimed') {
+      return undefined // Fetch all, filter locally for FU/CP
+    }
+    return filter // Use the actual status
+  }
+
   // Use TanStack Query to fetch job orders
   const { data, isLoading, error, refetch } = useJobOrders({
     search: debouncedSearch,
-    status: filter !== 'all' ? filter : undefined,
-    page: currentPage,
-    limit: 10,
+    status: getApiStatusFilter(),
+    page: 1, // Fetch more for local filtering
+    limit: 1000, // Get all jobs for local filtering
   })
 
-  const jobOrders = data?.jobOrders || []
-  const pagination = data?.pagination || {
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    itemsPerPage: 10,
-    hasNextPage: false,
-    hasPrevPage: false
-  }
+  // Apply local filtering for special filters
+  const getFilteredJobOrders = useMemo(() => {
+    const allJobs = data?.jobOrders || []
+    
+    if (filter === 'all') return allJobs
+    if (filter === 'hold') return allJobs.filter((job: JobOrder) => ['HC', 'HW', 'HI', 'WP'].includes(job.status))
+    if (filter === 'carried') return allJobs.filter((job: JobOrder) => job.carriedOver)
+    if (filter === 'important') return allJobs.filter((job: JobOrder) => job.isImportant)
+    if (filter === 'unclaimed') return allJobs.filter((job: JobOrder) => job.status === 'FU' || job.status === 'CP')
+    
+    // For regular status filters
+    return allJobs.filter((job: JobOrder) => job.status === filter)
+  }, [data?.jobOrders, filter])
+
+  // Paginate filtered results
+  const paginatedJobOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * 10
+    const endIndex = startIndex + 10
+    return getFilteredJobOrders.slice(startIndex, endIndex)
+  }, [getFilteredJobOrders, currentPage])
+
+  const pagination = useMemo(() => {
+    const totalItems = getFilteredJobOrders.length
+    const itemsPerPage = 10
+    const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage))
+    
+    return {
+      currentPage,
+      totalPages,
+      totalItems,
+      itemsPerPage,
+      hasNextPage: currentPage < totalPages,
+      hasPrevPage: currentPage > 1
+    }
+  }, [getFilteredJobOrders, currentPage])
+
+  const jobOrders = paginatedJobOrders
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault()
     // Search is handled by debounced effect
   }, [])
 
-  const handleFilterChange = useCallback((newFilter: JobStatus | 'all') => {
+  const handleFilterChange = useCallback((newFilter: JobStatus | 'all' | 'hold' | 'carried' | 'important' | 'unclaimed') => {
     setFilter(newFilter)
     setCurrentPage(1)
   }, [])
@@ -135,7 +191,7 @@ export default function JobOrdersPage() {
             </label>
             <select
               value={filter}
-              onChange={(e) => handleFilterChange(e.target.value as JobStatus | 'all')}
+              onChange={(e) => handleFilterChange(e.target.value as any)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
               {Object.entries(STATUS_LABELS).map(([value, label]) => (
@@ -218,7 +274,7 @@ export default function JobOrdersPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {jobOrders.map((jobOrder) => (
+            {jobOrders.map((jobOrder: JobOrder) => (
               <JobOrderCard
                 key={jobOrder._id}
                 jobOrder={jobOrder}

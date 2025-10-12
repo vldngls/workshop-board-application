@@ -43,6 +43,7 @@ export default function MainDashboard() {
   const [carriedOverJobs, setCarriedOverJobs] = useState<JobOrderWithTechnician[]>([])
   const [importantJobs, setImportantJobs] = useState<JobOrderWithTechnician[]>([])
   const [anomalyJobs, setAnomalyJobs] = useState<JobOrderWithTechnician[]>([])
+  const [allJobs, setAllJobs] = useState<JobOrderWithTechnician[]>([])
   const [loading, setLoading] = useState(true)
   const [showReassignModal, setShowReassignModal] = useState(false)
   const [selectedJobForReassign, setSelectedJobForReassign] = useState<JobOrderWithTechnician | null>(null)
@@ -153,6 +154,7 @@ export default function MainDashboard() {
       })
 
       setStats(newStats)
+      setAllJobs(allJobs)
       setCarriedOverJobs(carried)
       setImportantJobs(important)
       setAnomalyJobs(pendingJobs)
@@ -183,77 +185,194 @@ export default function MainDashboard() {
         </div>
       </div>
 
-      {/* Statistics Grid - Compact */}
+      {/* Statistics Grid - Clickable */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
         {/* Total Jobs */}
-        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+        <Link href="/dashboard/job-orders" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">📋</span>
             <p className="text-xs text-gray-600 mb-0.5">Total</p>
             <p className="text-xl font-bold text-gray-900">{stats.total}</p>
           </div>
-        </div>
+        </Link>
 
         {/* On Going */}
-        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+        <Link href="/dashboard/job-orders?filter=OG" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">🔧</span>
             <p className="text-xs text-gray-600 mb-0.5">On Going</p>
             <p className="text-xl font-bold text-blue-600">{stats.onGoing}</p>
           </div>
-        </div>
+        </Link>
 
         {/* For Release */}
-        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+        <Link href="/dashboard/job-orders?filter=FR" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">✅</span>
             <p className="text-xs text-gray-600 mb-0.5">Release</p>
             <p className="text-xl font-bold text-green-600">{stats.forRelease}</p>
           </div>
-        </div>
+        </Link>
 
         {/* On Hold */}
-        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+        <Link href="/dashboard/job-orders?filter=hold" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">⏸️</span>
             <p className="text-xs text-gray-600 mb-0.5">On Hold</p>
             <p className="text-xl font-bold text-red-600">{stats.onHold}</p>
           </div>
-        </div>
+        </Link>
 
         {/* Carried Over */}
-        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+        <Link href="/dashboard/job-orders?filter=carried" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">🔄</span>
             <p className="text-xs text-gray-600 mb-0.5">Carried</p>
             <p className="text-xl font-bold text-orange-600">{stats.carriedOver}</p>
           </div>
-        </div>
+        </Link>
 
         {/* Important */}
-        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+        <Link href="/dashboard/job-orders?filter=important" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">⭐</span>
             <p className="text-xs text-gray-600 mb-0.5">Important</p>
             <p className="text-xl font-bold text-yellow-600">{stats.important}</p>
           </div>
-        </div>
+        </Link>
 
         {/* Quality Inspection */}
-        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+        <Link href="/dashboard/job-orders?filter=QI" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">🔍</span>
             <p className="text-xs text-gray-600 mb-0.5">QI</p>
             <p className="text-xl font-bold text-purple-600">{stats.qualityInspection}</p>
           </div>
-        </div>
+        </Link>
 
         {/* Finished Unclaimed */}
-        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+        <Link href="/dashboard/job-orders?filter=unclaimed" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">📦</span>
             <p className="text-xs text-gray-600 mb-0.5">Unclaimed</p>
             <p className="text-xl font-bold text-gray-600">{stats.finishedUnclaimed}</p>
+          </div>
+        </Link>
+      </div>
+
+      {/* Quick Stats Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Status Breakdown */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <h3 className="text-lg font-semibold mb-3 text-gray-900">Status Breakdown</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">On Going (OG)</span>
+              <span className="font-semibold text-blue-600">{stats.onGoing}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Waiting Parts (WP)</span>
+              <span className="font-semibold text-orange-600">{allJobs.filter(job => job.status === 'WP').length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Quality Inspection (QI)</span>
+              <span className="font-semibold text-purple-600">{stats.qualityInspection}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Hold Customer (HC)</span>
+              <span className="font-semibold text-yellow-600">{allJobs.filter(job => job.status === 'HC').length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Hold Warranty (HW)</span>
+              <span className="font-semibold text-red-600">{allJobs.filter(job => job.status === 'HW').length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Hold Insurance (HI)</span>
+              <span className="font-semibold text-indigo-600">{allJobs.filter(job => job.status === 'HI').length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">For Release (FR)</span>
+              <span className="font-semibold text-green-600">{stats.forRelease}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Finished Unclaimed (FU)</span>
+              <span className="font-semibold text-gray-600">{allJobs.filter(job => job.status === 'FU').length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Complete (CP)</span>
+              <span className="font-semibold text-emerald-600">{allJobs.filter(job => job.status === 'CP').length}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Technician Summary */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <h3 className="text-lg font-semibold mb-3 text-gray-900">Technician Summary</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Active Jobs</span>
+              <span className="font-semibold text-blue-600">{allJobs.filter(job => job.assignedTechnician && !['FR', 'FU', 'CP'].includes(job.status)).length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Unassigned</span>
+              <span className="font-semibold text-red-600">{allJobs.filter(job => !job.assignedTechnician).length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Pending QI Review</span>
+              <span className="font-semibold text-purple-600">{allJobs.filter(job => job.status === 'QI' && job.qiStatus === 'pending').length}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Today's Progress */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <h3 className="text-lg font-semibold mb-3 text-gray-900">Jobs by Completion</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Not Started</span>
+              <span className="font-semibold text-gray-600">
+                {allJobs.filter(job => 
+                  job.jobList && job.jobList.every(task => task.status === 'Unfinished') && 
+                  !['FR', 'FU', 'CP'].includes(job.status)
+                ).length}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">In Progress</span>
+              <span className="font-semibold text-blue-600">
+                {allJobs.filter(job => 
+                  job.jobList && 
+                  job.jobList.some(task => task.status === 'Finished') && 
+                  job.jobList.some(task => task.status === 'Unfinished') &&
+                  !['FR', 'FU', 'CP'].includes(job.status)
+                ).length}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Tasks Complete</span>
+              <span className="font-semibold text-yellow-600">
+                {allJobs.filter(job => 
+                  job.jobList && 
+                  job.jobList.every(task => task.status === 'Finished') &&
+                  !['QI', 'FR', 'FU', 'CP'].includes(job.status)
+                ).length}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Ready for Release</span>
+              <span className="font-semibold text-green-600">{stats.forRelease}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Completed Today</span>
+              <span className="font-semibold text-emerald-600">
+                {allJobs.filter(job => {
+                  if (job.status !== 'CP') return false
+                  const today = new Date().toISOString().split('T')[0]
+                  const jobDate = new Date(job.date).toISOString().split('T')[0]
+                  return jobDate === today
+                }).length}
+              </span>
+            </div>
           </div>
         </div>
       </div>
