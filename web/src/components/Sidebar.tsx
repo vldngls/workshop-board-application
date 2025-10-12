@@ -13,6 +13,7 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
       return {
         title: "Admin",
         items: [
+          { href: "/dashboard", label: "Dashboard" },
           { href: "/dashboard/workshop", label: "Workshop" },
           { href: "/dashboard/job-orders", label: "Job Orders" },
           { href: "/dashboard/account-management", label: "Account Management" },
@@ -22,6 +23,7 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
       return {
         title: "Job Controller",
         items: [
+          { href: "/dashboard", label: "Dashboard" },
           { href: "/dashboard/workshop", label: "Workshop" },
           { href: "/dashboard/job-orders", label: "Job Orders" },
         ],
@@ -29,7 +31,10 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
     case "technician":
       return {
         title: "Technician",
-        items: [{ href: "/dashboard/workshop", label: "Workshop" }],
+        items: [
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/dashboard/workshop", label: "Workshop" }
+        ],
       }
     default:
       return { title: "", items: [] }
@@ -79,7 +84,15 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
       </div>
       <nav className="space-y-1">
         {items.map((item) => (
-          <Link key={item.href} href={item.href} className={`sidebar-link ${pathname?.startsWith(item.href) ? "active" : ""}`}>
+          <Link 
+            key={item.href} 
+            href={item.href} 
+            className={`sidebar-link ${
+              item.href === "/dashboard" 
+                ? (pathname === "/dashboard" ? "active" : "")
+                : (pathname?.startsWith(item.href) ? "active" : "")
+            }`}
+          >
             {item.label}
           </Link>
         ))}

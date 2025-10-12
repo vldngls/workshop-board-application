@@ -3,7 +3,7 @@ import { cookies } from "next/headers"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
 
-export async function PUT(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Get JWT token from cookies
     const cookieStore = await cookies()
@@ -14,7 +14,8 @@ export async function PUT(_req: NextRequest, { params }: { params: { id: string 
     }
     
     const body = await _req.json()
-    const r = await fetch(`${API_BASE}/users/${params.id}`, {
+    const { id } = await params
+    const r = await fetch(`${API_BASE}/users/${id}`, {
       method: "PUT",
       headers: { 
         "Content-Type": "application/json", 
@@ -34,7 +35,7 @@ export async function PUT(_req: NextRequest, { params }: { params: { id: string 
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Get JWT token from cookies
     const cookieStore = await cookies()
@@ -44,7 +45,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const r = await fetch(`${API_BASE}/users/${params.id}`, {
+    const { id } = await params
+    const r = await fetch(`${API_BASE}/users/${id}`, {
       method: "DELETE",
       headers: { 
         'Authorization': `Bearer ${token}`,

@@ -7,14 +7,15 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${API_BASE}/api/:path*`,
-      },
-    ];
-  },
+  // Removed rewrite rule that was bypassing Next.js API routes
+  // async rewrites() {
+  //   return [
+  //     {
+  //       source: "/api/:path*",
+  //       destination: `${API_BASE}/api/:path*`,
+  //     },
+  //   ];
+  // },
 };
 
 export default nextConfig;

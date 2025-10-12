@@ -23,21 +23,63 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
   const [technicians, setTechnicians] = useState<Technician[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [duration, setDuration] = useState<string>('')
+  const [durationHours, setDurationHours] = useState<number>(2) // Default 2 hours
+  
+  // Break time settings (from localStorage)
+  const [breakStart, setBreakStart] = useState('12:00')
+  const [breakEnd, setBreakEnd] = useState('13:00')
 
-  // Calculate duration when time range changes
+  // Load break settings
   useEffect(() => {
-    if (formData.timeRange.start && formData.timeRange.end) {
-      const startTime = new Date(`2000-01-01T${formData.timeRange.start}:00`)
-      const endTime = new Date(`2000-01-01T${formData.timeRange.end}:00`)
-      const diffMs = endTime.getTime() - startTime.getTime()
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
-      setDuration(`${diffHours}h ${diffMinutes}m`)
-    } else {
-      setDuration('')
+    const savedBreakStart = localStorage.getItem('breakStart')
+    const savedBreakEnd = localStorage.getItem('breakEnd')
+    if (savedBreakStart) setBreakStart(savedBreakStart)
+    if (savedBreakEnd) setBreakEnd(savedBreakEnd)
+  }, [])
+
+  // Calculate end time when start time or duration changes
+  useEffect(() => {
+    if (formData.timeRange.start && durationHours) {
+      const calculatedEnd = calculateEndTimeWithBreak(formData.timeRange.start, durationHours * 60)
+      handleInputChange('timeRange', { ...formData.timeRange, end: calculatedEnd })
     }
-  }, [formData.timeRange.start, formData.timeRange.end])
+  }, [formData.timeRange.start, durationHours, breakStart, breakEnd])
+
+  // Calculate end time from start time and duration, accounting for lunch break
+  const calculateEndTimeWithBreak = (startTime: string, durationMinutes: number): string => {
+    const [startHour, startMinute] = startTime.split(':').map(Number)
+    const startDate = new Date()
+    startDate.setHours(startHour, startMinute, 0, 0)
+    
+    const [breakStartHour, breakStartMinute] = breakStart.split(':').map(Number)
+    const [breakEndHour, breakEndMinute] = breakEnd.split(':').map(Number)
+    
+    const breakStartDate = new Date()
+    breakStartDate.setHours(breakStartHour, breakStartMinute, 0, 0)
+    
+    const breakEndDate = new Date()
+    breakEndDate.setHours(breakEndHour, breakEndMinute, 0, 0)
+    
+    const breakDuration = (breakEndDate.getTime() - breakStartDate.getTime()) / (1000 * 60)
+    
+    // Calculate initial end time without break
+    const initialEndDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
+    
+    // Check if work period overlaps with break
+    if (startDate < breakEndDate && initialEndDate > breakStartDate) {
+      // The break falls within the work period - add break duration to skip it
+      const endDate = new Date(initialEndDate.getTime() + breakDuration * 60 * 1000)
+      
+      const endHour = String(endDate.getHours()).padStart(2, '0')
+      const endMinute = String(endDate.getMinutes()).padStart(2, '0')
+      return `${endHour}:${endMinute}`
+    }
+    
+    // No overlap with break, return initial calculation
+    const endHour = String(initialEndDate.getHours()).padStart(2, '0')
+    const endMinute = String(initialEndDate.getMinutes()).padStart(2, '0')
+    return `${endHour}:${endMinute}`
+  }
 
   // Fetch available technicians when date or time range changes
   useEffect(() => {
@@ -49,7 +91,10 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
   const fetchAvailableTechnicians = async () => {
     try {
       const response = await fetch(
-        `/api/job-orders/technicians/available?date=${formData.date}&startTime=${formData.timeRange.start}&endTime=${formData.timeRange.end}`
+        `/api/job-orders/technicians/available?date=${formData.date}&startTime=${formData.timeRange.start}&endTime=${formData.timeRange.end}`,
+        {
+          credentials: 'include' // Include cookies for authentication
+        }
       )
       if (!response.ok) {
         throw new Error('Failed to fetch available technicians')
@@ -117,6 +162,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
         body: JSON.stringify(formData),
       })
 
@@ -210,7 +256,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
               </div>
             </div>
 
-            {/* Time Range */}
+            {/* Time Range with Duration */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -226,23 +272,30 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  End Time *
+                  Duration (hours) *
                 </label>
                 <input
-                  type="time"
-                  value={formData.timeRange.end}
-                  onChange={(e) => handleInputChange('timeRange', { ...formData.timeRange, end: e.target.value })}
+                  type="number"
+                  min="0.5"
+                  step="0.5"
+                  value={durationHours}
+                  onChange={(e) => setDurationHours(parseFloat(e.target.value))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Duration
+                  End Time (Auto)
                 </label>
                 <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600">
-                  {duration || 'Select time range'}
+                  {formData.timeRange.end || 'Set start time'}
                 </div>
+                {formData.timeRange.start && formData.timeRange.end && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Break: {breakStart}-{breakEnd} included
+                  </p>
+                )}
               </div>
             </div>
 

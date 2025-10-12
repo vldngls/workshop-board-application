@@ -1,6 +1,7 @@
-export type JobStatus = 'Incomplete' | 'Complete' | 'In Progress'
+export type JobStatus = 'OG' | 'WP' | 'QI' | 'HC' | 'HW' | 'HI' | 'FR' | 'FU' | 'CP'
 export type JobItemStatus = 'Finished' | 'Unfinished'
 export type PartAvailability = 'Available' | 'Unavailable'
+export type QIStatus = 'pending' | 'approved' | 'rejected' | null
 
 export interface JobItem {
   description: string
@@ -27,7 +28,7 @@ export interface JobOrder {
   _id: string
   jobNumber: string
   createdBy: User
-  assignedTechnician: User
+  assignedTechnician: User | null  // Null for carried over jobs awaiting reassignment
   plateNumber: string
   vin: string
   timeRange: TimeRange
@@ -35,6 +36,9 @@ export interface JobOrder {
   parts: Part[]
   status: JobStatus
   date: string
+  carriedOver?: boolean
+  isImportant?: boolean
+  qiStatus?: QIStatus
   createdAt: string
   updatedAt: string
 }
@@ -58,6 +62,9 @@ export interface UpdateJobOrderRequest {
   jobList?: JobItem[]
   parts?: Part[]
   status?: JobStatus
+  carriedOver?: boolean
+  isImportant?: boolean
+  qiStatus?: QIStatus
 }
 
 export interface Technician {

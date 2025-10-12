@@ -1,7 +1,8 @@
 import mongoose, { Schema } from 'mongoose'
 
-export type JobStatus = 'Incomplete' | 'Complete' | 'In Progress'
+export type JobStatus = 'OG' | 'WP' | 'QI' | 'HC' | 'HW' | 'HI' | 'FR' | 'FU' | 'CP'
 export type JobItemStatus = 'Finished' | 'Unfinished'
+export type QIStatus = 'pending' | 'approved' | 'rejected' | null
 
 export interface JobItem {
   description: string
@@ -17,7 +18,7 @@ export interface JobOrderDoc {
   _id?: mongoose.Types.ObjectId
   jobNumber: string
   createdBy: mongoose.Types.ObjectId
-  assignedTechnician: mongoose.Types.ObjectId
+  assignedTechnician?: mongoose.Types.ObjectId | null  // Optional for carried over jobs
   plateNumber: string
   vin: string
   timeRange: {
@@ -28,6 +29,9 @@ export interface JobOrderDoc {
   parts: Part[]
   status: JobStatus
   date: Date
+  carriedOver?: boolean
+  isImportant?: boolean
+  qiStatus?: QIStatus
   createdAt?: Date
   updatedAt?: Date
 }
@@ -47,7 +51,7 @@ const jobOrderSchema = new Schema<JobOrderDoc>({
   assignedTechnician: { 
     type: Schema.Types.ObjectId, 
     ref: 'User', 
-    required: true 
+    required: false  // Not required for carried over jobs awaiting reassignment
   },
   plateNumber: { 
     type: String, 
@@ -81,14 +85,27 @@ const jobOrderSchema = new Schema<JobOrderDoc>({
   }],
   status: { 
     type: String, 
-    enum: ['Incomplete', 'Complete', 'In Progress'], 
+    enum: ['OG', 'WP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU', 'CP'], 
     required: true,
-    default: 'Incomplete'
+    default: 'OG'
   },
   date: { 
     type: Date, 
     required: true,
     default: Date.now 
+  },
+  carriedOver: {
+    type: Boolean,
+    default: false
+  },
+  isImportant: {
+    type: Boolean,
+    default: false
+  },
+  qiStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', null],
+    default: null
   }
 }, { timestamps: true })
 
@@ -96,5 +113,8 @@ const jobOrderSchema = new Schema<JobOrderDoc>({
 jobOrderSchema.index({ status: 1, date: -1 })
 jobOrderSchema.index({ assignedTechnician: 1, date: 1 })
 jobOrderSchema.index({ createdBy: 1 })
+jobOrderSchema.index({ isImportant: 1, date: -1 })
+jobOrderSchema.index({ carriedOver: 1, date: -1 })
+jobOrderSchema.index({ qiStatus: 1 })
 
 export const JobOrder = mongoose.models.JobOrder || mongoose.model<JobOrderDoc>('JobOrder', jobOrderSchema)

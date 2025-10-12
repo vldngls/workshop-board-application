@@ -1,10 +1,21 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import WorkshopTimetable from '@/components/WorkshopTimetable'
 
 export default function WorkshopPage() {
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const searchParams = useSearchParams()
+  const highlightId = searchParams.get('highlight')
+  const dateParam = searchParams.get('date')
+  
+  const [selectedDate, setSelectedDate] = useState(() => {
+    if (dateParam) {
+      const date = new Date(dateParam)
+      return isNaN(date.getTime()) ? new Date() : date
+    }
+    return new Date()
+  })
 
   return (
     <div className="space-y-6">
@@ -17,7 +28,8 @@ export default function WorkshopPage() {
       
       <WorkshopTimetable 
         date={selectedDate} 
-        onDateChange={setSelectedDate} 
+        onDateChange={setSelectedDate}
+        highlightJobId={highlightId || undefined}
       />
     </div>
   )

@@ -26,10 +26,19 @@ router.get('/', verifyToken, async (req, res) => {
     
     // Add search functionality
     if (search) {
+      // First, find technicians that match the search term
+      const matchingTechnicians = await User.find({
+        role: 'technician',
+        name: { $regex: search, $options: 'i' }
+      }).select('_id').lean()
+      
+      const technicianIds = matchingTechnicians.map(tech => tech._id)
+      
       filter.$or = [
         { jobNumber: { $regex: search, $options: 'i' } },
         { plateNumber: { $regex: search, $options: 'i' } },
-        { vin: { $regex: search, $options: 'i' } }
+        { vin: { $regex: search, $options: 'i' } },
+        ...(technicianIds.length > 0 ? [{ assignedTechnician: { $in: technicianIds } }] : [])
       ]
     }
     
@@ -67,15 +76,28 @@ router.get('/', verifyToken, async (req, res) => {
   }
 })
 
-// Get job order by ID
+// Get job order by ID or job number
 router.get('/:id', verifyToken, async (req, res) => {
   try {
     await connectToMongo()
     
-    const jobOrder = await JobOrder.findById(req.params.id)
-      .populate('createdBy', 'name email')
-      .populate('assignedTechnician', 'name email')
-      .lean()
+    // Check if the id is a MongoDB ObjectId or a job number
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id)
+    let jobOrder
+    
+    if (isObjectId) {
+      // Search by MongoDB _id
+      jobOrder = await JobOrder.findById(req.params.id)
+        .populate('createdBy', 'name email')
+        .populate('assignedTechnician', 'name email')
+        .lean()
+    } else {
+      // Search by job number
+      jobOrder = await JobOrder.findOne({ jobNumber: req.params.id })
+        .populate('createdBy', 'name email')
+        .populate('assignedTechnician', 'name email')
+        .lean()
+    }
     
     if (!jobOrder) {
       return res.status(404).json({ error: 'Job order not found' })
@@ -161,15 +183,24 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
       return res.status(401).json({ error: 'User not authenticated' })
     }
     
+    // Auto-set status based on parts availability
+    const hasUnavailableParts = parts.some(part => part.availability === 'Unavailable')
+    const allPartsUnavailable = parts.every(part => part.availability === 'Unavailable')
+    
+    // If ALL parts are unavailable, set to WP and don't assign technician yet
+    // If some parts are unavailable but not all, can still be OG
+    const initialStatus = hasUnavailableParts ? 'WP' : 'OG'
+    
     const jobOrder = await JobOrder.create({
       jobNumber: jobNumber.toUpperCase(),
       createdBy: userId,
-      assignedTechnician,
+      assignedTechnician: allPartsUnavailable ? null : assignedTechnician, // Don't assign if all parts missing
       plateNumber: plateNumber.toUpperCase(),
       vin: vin.toUpperCase(),
       timeRange,
       jobList,
       parts,
+      status: initialStatus,
       date: jobDate
     })
     
@@ -184,6 +215,19 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     res.status(500).json({ error: 'Internal server error' })
   }
 })
+
+// Status transition validation rules
+const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
+  'OG': ['WP', 'QI', 'HC', 'HW', 'HI', 'OG'], // Can stay OG or move to other statuses
+  'WP': ['OG', 'HC', 'HW', 'HI', 'WP'], // Waiting parts can go back to ongoing or hold
+  'QI': ['FR', 'OG', 'QI'], // QI can approve to release or reject back to ongoing
+  'HC': ['OG', 'WP', 'HC'], // Hold customer can resume
+  'HW': ['OG', 'WP', 'HW'], // Hold warranty can resume
+  'HI': ['OG', 'WP', 'HI'], // Hold insurance can resume
+  'FR': ['FU', 'CP', 'OG', 'FR'], // For release can complete, finish unclaimed, or redo
+  'FU': ['CP', 'FU'], // Finished unclaimed can be marked complete
+  'CP': ['CP'] // Complete is final state
+}
 
 // Update job order
 const updateJobOrderSchema = z.object({
@@ -202,10 +246,13 @@ const updateJobOrderSchema = z.object({
     name: z.string().min(1),
     availability: z.enum(['Available', 'Unavailable'])
   })).optional(),
-  status: z.enum(['Incomplete', 'Complete', 'In Progress']).optional()
+  status: z.enum(['OG', 'WP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU', 'CP']).optional(),
+  carriedOver: z.boolean().optional(),
+  isImportant: z.boolean().optional(),
+  qiStatus: z.enum(['pending', 'approved', 'rejected']).nullable().optional()
 })
 
-router.put('/:id', verifyToken, async (req, res) => {
+router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
   try {
     await connectToMongo()
     
@@ -214,12 +261,45 @@ router.put('/:id', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid payload', details: parsed.error.errors })
     }
     
-    const jobOrder = await JobOrder.findById(req.params.id)
+    // Check if the id is a MongoDB ObjectId or a job number
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id)
+    let jobOrder
+    
+    if (isObjectId) {
+      // Search by MongoDB _id
+      jobOrder = await JobOrder.findById(req.params.id)
+    } else {
+      // Search by job number
+      jobOrder = await JobOrder.findOne({ jobNumber: req.params.id })
+    }
+    
     if (!jobOrder) {
       return res.status(404).json({ error: 'Job order not found' })
     }
     
     const updateData = parsed.data
+    
+    // Validate status transition if status is being changed
+    if (updateData.status && updateData.status !== jobOrder.status) {
+      const currentStatus = jobOrder.status
+      const newStatus = updateData.status
+      const validTransitions = VALID_STATUS_TRANSITIONS[currentStatus] || []
+      
+      if (!validTransitions.includes(newStatus)) {
+        return res.status(400).json({ 
+          error: `Invalid status transition from ${currentStatus} to ${newStatus}`,
+          validTransitions: validTransitions
+        })
+      }
+    }
+    
+    // Auto-set status to 'WP' if parts are being updated and any are unavailable
+    if (updateData.parts) {
+      const hasUnavailableParts = updateData.parts.some(part => part.availability === 'Unavailable')
+      if (hasUnavailableParts && (!updateData.status || updateData.status === 'OG')) {
+        updateData.status = 'WP'
+      }
+    }
     
     // If updating technician, check availability
     if (updateData.assignedTechnician) {
@@ -251,7 +331,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     }
     
     const updatedJobOrder = await JobOrder.findByIdAndUpdate(
-      req.params.id,
+      jobOrder._id,
       updateData,
       { new: true }
     )
@@ -279,6 +359,225 @@ router.delete('/:id', verifyToken, requireRole(['administrator', 'job-controller
     res.json({ message: 'Job order deleted successfully' })
   } catch (error) {
     console.error('Error deleting job order:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Toggle important status
+router.patch('/:id/toggle-important', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const jobOrder = await JobOrder.findById(req.params.id)
+    if (!jobOrder) {
+      return res.status(404).json({ error: 'Job order not found' })
+    }
+    
+    jobOrder.isImportant = !jobOrder.isImportant
+    await jobOrder.save()
+    
+    const updatedJobOrder = await JobOrder.findById(jobOrder._id)
+      .populate('createdBy', 'name email')
+      .populate('assignedTechnician', 'name email')
+      .lean()
+    
+    res.json({ jobOrder: updatedJobOrder })
+  } catch (error) {
+    console.error('Error toggling important status:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Submit job order for Quality Inspection
+router.patch('/:id/submit-qi', verifyToken, requireRole(['administrator', 'job-controller', 'technician']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const jobOrder = await JobOrder.findById(req.params.id)
+    if (!jobOrder) {
+      return res.status(404).json({ error: 'Job order not found' })
+    }
+    
+    // Check if all tasks are finished
+    const allTasksFinished = jobOrder.jobList.every(task => task.status === 'Finished')
+    if (!allTasksFinished) {
+      return res.status(400).json({ error: 'Cannot submit for QI: Not all tasks are finished' })
+    }
+    
+    // Check if all parts are available
+    const allPartsAvailable = jobOrder.parts.every(part => part.availability === 'Available')
+    if (!allPartsAvailable) {
+      return res.status(400).json({ error: 'Cannot submit for QI: Not all parts are available' })
+    }
+    
+    jobOrder.status = 'QI'
+    jobOrder.qiStatus = 'pending'
+    await jobOrder.save()
+    
+    const updatedJobOrder = await JobOrder.findById(jobOrder._id)
+      .populate('createdBy', 'name email')
+      .populate('assignedTechnician', 'name email')
+      .lean()
+    
+    res.json({ jobOrder: updatedJobOrder })
+  } catch (error) {
+    console.error('Error submitting for QI:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Approve QI and mark for release
+router.patch('/:id/approve-qi', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const jobOrder = await JobOrder.findById(req.params.id)
+    if (!jobOrder) {
+      return res.status(404).json({ error: 'Job order not found' })
+    }
+    
+    if (jobOrder.status !== 'QI' || jobOrder.qiStatus !== 'pending') {
+      return res.status(400).json({ error: 'Job order is not pending QI' })
+    }
+    
+    jobOrder.status = 'FR'
+    jobOrder.qiStatus = 'approved'
+    await jobOrder.save()
+    
+    const updatedJobOrder = await JobOrder.findById(jobOrder._id)
+      .populate('createdBy', 'name email')
+      .populate('assignedTechnician', 'name email')
+      .lean()
+    
+    res.json({ jobOrder: updatedJobOrder })
+  } catch (error) {
+    console.error('Error approving QI:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Reject QI and mark for re-assessment
+router.patch('/:id/reject-qi', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const jobOrder = await JobOrder.findById(req.params.id)
+    if (!jobOrder) {
+      return res.status(404).json({ error: 'Job order not found' })
+    }
+    
+    if (jobOrder.status !== 'QI' || jobOrder.qiStatus !== 'pending') {
+      return res.status(400).json({ error: 'Job order is not pending QI' })
+    }
+    
+    jobOrder.status = 'OG'
+    jobOrder.qiStatus = 'rejected'
+    await jobOrder.save()
+    
+    const updatedJobOrder = await JobOrder.findById(jobOrder._id)
+      .populate('createdBy', 'name email')
+      .populate('assignedTechnician', 'name email')
+      .lean()
+    
+    res.json({ jobOrder: updatedJobOrder })
+  } catch (error) {
+    console.error('Error rejecting QI:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Complete a job (remove from For Release)
+router.patch('/:id/complete', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const jobOrder = await JobOrder.findById(req.params.id)
+    if (!jobOrder) {
+      return res.status(404).json({ error: 'Job order not found' })
+    }
+    
+    if (jobOrder.status !== 'FR') {
+      return res.status(400).json({ error: 'Job order is not marked for release' })
+    }
+    
+    jobOrder.status = 'CP'  // Complete - job has been released to customer
+    await jobOrder.save()
+    
+    const updatedJobOrder = await JobOrder.findById(jobOrder._id)
+      .populate('createdBy', 'name email')
+      .populate('assignedTechnician', 'name email')
+      .lean()
+    
+    res.json({ jobOrder: updatedJobOrder })
+  } catch (error) {
+    console.error('Error completing job:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Redo a job (move from For Release back to On Going)
+router.patch('/:id/redo', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const jobOrder = await JobOrder.findById(req.params.id)
+    if (!jobOrder) {
+      return res.status(404).json({ error: 'Job order not found' })
+    }
+    
+    if (jobOrder.status !== 'FR') {
+      return res.status(400).json({ error: 'Job order is not marked for release' })
+    }
+    
+    jobOrder.status = 'OG'  // Back to On Going for rework
+    jobOrder.qiStatus = null  // Reset QI status
+    await jobOrder.save()
+    
+    const updatedJobOrder = await JobOrder.findById(jobOrder._id)
+      .populate('createdBy', 'name email')
+      .populate('assignedTechnician', 'name email')
+      .lean()
+    
+    res.json({ jobOrder: updatedJobOrder })
+  } catch (error) {
+    console.error('Error redoing job:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Mark unfinished jobs as carry over (to be run at end of day)
+router.post('/mark-carry-over', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const { date } = req.body
+    const targetDate = date ? new Date(date) : new Date()
+    
+    // Set time to start and end of day
+    const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0))
+    const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999))
+    
+    // Find all unfinished jobs for the day (status not FR, FU, or CP)
+    const unfinishedJobs = await JobOrder.find({
+      date: { $gte: startOfDay, $lte: endOfDay },
+      status: { $nin: ['FR', 'FU', 'CP'] },
+      carriedOver: { $ne: true }
+    })
+    
+    // Mark them as carried over
+    const updates = unfinishedJobs.map(job => {
+      job.carriedOver = true
+      return job.save()
+    })
+    
+    await Promise.all(updates)
+    
+    res.json({ 
+      message: 'Unfinished jobs marked as carry over',
+      count: unfinishedJobs.length
+    })
+  } catch (error) {
+    console.error('Error marking carry over:', error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -318,7 +617,7 @@ router.get('/technicians/available', verifyToken, async (req, res) => {
     const availableTechnicians = await User.find({
       role: 'technician',
       _id: { $nin: busyTechnicianIds }
-    }).select('name email').lean()
+    }).select('name email level').lean()
     
     res.json({ technicians: availableTechnicians })
   } catch (error) {

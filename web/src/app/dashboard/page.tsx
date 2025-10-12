@@ -1,0 +1,1277 @@
+"use client"
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import toast, { Toaster } from 'react-hot-toast'
+import type { JobOrder } from '@/types/jobOrder'
+
+interface DashboardStats {
+  total: number
+  onGoing: number
+  forRelease: number
+  onHold: number
+  carriedOver: number
+  important: number
+  qualityInspection: number
+  finishedUnclaimed: number
+}
+
+interface JobOrderWithTechnician extends JobOrder {
+  assignedTechnician: {
+    _id: string
+    name: string
+    email: string
+  }
+  createdBy: {
+    _id: string
+    name: string
+    email: string
+  }
+}
+
+export default function MainDashboard() {
+  const [stats, setStats] = useState<DashboardStats>({
+    total: 0,
+    onGoing: 0,
+    forRelease: 0,
+    onHold: 0,
+    carriedOver: 0,
+    important: 0,
+    qualityInspection: 0,
+    finishedUnclaimed: 0
+  })
+  const [carriedOverJobs, setCarriedOverJobs] = useState<JobOrderWithTechnician[]>([])
+  const [importantJobs, setImportantJobs] = useState<JobOrderWithTechnician[]>([])
+  const [anomalyJobs, setAnomalyJobs] = useState<JobOrderWithTechnician[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showReassignModal, setShowReassignModal] = useState(false)
+  const [selectedJobForReassign, setSelectedJobForReassign] = useState<JobOrderWithTechnician | null>(null)
+  const [showBreakSettings, setShowBreakSettings] = useState(false)
+  const [showJobDetailsModal, setShowJobDetailsModal] = useState(false)
+  const [selectedJobForDetails, setSelectedJobForDetails] = useState<JobOrderWithTechnician | null>(null)
+  
+  // Break time settings (stored in localStorage)
+  const [breakStart, setBreakStart] = useState('12:00')
+  const [breakEnd, setBreakEnd] = useState('13:00')
+
+  // Load break settings from localStorage
+  useEffect(() => {
+    const savedBreakStart = localStorage.getItem('breakStart')
+    const savedBreakEnd = localStorage.getItem('breakEnd')
+    if (savedBreakStart) setBreakStart(savedBreakStart)
+    if (savedBreakEnd) setBreakEnd(savedBreakEnd)
+  }, [])
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  // Calculate end time from start time and duration, accounting for lunch break
+  const calculateEndTime = (startTime: string, durationMinutes: number): string => {
+    const [startHour, startMinute] = startTime.split(':').map(Number)
+    const startDate = new Date()
+    startDate.setHours(startHour, startMinute, 0, 0)
+    
+    const [breakStartHour, breakStartMinute] = breakStart.split(':').map(Number)
+    const [breakEndHour, breakEndMinute] = breakEnd.split(':').map(Number)
+    
+    const breakStartDate = new Date()
+    breakStartDate.setHours(breakStartHour, breakStartMinute, 0, 0)
+    
+    const breakEndDate = new Date()
+    breakEndDate.setHours(breakEndHour, breakEndMinute, 0, 0)
+    
+    const breakDuration = (breakEndDate.getTime() - breakStartDate.getTime()) / (1000 * 60)
+    
+    // Calculate initial end time without break
+    const initialEndDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
+    
+    // Check if work period overlaps with break
+    // Work overlaps if: start < breakEnd AND initialEnd > breakStart
+    if (startDate < breakEndDate && initialEndDate > breakStartDate) {
+      // The break falls within the work period - add break duration to skip it
+      const endDate = new Date(initialEndDate.getTime() + breakDuration * 60 * 1000)
+      
+      const endHour = String(endDate.getHours()).padStart(2, '0')
+      const endMinute = String(endDate.getMinutes()).padStart(2, '0')
+      return `${endHour}:${endMinute}`
+    }
+    
+    // No overlap with break, return initial calculation
+    const endHour = String(initialEndDate.getHours()).padStart(2, '0')
+    const endMinute = String(initialEndDate.getMinutes()).padStart(2, '0')
+    return `${endHour}:${endMinute}`
+  }
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      
+      // Fetch all job orders (with pagination limit increased)
+      const response = await fetch('/api/job-orders?limit=1000')
+      if (!response.ok) throw new Error('Failed to fetch job orders')
+      const data = await response.json()
+      const allJobs: JobOrderWithTechnician[] = data.jobOrders || []
+
+      // Calculate statistics
+      const newStats: DashboardStats = {
+        total: allJobs.length,
+        onGoing: allJobs.filter(job => job.status === 'OG').length,
+        forRelease: allJobs.filter(job => job.status === 'FR').length,
+        onHold: allJobs.filter(job => ['HC', 'HW', 'HI', 'WP'].includes(job.status)).length,
+        carriedOver: allJobs.filter(job => job.carriedOver).length,
+        important: allJobs.filter(job => job.isImportant).length,
+        qualityInspection: allJobs.filter(job => job.status === 'QI').length,
+        finishedUnclaimed: allJobs.filter(job => job.status === 'FU' || job.status === 'CP').length
+      }
+
+      // Filter carried over and important jobs (exclude completed jobs)
+      const carried = allJobs.filter(job => job.carriedOver && job.status !== 'FR' && job.status !== 'FU' && job.status !== 'CP')
+      const important = allJobs.filter(job => job.isImportant && job.status !== 'FR' && job.status !== 'FU' && job.status !== 'CP')
+      
+      // Identify pending job orders (mainly WP status or jobs needing attention)
+      const pendingJobs = allJobs.filter(job => {
+        // Exclude completed jobs
+        if (job.status === 'FR' || job.status === 'FU' || job.status === 'CP') return false
+        
+        // Include all Waiting Parts jobs
+        if (job.status === 'WP') return true
+        
+        // Check for unavailable parts in non-WP jobs
+        const hasUnavailableParts = job.parts && job.parts.some(part => part.availability === 'Unavailable')
+        
+        // Check for overdue jobs (older than 7 days and not on hold)
+        const jobDate = new Date(job.date)
+        const daysSinceJob = Math.floor((new Date().getTime() - jobDate.getTime()) / (1000 * 60 * 60 * 24))
+        const isOverdue = daysSinceJob > 7 && !['HC', 'HW', 'HI', 'WP'].includes(job.status)
+        
+        // Check for jobs with all tasks finished but not submitted for QI
+        const allTasksFinished = job.jobList && job.jobList.every(task => task.status === 'Finished')
+        const notSubmittedForQI = allTasksFinished && job.status !== 'QI' && job.status !== 'FR'
+        
+        return hasUnavailableParts || isOverdue || notSubmittedForQI
+      })
+
+      setStats(newStats)
+      setCarriedOverJobs(carried)
+      setImportantJobs(important)
+      setAnomalyJobs(pendingJobs)
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Loading dashboard...</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <Toaster position="top-right" />
+      
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <div className="text-sm text-gray-600">
+          Overview of all job orders and key metrics
+        </div>
+      </div>
+
+      {/* Statistics Grid - Compact */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+        {/* Total Jobs */}
+        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+          <div className="flex flex-col items-center text-center">
+            <span className="text-xl mb-1">📋</span>
+            <p className="text-xs text-gray-600 mb-0.5">Total</p>
+            <p className="text-xl font-bold text-gray-900">{stats.total}</p>
+          </div>
+        </div>
+
+        {/* On Going */}
+        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+          <div className="flex flex-col items-center text-center">
+            <span className="text-xl mb-1">🔧</span>
+            <p className="text-xs text-gray-600 mb-0.5">On Going</p>
+            <p className="text-xl font-bold text-blue-600">{stats.onGoing}</p>
+          </div>
+        </div>
+
+        {/* For Release */}
+        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+          <div className="flex flex-col items-center text-center">
+            <span className="text-xl mb-1">✅</span>
+            <p className="text-xs text-gray-600 mb-0.5">Release</p>
+            <p className="text-xl font-bold text-green-600">{stats.forRelease}</p>
+          </div>
+        </div>
+
+        {/* On Hold */}
+        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+          <div className="flex flex-col items-center text-center">
+            <span className="text-xl mb-1">⏸️</span>
+            <p className="text-xs text-gray-600 mb-0.5">On Hold</p>
+            <p className="text-xl font-bold text-red-600">{stats.onHold}</p>
+          </div>
+        </div>
+
+        {/* Carried Over */}
+        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+          <div className="flex flex-col items-center text-center">
+            <span className="text-xl mb-1">🔄</span>
+            <p className="text-xs text-gray-600 mb-0.5">Carried</p>
+            <p className="text-xl font-bold text-orange-600">{stats.carriedOver}</p>
+          </div>
+        </div>
+
+        {/* Important */}
+        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+          <div className="flex flex-col items-center text-center">
+            <span className="text-xl mb-1">⭐</span>
+            <p className="text-xs text-gray-600 mb-0.5">Important</p>
+            <p className="text-xl font-bold text-yellow-600">{stats.important}</p>
+          </div>
+        </div>
+
+        {/* Quality Inspection */}
+        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+          <div className="flex flex-col items-center text-center">
+            <span className="text-xl mb-1">🔍</span>
+            <p className="text-xs text-gray-600 mb-0.5">QI</p>
+            <p className="text-xl font-bold text-purple-600">{stats.qualityInspection}</p>
+          </div>
+        </div>
+
+        {/* Finished Unclaimed */}
+        <div className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow">
+          <div className="flex flex-col items-center text-center">
+            <span className="text-xl mb-1">📦</span>
+            <p className="text-xs text-gray-600 mb-0.5">Unclaimed</p>
+            <p className="text-xl font-bold text-gray-600">{stats.finishedUnclaimed}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Pending Job Orders Section - Horizontal Scroll */}
+      {anomalyJobs.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border-2 border-orange-300 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-orange-800 flex items-center gap-2">
+              <span className="text-xl">⏳</span>
+              Pending Job Orders
+            </h2>
+            <span className="text-xs text-gray-600">{anomalyJobs.length} job(s) need attention</span>
+          </div>
+          <div className="overflow-x-auto pb-2">
+            <div className="flex gap-2 min-w-max">
+            {anomalyJobs.map((job) => {
+              // Determine pending reasons
+              const unavailableParts = job.parts && job.parts.filter(part => part.availability === 'Unavailable')
+              const hasUnavailableParts = unavailableParts && unavailableParts.length > 0
+              const jobDate = new Date(job.date)
+              const daysSinceJob = Math.floor((new Date().getTime() - jobDate.getTime()) / (1000 * 60 * 60 * 24))
+              const isOverdue = daysSinceJob > 7 && !['HC', 'HW', 'HI', 'WP'].includes(job.status)
+              const allTasksFinished = job.jobList && job.jobList.every(task => task.status === 'Finished')
+              const notSubmittedForQI = allTasksFinished && job.status !== 'QI' && job.status !== 'FR'
+
+              return (
+                <div key={job._id} className="border border-orange-300 rounded-lg p-3 bg-orange-50 hover:shadow-md transition-shadow w-64 flex-shrink-0">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-bold text-sm text-orange-900">{job.jobNumber}</h3>
+                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                      job.status === 'OG' ? 'bg-blue-100 text-blue-800' :
+                      job.status === 'QI' ? 'bg-purple-100 text-purple-800' :
+                      job.status === 'WP' ? 'bg-orange-100 text-orange-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {job.status}
+                    </span>
+                  </div>
+                  
+                  {/* Pending Indicators - Compact */}
+                  <div className="space-y-1 mb-2">
+                    {hasUnavailableParts && (
+                      <div className="flex flex-col gap-0.5 text-xs bg-orange-200 text-orange-900 px-1.5 py-1 rounded">
+                        <div className="flex items-center gap-1 font-semibold">
+                          <span>⚠️</span>
+                          <span>Waiting Parts:</span>
+                        </div>
+                        <div className="text-[10px] pl-4 truncate">
+                          {unavailableParts!.map(p => p.name).join(', ')}
+                        </div>
+                      </div>
+                    )}
+                    {isOverdue && (
+                      <div className="flex items-center gap-1 text-xs bg-red-200 text-red-800 px-1.5 py-0.5 rounded">
+                        <span>⏰</span>
+                        <span>Overdue ({daysSinceJob}d)</span>
+                      </div>
+                    )}
+                    {notSubmittedForQI && (
+                      <div className="flex items-center gap-1 text-xs bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded">
+                        <span>✓</span>
+                        <span>Ready for QI</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      setSelectedJobForDetails(job)
+                      setShowJobDetailsModal(true)
+                    }}
+                    className="block w-full text-center bg-orange-600 hover:bg-orange-700 text-white font-medium py-1.5 rounded transition-colors text-xs"
+                  >
+                    View Details
+                  </button>
+                </div>
+              )
+            })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Carried Over Jobs Section - Horizontal Scroll */}
+      {carriedOverJobs.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-orange-800 flex items-center gap-2">
+              <span className="text-xl">🔄</span>
+              Carried Over Jobs - Awaiting Reassignment
+            </h2>
+            <span className="text-xs text-gray-600">{carriedOverJobs.length} job(s)</span>
+          </div>
+          <div className="overflow-x-auto pb-2">
+            <div className="flex gap-2 min-w-max">
+              {carriedOverJobs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((job) => (
+                <div key={job._id} className="border-2 border-orange-400 rounded-lg p-3 bg-orange-50 hover:shadow-md transition-shadow w-64 flex-shrink-0">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-bold text-sm text-orange-900">{job.jobNumber}</h3>
+                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                      job.status === 'OG' ? 'bg-blue-100 text-blue-800' :
+                      job.status === 'QI' ? 'bg-purple-100 text-purple-800' :
+                      job.status === 'WP' ? 'bg-orange-100 text-orange-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {job.status}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-0.5 text-xs mb-2">
+                    <p className="text-gray-600">{job.plateNumber}</p>
+                    <p className="text-gray-600">
+                      {job.assignedTechnician ? job.assignedTechnician.name : (
+                        <span className="text-red-600 font-semibold">⚠️ Needs Reassignment</span>
+                      )}
+                    </p>
+                    <p className="text-gray-500">From: {new Date(job.date).toLocaleDateString()}</p>
+                    <p className="text-gray-500">{job.jobList.filter(t => t.status === 'Finished').length}/{job.jobList.length} tasks</p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setSelectedJobForReassign(job)
+                      setShowReassignModal(true)
+                    }}
+                    className="block w-full text-center bg-orange-600 hover:bg-orange-700 text-white font-medium py-1.5 rounded transition-colors text-xs"
+                  >
+                    {job.assignedTechnician ? 'Reassign' : 'Assign Now'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Important Jobs Section - Horizontal Scroll */}
+      {importantJobs.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-yellow-800 flex items-center gap-2">
+              <span className="text-xl">⭐</span>
+              Important Jobs
+            </h2>
+            <span className="text-xs text-gray-600">{importantJobs.length} job(s)</span>
+          </div>
+          <div className="overflow-x-auto pb-2">
+            <div className="flex gap-2 min-w-max">
+              {importantJobs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((job) => (
+                <div key={job._id} className="border border-yellow-300 rounded-lg p-3 bg-yellow-50 hover:shadow-md transition-shadow w-64 flex-shrink-0">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-bold text-sm text-yellow-900">{job.jobNumber}</h3>
+                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                      job.status === 'OG' ? 'bg-blue-100 text-blue-800' :
+                      job.status === 'QI' ? 'bg-purple-100 text-purple-800' :
+                      job.status === 'WP' ? 'bg-orange-100 text-orange-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {job.status}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-0.5 text-xs mb-2">
+                    <p className="text-gray-600">{job.plateNumber}</p>
+                    <p className="text-gray-600">{job.assignedTechnician ? job.assignedTechnician.name : 'Unassigned'}</p>
+                    <p className="text-gray-500">{new Date(job.date).toLocaleDateString()}</p>
+                    <p className="text-gray-500">{job.jobList.filter(t => t.status === 'Finished').length}/{job.jobList.length} tasks</p>
+                  </div>
+
+                  <Link 
+                    href={`/dashboard/workshop?highlight=${job._id}&date=${new Date(job.date).toISOString().split('T')[0]}`}
+                    className="block w-full text-center bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-1.5 rounded transition-colors text-xs"
+                  >
+                    View
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Link href="/dashboard/job-orders" className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">📋</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Job Orders</h3>
+              <p className="text-sm text-gray-600">View all job orders</p>
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/dashboard/workshop" className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">🔧</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Workshop Board</h3>
+              <p className="text-sm text-gray-600">View timetable</p>
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/dashboard/account-management" className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">👥</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Account Management</h3>
+              <p className="text-sm text-gray-600">Manage users</p>
+            </div>
+          </div>
+        </Link>
+
+        <button onClick={() => setShowBreakSettings(true)} className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow text-left">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">⏰</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Break Settings</h3>
+              <p className="text-sm text-gray-600">{breakStart} - {breakEnd}</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* Reassignment Modal */}
+      {showReassignModal && selectedJobForReassign && (
+        <ReassignmentModal
+          job={selectedJobForReassign}
+          breakStart={breakStart}
+          breakEnd={breakEnd}
+          calculateEndTime={calculateEndTime}
+          onClose={() => {
+            setShowReassignModal(false)
+            setSelectedJobForReassign(null)
+          }}
+          onSuccess={() => {
+            setShowReassignModal(false)
+            setSelectedJobForReassign(null)
+            fetchDashboardData()
+          }}
+        />
+      )}
+
+      {/* Job Details Modal */}
+      {showJobDetailsModal && selectedJobForDetails && (
+        <JobDetailsModal
+          job={selectedJobForDetails}
+          breakStart={breakStart}
+          breakEnd={breakEnd}
+          calculateEndTime={calculateEndTime}
+          onClose={() => {
+            setShowJobDetailsModal(false)
+            setSelectedJobForDetails(null)
+          }}
+          onSuccess={() => {
+            setShowJobDetailsModal(false)
+            setSelectedJobForDetails(null)
+            fetchDashboardData()
+          }}
+        />
+      )}
+
+      {/* Break Settings Modal */}
+      {showBreakSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold">Break Time Settings</h3>
+                <button
+                  onClick={() => setShowBreakSettings(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Break Start Time
+                  </label>
+                  <input
+                    type="time"
+                    value={breakStart}
+                    onChange={(e) => setBreakStart(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Break End Time
+                  </label>
+                  <input
+                    type="time"
+                    value={breakEnd}
+                    onChange={(e) => setBreakEnd(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    ℹ️ This break time will be automatically accounted for when calculating job end times.
+                  </p>
+                </div>
+                
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowBreakSettings(false)}
+                    className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('breakStart', breakStart)
+                      localStorage.setItem('breakEnd', breakEnd)
+                      setShowBreakSettings(false)
+                      toast.success('Break time settings saved!')
+                    }}
+                    className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-medium transition-colors"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Job Details Modal Component
+function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose, onSuccess }: {
+  job: any
+  breakStart: string
+  breakEnd: string
+  calculateEndTime: (startTime: string, duration: number) => string
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const [updating, setUpdating] = useState(false)
+  const [showReassign, setShowReassign] = useState(false)
+  const [localJob, setLocalJob] = useState(job)
+
+  const updateTaskStatus = async (taskIndex: number, status: 'Finished' | 'Unfinished') => {
+    try {
+      setUpdating(true)
+      const updatedJobList = [...localJob.jobList]
+      updatedJobList[taskIndex].status = status
+
+      const response = await fetch(`/api/job-orders/${job._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ jobList: updatedJobList })
+      })
+
+      if (!response.ok) throw new Error('Failed to update task')
+      
+      const data = await response.json()
+      setLocalJob(data.jobOrder)
+      toast.success(`Task marked as ${status.toLowerCase()}`)
+    } catch (error) {
+      console.error('Error updating task:', error)
+      toast.error('Failed to update task')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const updatePartAvailability = async (partIndex: number, availability: 'Available' | 'Unavailable') => {
+    try {
+      setUpdating(true)
+      const updatedParts = [...localJob.parts]
+      updatedParts[partIndex].availability = availability
+
+      const response = await fetch(`/api/job-orders/${job._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ parts: updatedParts })
+      })
+
+      if (!response.ok) throw new Error('Failed to update part')
+      
+      const data = await response.json()
+      setLocalJob(data.jobOrder)
+      toast.success(`Part marked as ${availability.toLowerCase()}`)
+      
+      // Check if all parts are now available
+      const allPartsAvailable = updatedParts.every(p => p.availability === 'Available')
+      if (allPartsAvailable && localJob.status === 'WP') {
+        toast.success('All parts available! You can now assign a technician.', { duration: 5000 })
+      }
+    } catch (error) {
+      console.error('Error updating part:', error)
+      toast.error('Failed to update part availability')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const allPartsAvailable = localJob.parts.every((p: any) => p.availability === 'Available')
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold">Job Order Details</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">
+              ×
+            </button>
+          </div>
+
+          {/* Job Info Header */}
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-bold text-lg text-orange-900">{localJob.jobNumber}</h4>
+                <p className="text-sm text-gray-700">{localJob.plateNumber} - {localJob.vin}</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  Date: {new Date(localJob.date).toLocaleDateString()} | 
+                  Time: {localJob.timeRange.start} - {localJob.timeRange.end}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  localJob.status === 'WP' ? 'bg-orange-100 text-orange-800' :
+                  localJob.status === 'OG' ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {localJob.status === 'WP' ? 'Waiting Parts' :
+                   localJob.status === 'OG' ? 'On Going' : localJob.status}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Parts Section */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="font-semibold text-gray-900">Parts Required</h4>
+                <span className="text-xs text-gray-600">
+                  {localJob.parts.filter((p: any) => p.availability === 'Available').length}/{localJob.parts.length} available
+                </span>
+              </div>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {localJob.parts.map((part: any, index: number) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <h5 className="font-medium text-gray-900 text-sm">{part.name}</h5>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        part.availability === 'Available'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {part.availability}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updatePartAvailability(index, 'Available')}
+                        disabled={updating || part.availability === 'Available'}
+                        className={`flex-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                          part.availability === 'Available'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-300'
+                        }`}
+                      >
+                        Mark Available
+                      </button>
+                      <button
+                        onClick={() => updatePartAvailability(index, 'Unavailable')}
+                        disabled={updating || part.availability === 'Unavailable'}
+                        className={`flex-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                          part.availability === 'Unavailable'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-300'
+                        }`}
+                      >
+                        Mark Unavailable
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tasks Section */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="font-semibold text-gray-900">Job Tasks</h4>
+                <span className="text-xs text-gray-600">
+                  {localJob.jobList.filter((t: any) => t.status === 'Finished').length}/{localJob.jobList.length} finished
+                </span>
+              </div>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {localJob.jobList.map((task: any, index: number) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <h5 className="font-medium text-gray-900 text-sm">{task.description}</h5>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        task.status === 'Finished'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {task.status}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateTaskStatus(index, 'Finished')}
+                        disabled={updating || task.status === 'Finished'}
+                        className={`flex-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                          task.status === 'Finished'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-300'
+                        }`}
+                      >
+                        Mark Finished
+                      </button>
+                      <button
+                        onClick={() => updateTaskStatus(index, 'Unfinished')}
+                        disabled={updating || task.status === 'Unfinished'}
+                        className={`flex-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                          task.status === 'Unfinished'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-300'
+                        }`}
+                      >
+                        Mark Unfinished
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Technician Assignment Section */}
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+            <div className="flex justify-between items-center mb-2">
+              <div>
+                <h4 className="font-semibold text-gray-900">Assigned Technician</h4>
+                <p className="text-sm text-gray-600">
+                  {localJob.assignedTechnician ? localJob.assignedTechnician.name : (
+                    <span className="text-orange-600 font-medium">⚠️ Not Assigned</span>
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowReassign(!showReassign)}
+                disabled={!allPartsAvailable}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-md font-medium transition-colors text-sm"
+                title={!allPartsAvailable ? 'All parts must be available before assigning' : 'Assign or reassign technician'}
+              >
+                {localJob.assignedTechnician ? 'Reassign' : 'Assign Technician'}
+              </button>
+            </div>
+            {!allPartsAvailable && (
+              <p className="text-xs text-orange-600 mt-2">
+                ⚠️ All parts must be available before assigning a technician
+              </p>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 mt-6 pt-4 border-t">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md font-medium transition-colors"
+            >
+              Close
+            </button>
+            <button
+              onClick={onSuccess}
+              className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-medium transition-colors"
+            >
+              Save & Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Nested Reassignment Modal */}
+      {showReassign && (
+        <ReassignmentModal
+          job={localJob}
+          breakStart={breakStart}
+          breakEnd={breakEnd}
+          calculateEndTime={calculateEndTime}
+          onClose={() => setShowReassign(false)}
+          onSuccess={() => {
+            setShowReassign(false)
+            onSuccess()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Reassignment Modal Component
+function ReassignmentModal({ job, breakStart, breakEnd, calculateEndTime, onClose, onSuccess }: {
+  job: any
+  breakStart: string
+  breakEnd: string
+  calculateEndTime: (startTime: string, duration: number) => string
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const [startTime, setStartTime] = useState(job.timeRange.start)
+  const [duration, setDuration] = useState(120) // Default 2 hours in minutes
+  const [endTime, setEndTime] = useState(calculateEndTime(job.timeRange.start, 120))
+  const [selectedTechnician, setSelectedTechnician] = useState('')
+  const [allTechnicians, setAllTechnicians] = useState<any[]>([])
+  const [technicianSchedule, setTechnicianSchedule] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+
+  // Fetch all technicians on mount
+  useEffect(() => {
+    const fetchTechnicians = async () => {
+      try {
+        const response = await fetch('/api/users', { credentials: 'include' })
+        if (response.ok) {
+          const data = await response.json()
+          const techs = (data.users || []).filter((u: any) => u.role === 'technician')
+          setAllTechnicians(techs)
+        }
+      } catch (error) {
+        console.error('Error fetching technicians:', error)
+      }
+    }
+    fetchTechnicians()
+  }, [])
+
+  // Fetch selected technician's schedule
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      if (!selectedTechnician) {
+        setTechnicianSchedule([])
+        return
+      }
+
+      setLoading(true)
+      try {
+        const response = await fetch(
+          `/api/job-orders?date=${selectedDate}&technician=${selectedTechnician}&limit=100`,
+          { credentials: 'include' }
+        )
+        if (response.ok) {
+          const data = await response.json()
+          // Filter out the current job being reassigned
+          const schedule = (data.jobOrders || []).filter((j: any) => j._id !== job._id)
+          setTechnicianSchedule(schedule)
+        }
+      } catch (error) {
+        console.error('Error fetching schedule:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchSchedule()
+  }, [selectedTechnician, selectedDate, job._id])
+
+  // Recalculate end time when start time or duration changes
+  useEffect(() => {
+    if (startTime && duration) {
+      const calculated = calculateEndTime(startTime, duration)
+      setEndTime(calculated)
+    }
+  }, [startTime, duration, calculateEndTime])
+
+  // Generate time slots (7 AM to 6 PM in 30-min intervals)
+  const generateTimeSlots = () => {
+    const slots = []
+    for (let hour = 7; hour <= 18; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        if (hour === 18 && minute > 0) break // Stop at 6:00 PM
+        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+        slots.push(time)
+      }
+    }
+    return slots
+  }
+
+  const timeSlots = generateTimeSlots()
+
+  // Check if a time slot is occupied
+  const isSlotOccupied = (slotTime: string) => {
+    const [slotHour, slotMin] = slotTime.split(':').map(Number)
+    const slotMinutes = slotHour * 60 + slotMin
+
+    return technicianSchedule.some(job => {
+      const [startHour, startMin] = job.timeRange.start.split(':').map(Number)
+      const [endHour, endMin] = job.timeRange.end.split(':').map(Number)
+      const jobStart = startHour * 60 + startMin
+      const jobEnd = endHour * 60 + endMin
+      
+      return slotMinutes >= jobStart && slotMinutes < jobEnd
+    })
+  }
+
+  // Get job at specific time slot
+  const getJobAtSlot = (slotTime: string) => {
+    const [slotHour, slotMin] = slotTime.split(':').map(Number)
+    const slotMinutes = slotHour * 60 + slotMin
+
+    return technicianSchedule.find(job => {
+      const [startHour, startMin] = job.timeRange.start.split(':').map(Number)
+      const [endHour, endMin] = job.timeRange.end.split(':').map(Number)
+      const jobStart = startHour * 60 + startMin
+      const jobEnd = endHour * 60 + endMin
+      
+      return slotMinutes >= jobStart && slotMinutes < jobEnd
+    })
+  }
+
+  // Check if proposed time conflicts
+  const hasConflict = () => {
+    if (!startTime || !endTime) return false
+
+    const [startHour, startMin] = startTime.split(':').map(Number)
+    const [endHour, endMin] = endTime.split(':').map(Number)
+    const proposedStart = startHour * 60 + startMin
+    const proposedEnd = endHour * 60 + endMin
+
+    return technicianSchedule.some(job => {
+      const [jobStartHour, jobStartMin] = job.timeRange.start.split(':').map(Number)
+      const [jobEndHour, jobEndMin] = job.timeRange.end.split(':').map(Number)
+      const jobStart = jobStartHour * 60 + jobStartMin
+      const jobEnd = jobEndHour * 60 + jobEndMin
+      
+      return proposedStart < jobEnd && proposedEnd > jobStart
+    })
+  }
+
+  const handleSlotClick = (slotTime: string) => {
+    if (!isSlotOccupied(slotTime)) {
+      setStartTime(slotTime)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!selectedTechnician) {
+      toast.error('Please select a technician')
+      return
+    }
+
+    if (hasConflict()) {
+      toast.error('Time slot conflicts with existing job')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const response = await fetch(`/api/job-orders/${job._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          assignedTechnician: selectedTechnician,
+          timeRange: { start: startTime, end: endTime },
+          date: selectedDate,
+          carriedOver: false
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to reassign job')
+      }
+
+      toast.success('Job reassigned successfully!')
+      onSuccess()
+    } catch (error) {
+      console.error('Error reassigning job:', error)
+      if (error instanceof Error) {
+        toast.error(error.message)
+      } else {
+        toast.error('Failed to reassign job')
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold">Reassign Job Order - Visual Schedule</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">
+              ×
+            </button>
+          </div>
+
+          {/* Job Info */}
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+            <h4 className="font-bold text-orange-900">{job.jobNumber}</h4>
+            <p className="text-sm text-gray-600">{job.plateNumber} - {job.vin}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Current: {job.timeRange.start} - {job.timeRange.end} ({job.assignedTechnician ? job.assignedTechnician.name : 'Unassigned'})
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left: Controls */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Technician
+                </label>
+                <select
+                  value={selectedTechnician}
+                  onChange={(e) => setSelectedTechnician(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Choose technician...</option>
+                  {allTechnicians.map((tech) => (
+                    <option key={tech._id} value={tech._id}>
+                      {tech.name} {tech.level && `(${tech.level})`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Duration (hours)</label>
+                <input
+                  type="number"
+                  min="0.5"
+                  step="0.5"
+                  value={duration / 60}
+                  onChange={(e) => setDuration(parseFloat(e.target.value) * 60)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                <input
+                  type="time"
+                  value={endTime}
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                />
+                <p className="text-xs text-gray-500 mt-1">Auto-calculated with break</p>
+              </div>
+
+              {hasConflict() && (
+                <div className="bg-red-50 border border-red-300 rounded-lg p-3">
+                  <p className="text-sm text-red-800 font-medium">⚠️ Time Conflict Detected</p>
+                  <p className="text-xs text-red-600 mt-1">Selected time overlaps with existing job</p>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                <button
+                  onClick={onClose}
+                  className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting || !selectedTechnician || hasConflict()}
+                  className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white rounded-md font-medium transition-colors"
+                >
+                  {submitting ? 'Assigning...' : 'Assign'}
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Visual Timeline */}
+            <div className="lg:col-span-2">
+              <div className="bg-gray-50 rounded-lg p-4 border">
+                <h4 className="font-semibold mb-3">
+                  {selectedTechnician ? (
+                    <>Schedule for {allTechnicians.find(t => t._id === selectedTechnician)?.name}</>
+                  ) : (
+                    'Select a technician to view schedule'
+                  )}
+                </h4>
+
+                {loading ? (
+                  <div className="text-center py-8 text-gray-500">Loading schedule...</div>
+                ) : !selectedTechnician ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <div className="text-4xl mb-2">👤</div>
+                    <p>Select a technician to see their availability</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Legend */}
+                    <div className="flex gap-4 mb-3 text-xs">
+                      <div className="flex items-center gap-1">
+                        <div className="w-4 h-4 bg-green-200 border border-green-400 rounded"></div>
+                        <span>Available</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-4 h-4 bg-red-200 border border-red-400 rounded"></div>
+                        <span>Occupied</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-4 h-4 bg-blue-200 border-2 border-blue-600 rounded"></div>
+                        <span>Your Selection</span>
+                      </div>
+                    </div>
+
+                    {/* Timeline Grid */}
+                    <div className="grid grid-cols-4 gap-2 max-h-[500px] overflow-y-auto">
+                      {timeSlots.map((slot) => {
+                        const occupied = isSlotOccupied(slot)
+                        const jobAtSlot = getJobAtSlot(slot)
+                        const isSelected = slot === startTime
+                        const [slotHour, slotMin] = slot.split(':').map(Number)
+                        const slotMinutes = slotHour * 60 + slotMin
+                        const [startHour, startMin] = startTime.split(':').map(Number)
+                        const [endHour, endMin] = endTime.split(':').map(Number)
+                        const selectedStart = startHour * 60 + startMin
+                        const selectedEnd = endHour * 60 + endMin
+                        const isInSelectedRange = slotMinutes >= selectedStart && slotMinutes < selectedEnd
+
+                        return (
+                          <button
+                            key={slot}
+                            onClick={() => handleSlotClick(slot)}
+                            disabled={occupied}
+                            className={`
+                              p-2 text-xs rounded border-2 transition-all
+                              ${occupied 
+                                ? 'bg-red-100 border-red-300 text-red-800 cursor-not-allowed' 
+                                : isInSelectedRange
+                                  ? 'bg-blue-200 border-blue-600 text-blue-900 font-bold'
+                                  : 'bg-green-100 border-green-300 text-green-800 hover:bg-green-200'
+                              }
+                              ${isSelected ? 'ring-2 ring-blue-500' : ''}
+                            `}
+                            title={occupied ? `Occupied: ${jobAtSlot?.jobNumber}` : 'Available - Click to select'}
+                          >
+                            <div className="font-semibold">{slot}</div>
+                            {occupied && jobAtSlot && (
+                              <div className="text-[10px] truncate mt-1">
+                                {jobAtSlot.jobNumber}
+                              </div>
+                            )}
+                            {isSelected && (
+                              <div className="text-[10px] mt-1">START</div>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Existing Jobs Summary */}
+                    {technicianSchedule.length > 0 && (
+                      <div className="mt-4 p-3 bg-white rounded border">
+                        <h5 className="font-medium text-sm mb-2">Existing Jobs ({technicianSchedule.length})</h5>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {technicianSchedule.map((j: any) => (
+                            <div key={j._id} className="text-xs flex justify-between items-center p-2 bg-gray-50 rounded">
+                              <span className="font-semibold">{j.jobNumber}</span>
+                              <span className="text-gray-600">{j.timeRange.start} - {j.timeRange.end}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
