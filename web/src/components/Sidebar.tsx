@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useState } from "react"
 import type { Role } from "@/types/auth"
 
@@ -44,7 +44,6 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
 export default function Sidebar({ role, name }: { role: Role | null; name?: string | null }) {
   const { title, items } = getNavForRole(role)
   const pathname = usePathname()
-  const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const handleLogout = async (e: React.FormEvent) => {
@@ -76,32 +75,34 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
   }
 
   return (
-    <aside className="w-64 min-w-64 max-w-64 border-r border-neutral-200 bg-white p-4 flex-shrink-0">
-      <div className="mb-6">
-        <div className="text-xl font-semibold text-[color:var(--color-ford-blue)]">{title}</div>
-        <div className="text-sm text-neutral-500">Workshop Board</div>
-        {name ? <div className="mt-2 text-sm text-neutral-700">Hi, {name}</div> : null}
+    <aside className="w-64 min-w-64 max-w-64 border-r border-neutral-200 bg-white flex-shrink-0 p-4 flex flex-col h-screen">
+      <div>
+        <div className="mb-6">
+          <div className="text-xl font-semibold text-[color:var(--color-ford-blue)]">{title}</div>
+          <div className="text-sm text-neutral-500">Workshop Board</div>
+          {name ? <div className="mt-2 text-sm text-neutral-700">Hi, {name}</div> : null}
+        </div>
+        <nav className="space-y-1">
+          {items.map((item) => (
+            <Link 
+              key={item.href} 
+              href={item.href}
+              className={`block px-3 py-2 rounded-lg transition-colors ${
+                item.href === "/dashboard" 
+                  ? (pathname === "/dashboard" ? "bg-[color:var(--color-ford-blue)] text-white" : "text-neutral-700 hover:bg-neutral-100")
+                  : (pathname?.startsWith(item.href) ? "bg-[color:var(--color-ford-blue)] text-white" : "text-neutral-700 hover:bg-neutral-100")
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
       </div>
-      <nav className="space-y-1">
-        {items.map((item) => (
-          <Link 
-            key={item.href} 
-            href={item.href} 
-            className={`sidebar-link ${
-              item.href === "/dashboard" 
-                ? (pathname === "/dashboard" ? "active" : "")
-                : (pathname?.startsWith(item.href) ? "active" : "")
-            }`}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      <form onSubmit={handleLogout} className="mt-6">
+      <form onSubmit={handleLogout} className="mt-auto">
         <button 
           type="submit"
           disabled={isLoggingOut}
-          className="sidebar-link w-full justify-start text-left disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-2 rounded-lg w-full text-left text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isLoggingOut ? "Logging out..." : "Logout"}
         </button>

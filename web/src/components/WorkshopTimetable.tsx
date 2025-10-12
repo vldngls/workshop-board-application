@@ -623,29 +623,104 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
   return (
     <div className="space-y-4">
       <Toaster position="top-right" />
-      {/* Header with date navigation */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border">
-        <button
-          onClick={() => navigateDate('prev')}
-          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-        >
-          ← Previous
-        </button>
-        <div className="flex items-center space-x-4">
-          <h2 className="text-xl font-semibold">{formatDate(date)}</h2>
+      {/* Header with date navigation and summary */}
+      <div className="flex gap-4">
+        {/* Date navigation */}
+        <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border flex-1">
           <button
-            onClick={() => onDateChange(new Date())}
-            className="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 rounded transition-colors"
+            onClick={() => navigateDate('prev')}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
           >
-            Today
+            ← Previous
+          </button>
+          <div className="flex items-center space-x-4">
+            <h2 className="text-xl font-semibold whitespace-nowrap">{formatDate(date)}</h2>
+            <button
+              onClick={() => onDateChange(new Date())}
+              className="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 rounded transition-colors"
+            >
+              Today
+            </button>
+          </div>
+          <button
+            onClick={() => navigateDate('next')}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            Next →
           </button>
         </div>
-        <button
-          onClick={() => navigateDate('next')}
-          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-        >
-          Next →
-        </button>
+        
+        {/* Daily Summary */}
+        <div className="bg-white p-3 rounded-lg shadow-sm border flex-shrink-0">
+          <h3 className="text-base font-semibold mb-2">Daily Summary</h3>
+          <div className="flex gap-4 text-xs">
+            <div>
+              <div className="text-gray-600">Total</div>
+              <div className="text-xl font-bold text-blue-600">{jobOrders.length}</div>
+            </div>
+            <div>
+              <div className="text-gray-600">On Going</div>
+              <div className="text-xl font-bold text-blue-600">
+                {jobOrders.filter(job => job.status === 'OG').length}
+              </div>
+            </div>
+            <div>
+              <div className="text-gray-600">For Release</div>
+              <div className="text-xl font-bold text-green-600">
+                {jobOrders.filter(job => job.status === 'FR').length}
+              </div>
+            </div>
+            <div>
+              <div className="text-gray-600">On Hold</div>
+              <div className="text-xl font-bold text-red-600">
+                {jobOrders.filter(job => ['HC', 'HW', 'HI', 'WP'].includes(job.status)).length}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Status Legend */}
+        <div className="bg-white p-3 rounded-lg shadow-sm border flex-shrink-0">
+          <h3 className="text-base font-semibold mb-2">Status Legend</h3>
+          <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-xs">
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-blue-100 border border-blue-300 rounded flex-shrink-0"></div>
+              <span>OG</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-orange-100 border border-orange-300 rounded flex-shrink-0"></div>
+              <span>WP</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-purple-100 border border-purple-300 rounded flex-shrink-0"></div>
+              <span>QI</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-yellow-100 border border-yellow-300 rounded flex-shrink-0"></div>
+              <span>HC</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-red-100 border border-red-300 rounded flex-shrink-0"></div>
+              <span>HW</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-indigo-100 border border-indigo-300 rounded flex-shrink-0"></div>
+              <span>HI</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-green-100 border border-green-300 rounded flex-shrink-0"></div>
+              <span>FR</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-gray-100 border border-gray-300 rounded flex-shrink-0"></div>
+              <span>FU</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-emerald-100 border border-emerald-300 rounded flex-shrink-0"></div>
+              <span>CP</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Timetable */}
@@ -818,84 +893,6 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         </div>
       </div>
 
-      {/* Statistics and Legend */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Statistics */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <h3 className="text-lg font-semibold mb-3">Daily Summary</h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <div className="text-gray-600">Total Jobs</div>
-              <div className="text-2xl font-bold text-blue-600">{jobOrders.length}</div>
-            </div>
-            <div>
-              <div className="text-gray-600">On Going</div>
-              <div className="text-2xl font-bold text-blue-600">
-                {jobOrders.filter(job => job.status === 'OG').length}
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-600">For Release</div>
-              <div className="text-2xl font-bold text-green-600">
-                {jobOrders.filter(job => job.status === 'FR').length}
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-600">On Hold</div>
-              <div className="text-2xl font-bold text-red-600">
-                {jobOrders.filter(job => ['HC', 'HW', 'HI', 'WP'].includes(job.status)).length}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Legend */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <h3 className="text-lg font-semibold mb-3">Status Legend</h3>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-blue-100 border border-blue-300 rounded"></div>
-              <span>OG - On Going</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-orange-100 border border-orange-300 rounded"></div>
-              <span>WP - Waiting Parts</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-purple-100 border border-purple-300 rounded"></div>
-              <span>QI - Quality Inspection</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-yellow-100 border border-yellow-300 rounded"></div>
-              <span>HC - Hold Customer</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-red-100 border border-red-300 rounded"></div>
-              <span>HW - Hold Warranty</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-indigo-100 border border-indigo-300 rounded"></div>
-              <span>HI - Hold Insurance</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-green-100 border border-green-300 rounded"></div>
-              <span>FR - For Release</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded"></div>
-              <span>FU - Finished Unclaimed</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-emerald-100 border border-emerald-300 rounded"></div>
-              <span>CP - Complete</span>
-            </div>
-          </div>
-          <div className="mt-3 text-xs text-gray-500">
-            Click on any job cell to view detailed information
-          </div>
-        </div>
-      </div>
-
       {/* Quality Inspection & For Release Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Quality Inspection Section */}
@@ -916,51 +913,35 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
               <p>No jobs pending quality inspection</p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+            <div className="space-y-2 max-h-[600px] overflow-y-auto">
               {qiJobs.map((job) => (
-                <div key={job._id} className="border-2 border-purple-300 rounded-lg p-4 bg-purple-50 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="font-bold text-lg text-purple-900">{job.jobNumber}</h4>
-                      <p className="text-sm text-gray-600">{job.plateNumber}</p>
+                <div key={job._id} className="border-2 border-purple-300 rounded-lg p-3 bg-purple-50 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {job.isImportant && (
+                        <span className="text-yellow-500 text-lg flex-shrink-0">★</span>
+                      )}
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-base text-purple-900 truncate">{job.jobNumber}</h4>
+                        <p className="text-sm text-gray-600 truncate">{job.plateNumber}</p>
+                      </div>
                     </div>
-                    {job.isImportant && (
-                      <span className="text-yellow-500 text-xl">★</span>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-1 text-sm mb-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Technician:</span>
-                      <span className="font-medium">{job.assignedTechnician ? job.assignedTechnician.name : 'Unassigned'}</span>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => approveQI(job._id)}
+                        disabled={updating}
+                        className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm"
+                      >
+                        ✓ Approve
+                      </button>
+                      <button
+                        onClick={() => rejectQI(job._id)}
+                        disabled={updating}
+                        className="bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm"
+                      >
+                        ✗ Reject
+                      </button>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Date:</span>
-                      <span className="font-medium">{new Date(job.date).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Tasks:</span>
-                      <span className="font-medium">
-                        {job.jobList.filter(t => t.status === 'Finished').length}/{job.jobList.length}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => approveQI(job._id)}
-                      disabled={updating}
-                      className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-medium py-2 rounded-lg transition-colors text-sm"
-                    >
-                      ✓ Approve
-                    </button>
-                    <button
-                      onClick={() => rejectQI(job._id)}
-                      disabled={updating}
-                      className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white font-medium py-2 rounded-lg transition-colors text-sm"
-                    >
-                      ✗ Reject
-                    </button>
                   </div>
                 </div>
               ))}
@@ -986,64 +967,35 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
               <p>No jobs ready for release</p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+            <div className="space-y-2 max-h-[600px] overflow-y-auto">
               {forReleaseJobs.map((job) => (
-                <div key={job._id} className="border-2 border-green-300 rounded-lg p-4 bg-green-50 hover:shadow-md transition-shadow cursor-pointer"
-                     onClick={() => handleCellClick(job)}>
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="font-bold text-lg text-green-900">{job.jobNumber}</h4>
-                      <p className="text-sm text-gray-600">{job.plateNumber}</p>
-                    </div>
-                    {job.isImportant && (
-                      <span className="text-yellow-500 text-xl">★</span>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-1 text-sm mb-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Technician:</span>
-                      <span className="font-medium">{job.assignedTechnician ? job.assignedTechnician.name : 'Unassigned'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Date:</span>
-                      <span className="font-medium">{new Date(job.date).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Tasks:</span>
-                      <span className="font-medium text-green-700">
-                        ✓ {job.jobList.length}/{job.jobList.length}
-                      </span>
-                    </div>
-                    {job.qiStatus === 'approved' && (
-                      <div className="flex items-center gap-1 text-xs text-green-700 mt-2">
-                        <span>✓</span>
-                        <span>Quality Approved</span>
+                <div key={job._id} className="border-2 border-green-300 rounded-lg p-3 bg-green-50 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {job.isImportant && (
+                        <span className="text-yellow-500 text-lg flex-shrink-0">★</span>
+                      )}
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-base text-green-900 truncate">{job.jobNumber}</h4>
+                        <p className="text-sm text-gray-600 truncate">{job.plateNumber}</p>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2 pt-2 border-t border-green-200">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        completeJob(job._id)
-                      }}
-                      disabled={updating}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium py-2 rounded-lg transition-colors text-sm"
-                    >
-                      ✓ Complete
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        redoJob(job._id)
-                      }}
-                      disabled={updating}
-                      className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white font-medium py-2 rounded-lg transition-colors text-sm"
-                    >
-                      ↻ Redo
-                    </button>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => completeJob(job._id)}
+                        disabled={updating}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm"
+                      >
+                        ✓ Complete
+                      </button>
+                      <button
+                        onClick={() => redoJob(job._id)}
+                        disabled={updating}
+                        className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm"
+                      >
+                        ↻ Redo
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

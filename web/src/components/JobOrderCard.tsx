@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, memo, useCallback } from 'react'
-import toast from 'react-hot-toast'
 import type { JobOrder, JobStatus, JobItemStatus } from '@/types/jobOrder'
+import { 
+  useUpdateJobOrderStatus, 
+  useUpdateJobOrder, 
+  useToggleImportant,
+  useAvailableTechnicians 
+} from '@/hooks/useJobOrders'
 
 interface JobOrderCardProps {
   jobOrder: JobOrder
-  onUpdate: () => void
 }
 
 // Status mapping for display
@@ -34,16 +38,25 @@ const STATUS_COLORS: Record<JobStatus, string> = {
   'CP': 'bg-emerald-100 text-emerald-800'
 }
 
-function JobOrderCard({ jobOrder, onUpdate }: JobOrderCardProps) {
-  const [isUpdating, setIsUpdating] = useState(false)
+function JobOrderCard({ jobOrder }: JobOrderCardProps) {
   const [showStatusModal, setShowStatusModal] = useState(false)
   const [showJobTasksModal, setShowJobTasksModal] = useState(false)
   const [showPartsModal, setShowPartsModal] = useState(false)
   const [showTechnicianModal, setShowTechnicianModal] = useState(false)
   const [updatingTaskIndex, setUpdatingTaskIndex] = useState<number | null>(null)
   const [updatingPartIndex, setUpdatingPartIndex] = useState<number | null>(null)
-  const [updatingImportant, setUpdatingImportant] = useState(false)
-  const [availableTechnicians, setAvailableTechnicians] = useState<any[]>([])
+
+  // TanStack Query mutations
+  const updateStatusMutation = useUpdateJobOrderStatus()
+  const updateJobMutation = useUpdateJobOrder()
+  const toggleImportantMutation = useToggleImportant()
+
+  // Fetch available technicians when modal opens
+  const { data: availableTechnicians = [] } = useAvailableTechnicians(
+    showTechnicianModal ? jobOrder.date.split('T')[0] : undefined,
+    showTechnicianModal ? jobOrder.timeRange.start : undefined,
+    showTechnicianModal ? jobOrder.timeRange.end : undefined
+  )
 
   const getStatusColor = useCallback((status: JobStatus) => {
     return STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'
@@ -59,85 +72,34 @@ function JobOrderCard({ jobOrder, onUpdate }: JobOrderCardProps) {
   }, [])
 
   const handleStatusUpdate = useCallback(async (newStatus: JobStatus) => {
-    try {
-      setIsUpdating(true)
-      const response = await fetch(`/api/job-orders/${jobOrder._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Include cookies for authentication
-        body: JSON.stringify({ status: newStatus }),
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          toast.error('Your session has expired. Please log in again.')
-          setTimeout(() => window.location.href = '/login', 1500)
-          return
+    updateStatusMutation.mutate(
+      { id: jobOrder._id, status: newStatus },
+      {
+        onSuccess: () => {
+          setShowStatusModal(false)
         }
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to update job order status')
       }
-
-      onUpdate()
-      setShowStatusModal(false)
-      toast.success('Job status updated successfully')
-    } catch (error) {
-      console.error('Error updating job order:', error)
-      if (error instanceof Error) {
-        toast.error(error.message)
-      } else {
-        toast.error('Failed to update job order status')
-      }
-    } finally {
-      setIsUpdating(false)
-    }
-  }, [jobOrder._id, onUpdate])
+    )
+  }, [jobOrder._id, updateStatusMutation])
 
   const handleJobTaskUpdate = useCallback(async (taskIndex: number, newStatus: JobItemStatus) => {
-    try {
-      setUpdatingTaskIndex(taskIndex)
-      
-      // Create updated job list
-      const updatedJobList = [...jobOrder.jobList]
-      updatedJobList[taskIndex] = {
-        ...updatedJobList[taskIndex],
-        status: newStatus
-      }
-
-      const response = await fetch(`/api/job-orders/${jobOrder._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Include cookies for authentication
-        body: JSON.stringify({ jobList: updatedJobList }),
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          toast.error('Your session has expired. Please log in again.')
-          setTimeout(() => window.location.href = '/login', 1500)
-          return
-        }
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to update job task status')
-      }
-
-      onUpdate()
-      toast.success(`Task marked as ${newStatus.toLowerCase()}`)
-    } catch (error) {
-      console.error('Error updating job task:', error)
-      if (error instanceof Error) {
-        toast.error(error.message)
-      } else {
-        toast.error('Failed to update job task status')
-      }
-    } finally {
-      setUpdatingTaskIndex(null)
+    setUpdatingTaskIndex(taskIndex)
+    
+    const updatedJobList = [...jobOrder.jobList]
+    updatedJobList[taskIndex] = {
+      ...updatedJobList[taskIndex],
+      status: newStatus
     }
-  }, [jobOrder._id, jobOrder.jobList, onUpdate])
+
+    updateJobMutation.mutate(
+      { id: jobOrder._id, updates: { jobList: updatedJobList } },
+      {
+        onSettled: () => {
+          setUpdatingTaskIndex(null)
+        }
+      }
+    )
+  }, [jobOrder._id, jobOrder.jobList, updateJobMutation])
 
   const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -148,145 +110,45 @@ function JobOrderCard({ jobOrder, onUpdate }: JobOrderCardProps) {
   }, [])
 
   const toggleImportant = useCallback(async () => {
-    try {
-      setUpdatingImportant(true)
-      const response = await fetch(`/api/job-orders/${jobOrder._id}/toggle-important`, {
-        method: 'PATCH',
-        credentials: 'include',
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          toast.error('Your session has expired. Please log in again.')
-          setTimeout(() => window.location.href = '/login', 1500)
-          return
-        }
-        throw new Error('Failed to toggle important status')
-      }
-
-      const data = await response.json()
-      onUpdate()
-      toast.success(data.jobOrder.isImportant ? 'Job marked as important' : 'Job unmarked as important')
-    } catch (error) {
-      console.error('Error toggling important:', error)
-      toast.error('Failed to toggle important status')
-    } finally {
-      setUpdatingImportant(false)
-    }
-  }, [jobOrder._id, onUpdate])
+    toggleImportantMutation.mutate(jobOrder._id)
+  }, [jobOrder._id, toggleImportantMutation])
 
   const handlePartAvailabilityUpdate = useCallback(async (partIndex: number, newAvailability: 'Available' | 'Unavailable') => {
-    try {
-      setUpdatingPartIndex(partIndex)
-      
-      // Create updated parts list
-      const updatedParts = [...jobOrder.parts]
-      updatedParts[partIndex] = {
-        ...updatedParts[partIndex],
-        availability: newAvailability
-      }
-      
-      const response = await fetch(`/api/job-orders/${jobOrder._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ parts: updatedParts }),
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          toast.error('Your session has expired. Please log in again.')
-          setTimeout(() => window.location.href = '/login', 1500)
-          return
-        }
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to update part availability')
-      }
-
-      onUpdate()
-      toast.success('Part availability updated successfully')
-      
-      // Check if all parts are now available and suggest technician reassignment
-      const allPartsAvailable = updatedParts.every(part => part.availability === 'Available')
-      if (allPartsAvailable && jobOrder.status === 'WP') {
-        toast.success('All parts are now available! Consider reassigning a technician.', { duration: 5000 })
-      }
-    } catch (error) {
-      console.error('Error updating part availability:', error)
-      if (error instanceof Error) {
-        toast.error(error.message)
-      } else {
-        toast.error('Failed to update part availability')
-      }
-    } finally {
-      setUpdatingPartIndex(null)
+    setUpdatingPartIndex(partIndex)
+    
+    const updatedParts = [...jobOrder.parts]
+    updatedParts[partIndex] = {
+      ...updatedParts[partIndex],
+      availability: newAvailability
     }
-  }, [jobOrder._id, jobOrder.parts, jobOrder.status, onUpdate])
-
-  const fetchAvailableTechnicians = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `/api/job-orders/technicians/available?date=${jobOrder.date.split('T')[0]}&startTime=${jobOrder.timeRange.start}&endTime=${jobOrder.timeRange.end}`,
-        {
-          credentials: 'include'
+    
+    updateJobMutation.mutate(
+      { id: jobOrder._id, updates: { parts: updatedParts } },
+      {
+        onSettled: () => {
+          setUpdatingPartIndex(null)
         }
-      )
-      if (!response.ok) {
-        throw new Error('Failed to fetch available technicians')
       }
-      const data = await response.json()
-      setAvailableTechnicians(data.technicians || [])
-    } catch (error) {
-      console.error('Error fetching technicians:', error)
-      toast.error('Failed to fetch available technicians')
-    }
-  }, [jobOrder.date, jobOrder.timeRange.start, jobOrder.timeRange.end])
+    )
+  }, [jobOrder._id, jobOrder.parts, updateJobMutation])
 
   const handleTechnicianReassign = useCallback(async (technicianId: string) => {
-    try {
-      setIsUpdating(true)
-      const response = await fetch(`/api/job-orders/${jobOrder._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ assignedTechnician: technicianId }),
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          toast.error('Your session has expired. Please log in again.')
-          setTimeout(() => window.location.href = '/login', 1500)
-          return
+    updateJobMutation.mutate(
+      { id: jobOrder._id, updates: { assignedTechnician: technicianId } },
+      {
+        onSuccess: () => {
+          setShowTechnicianModal(false)
         }
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to reassign technician')
       }
-
-      onUpdate()
-      setShowTechnicianModal(false)
-      toast.success('Technician reassigned successfully')
-    } catch (error) {
-      console.error('Error reassigning technician:', error)
-      if (error instanceof Error) {
-        toast.error(error.message)
-      } else {
-        toast.error('Failed to reassign technician')
-      }
-    } finally {
-      setIsUpdating(false)
-    }
-  }, [jobOrder._id, onUpdate])
+    )
+  }, [jobOrder._id, updateJobMutation])
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow relative">
       {/* Important Star Button */}
       <button
         onClick={toggleImportant}
-        disabled={updatingImportant}
+        disabled={toggleImportantMutation.isPending}
         className={`absolute top-2 right-2 text-xl transition-all ${jobOrder.isImportant ? 'text-yellow-500' : 'text-gray-300'} hover:text-yellow-500 hover:scale-110`}
         title={jobOrder.isImportant ? 'Remove from important' : 'Mark as important'}
       >
@@ -338,10 +200,7 @@ function JobOrderCard({ jobOrder, onUpdate }: JobOrderCardProps) {
           <div className="flex justify-between items-center">
             <span className="text-gray-600">Technician:</span>
             <button
-              onClick={() => {
-                setShowTechnicianModal(true)
-                fetchAvailableTechnicians()
-              }}
+              onClick={() => setShowTechnicianModal(true)}
               className="text-xs text-blue-600 hover:text-blue-800"
             >
               {jobOrder.assignedTechnician ? 'Reassign' : 'Assign'}
@@ -419,7 +278,7 @@ function JobOrderCard({ jobOrder, onUpdate }: JobOrderCardProps) {
                     <button
                       key={status}
                       onClick={() => handleStatusUpdate(status as JobStatus)}
-                      disabled={isUpdating || status === jobOrder.status}
+                      disabled={updateStatusMutation.isPending || status === jobOrder.status}
                       className={`p-3 rounded-lg text-sm font-medium transition-colors ${
                         status === jobOrder.status
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -587,11 +446,11 @@ function JobOrderCard({ jobOrder, onUpdate }: JobOrderCardProps) {
                   {availableTechnicians.length === 0 ? (
                     <p className="text-sm text-gray-500">No available technicians for this time slot</p>
                   ) : (
-                    availableTechnicians.map((tech) => (
+                    availableTechnicians.map((tech: any) => (
                       <button
                         key={tech._id}
                         onClick={() => handleTechnicianReassign(tech._id)}
-                        disabled={isUpdating || (jobOrder.assignedTechnician && tech._id === jobOrder.assignedTechnician._id)}
+                        disabled={updateJobMutation.isPending || (jobOrder.assignedTechnician && tech._id === jobOrder.assignedTechnician._id)}
                         className={`w-full p-3 rounded-lg text-sm font-medium text-left transition-colors ${
                           jobOrder.assignedTechnician && tech._id === jobOrder.assignedTechnician._id
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -621,5 +480,7 @@ function JobOrderCard({ jobOrder, onUpdate }: JobOrderCardProps) {
 export default memo(JobOrderCard, (prevProps, nextProps) => {
   return prevProps.jobOrder._id === nextProps.jobOrder._id &&
          prevProps.jobOrder.status === nextProps.jobOrder.status &&
-         JSON.stringify(prevProps.jobOrder.jobList) === JSON.stringify(nextProps.jobOrder.jobList)
+         prevProps.jobOrder.isImportant === nextProps.jobOrder.isImportant &&
+         JSON.stringify(prevProps.jobOrder.jobList) === JSON.stringify(nextProps.jobOrder.jobList) &&
+         JSON.stringify(prevProps.jobOrder.parts) === JSON.stringify(nextProps.jobOrder.parts)
 })

@@ -41,7 +41,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   return (
     <div className="flex min-h-dvh">
       <Sidebar role={role} name={name ?? null} />
-      <main className="flex-1 bg-neutral-50 p-6 min-w-0">{children}</main>
+      <main className="flex-1 bg-neutral-50 p-6 min-w-0 transition-all duration-300 ease-in-out">{children}</main>
     </div>
   )
 }

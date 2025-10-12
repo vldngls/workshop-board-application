@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
+import { useState, useCallback, useMemo, lazy, Suspense, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import type { JobOrder, JobStatus } from "@/types/jobOrder"
 import JobOrderCard from "@/components/JobOrderCard"
+import { useJobOrders } from '@/hooks/useJobOrders'
 
 // Lazy load the modal for better initial load performance
 const AddJobOrderModal = lazy(() => import("@/components/AddJobOrderModal"))
@@ -23,78 +24,43 @@ const STATUS_LABELS: Record<JobStatus | 'all', string> = {
 }
 
 export default function JobOrdersPage() {
-  const [jobOrders, setJobOrders] = useState<JobOrder[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [filter, setFilter] = useState<JobStatus | 'all'>('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [pagination, setPagination] = useState({
+
+  // Debounce search term
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+      setCurrentPage(1) // Reset to first page on search
+    }, 300)
+
+    return () => clearTimeout(timeout)
+  }, [searchTerm])
+
+  // Use TanStack Query to fetch job orders
+  const { data, isLoading, error, refetch } = useJobOrders({
+    search: debouncedSearch,
+    status: filter !== 'all' ? filter : undefined,
+    page: currentPage,
+    limit: 10,
+  })
+
+  const jobOrders = data?.jobOrders || []
+  const pagination = data?.pagination || {
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
     itemsPerPage: 10,
     hasNextPage: false,
     hasPrevPage: false
-  })
-  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null)
-
-  const fetchJobOrders = useCallback(async (page = 1, search = '', status = 'all') => {
-    try {
-      setLoading(true)
-      const params = new URLSearchParams()
-      if (search) params.append('search', search)
-      if (status !== 'all') params.append('status', status)
-      params.append('page', page.toString())
-      params.append('limit', '10')
-      
-      const response = await fetch(`/api/job-orders?${params.toString()}`, {
-        credentials: 'include' // Include cookies for authentication
-      })
-      if (!response.ok) {
-        throw new Error('Failed to fetch job orders')
-      }
-      const data = await response.json()
-      
-      // Sort job orders - important ones first, then carried over, then regular
-      const sortedJobs = (data.jobOrders || []).sort((a: JobOrder, b: JobOrder) => {
-        if (a.isImportant && !b.isImportant) return -1
-        if (!a.isImportant && b.isImportant) return 1
-        if (a.carriedOver && !b.carriedOver) return -1
-        if (!a.carriedOver && b.carriedOver) return 1
-        return 0
-      })
-      
-      setJobOrders(sortedJobs)
-      setPagination(data.pagination || pagination)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // Debounced search effect
-  useEffect(() => {
-    if (debounceTimeout) {
-      clearTimeout(debounceTimeout)
-    }
-
-    const timeout = setTimeout(() => {
-      fetchJobOrders(currentPage, searchTerm, filter)
-    }, 300) // 300ms debounce
-
-    setDebounceTimeout(timeout)
-
-    return () => {
-      if (timeout) clearTimeout(timeout)
-    }
-  }, [currentPage, filter, searchTerm, fetchJobOrders])
+  }
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault()
-    // Search now triggers via debounced effect
+    // Search is handled by debounced effect
   }, [])
 
   const handleFilterChange = useCallback((newFilter: JobStatus | 'all') => {
@@ -108,17 +74,13 @@ export default function JobOrdersPage() {
 
   const handleJobOrderCreated = useCallback(() => {
     setShowAddModal(false)
-    fetchJobOrders(currentPage, searchTerm, filter)
-  }, [currentPage, searchTerm, filter, fetchJobOrders])
-
-  const handleJobOrderUpdated = useCallback(() => {
-    fetchJobOrders(currentPage, searchTerm, filter)
-  }, [currentPage, searchTerm, filter, fetchJobOrders])
+    // TanStack Query will automatically refetch due to cache invalidation
+  }, [])
 
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-red-600">Error: {error}</div>
+        <div className="text-red-600">Error: {error.message}</div>
       </div>
     )
   }
@@ -194,10 +156,7 @@ export default function JobOrdersPage() {
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
                   Search: "{searchTerm}"
                   <button
-                    onClick={() => {
-                      setSearchTerm('')
-                      fetchJobOrders(1, '', filter)
-                    }}
+                    onClick={() => setSearchTerm('')}
                     className="ml-2 text-blue-600 hover:text-blue-800"
                   >
                     ×
@@ -228,7 +187,7 @@ export default function JobOrdersPage() {
       </div>
 
       {/* Job Orders Grid */}
-      {loading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center h-64">
           <div className="text-lg">Loading job orders...</div>
         </div>
@@ -263,7 +222,6 @@ export default function JobOrdersPage() {
               <JobOrderCard
                 key={jobOrder._id}
                 jobOrder={jobOrder}
-                onUpdate={handleJobOrderUpdated}
               />
             ))}
           </div>

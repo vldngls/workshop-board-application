@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import type { CreateJobOrderRequest, Technician, JobItem, Part } from '@/types/jobOrder'
+import { useCreateJobOrder, useAvailableTechnicians } from '@/hooks/useJobOrders'
 
 interface AddJobOrderModalProps {
   onClose: () => void
@@ -20,14 +21,21 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
     date: new Date().toISOString().split('T')[0]
   })
   
-  const [technicians, setTechnicians] = useState<Technician[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [durationHours, setDurationHours] = useState<number>(2) // Default 2 hours
   
   // Break time settings (from localStorage)
   const [breakStart, setBreakStart] = useState('12:00')
   const [breakEnd, setBreakEnd] = useState('13:00')
+
+  // TanStack Query hooks
+  const createJobMutation = useCreateJobOrder()
+  
+  // Fetch available technicians
+  const { data: technicians = [], isLoading: loadingTechnicians } = useAvailableTechnicians(
+    formData.date,
+    formData.timeRange.start,
+    formData.timeRange.end
+  )
 
   // Load break settings
   useEffect(() => {
@@ -81,32 +89,6 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
     return `${endHour}:${endMinute}`
   }
 
-  // Fetch available technicians when date or time range changes
-  useEffect(() => {
-    if (formData.date && formData.timeRange.start && formData.timeRange.end) {
-      fetchAvailableTechnicians()
-    }
-  }, [formData.date, formData.timeRange.start, formData.timeRange.end])
-
-  const fetchAvailableTechnicians = async () => {
-    try {
-      const response = await fetch(
-        `/api/job-orders/technicians/available?date=${formData.date}&startTime=${formData.timeRange.start}&endTime=${formData.timeRange.end}`,
-        {
-          credentials: 'include' // Include cookies for authentication
-        }
-      )
-      if (!response.ok) {
-        throw new Error('Failed to fetch available technicians')
-      }
-      const data = await response.json()
-      setTechnicians(data.technicians || [])
-    } catch (err) {
-      console.error('Error fetching technicians:', err)
-      setTechnicians([])
-    }
-  }
-
   const handleInputChange = (field: keyof CreateJobOrderRequest, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
@@ -153,30 +135,12 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/job-orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Include cookies for authentication
-        body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create job order')
+    
+    createJobMutation.mutate(formData, {
+      onSuccess: () => {
+        onSuccess()
       }
-
-      onSuccess()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   return (
@@ -193,9 +157,9 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
             </button>
           </div>
 
-          {error && (
+          {createJobMutation.isError && (
             <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-              {error}
+              {createJobMutation.error.message}
             </div>
           )}
 
@@ -310,14 +274,16 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="">Select Technician</option>
-                {technicians.map((tech) => (
+                <option value="">
+                  {loadingTechnicians ? 'Loading technicians...' : 'Select Technician'}
+                </option>
+                {technicians.map((tech: any) => (
                   <option key={tech._id} value={tech._id}>
                     {tech.name}
                   </option>
                 ))}
               </select>
-              {technicians.length === 0 && formData.date && formData.timeRange.start && formData.timeRange.end && (
+              {technicians.length === 0 && formData.date && formData.timeRange.start && formData.timeRange.end && !loadingTechnicians && (
                 <p className="text-sm text-red-600 mt-1">No technicians available for this time slot</p>
               )}
             </div>
@@ -427,10 +393,10 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
               </button>
               <button
                 type="submit"
-                disabled={loading || technicians.length === 0}
+                disabled={createJobMutation.isPending || technicians.length === 0}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-md font-medium transition-colors"
               >
-                {loading ? 'Creating...' : 'Create Job Order'}
+                {createJobMutation.isPending ? 'Creating...' : 'Create Job Order'}
               </button>
             </div>
           </form>
