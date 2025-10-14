@@ -25,9 +25,16 @@ router.get('/me', verifyToken, async (req, res) => {
   }
 })
 
-router.get('/', verifyToken, requireRole(['administrator']), async (_req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   await connectToMongo()
-  const users = await User.find({}, { name: 1, email: 1, role: 1, level: 1, pictureUrl: 1 }).sort({ createdAt: -1 }).lean()
+  
+  // Build filter based on query parameters
+  const filter: any = {}
+  if (req.query.role) {
+    filter.role = req.query.role
+  }
+  
+  const users = await User.find(filter, { name: 1, email: 1, role: 1, level: 1, pictureUrl: 1 }).sort({ createdAt: -1 }).lean()
   res.json({ users })
 })
 

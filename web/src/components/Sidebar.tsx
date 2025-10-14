@@ -77,7 +77,7 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
   }
 
   return (
-    <aside className="w-64 min-w-64 max-w-64 border-r border-neutral-200 bg-white flex-shrink-0 p-4 flex flex-col h-screen">
+    <aside className="sticky top-0 w-64 min-w-64 max-w-64 border-r border-neutral-200 bg-white flex-shrink-0 p-4 flex flex-col h-screen overflow-hidden">
       <div>
         <div className="mb-6">
           <div className="text-xl font-semibold text-[color:var(--color-ford-blue)]">{title}</div>

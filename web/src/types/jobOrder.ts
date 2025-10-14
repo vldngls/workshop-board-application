@@ -22,6 +22,7 @@ export interface User {
   _id: string
   name: string
   email: string
+  level?: string
 }
 
 export interface JobOrder {
@@ -29,6 +30,7 @@ export interface JobOrder {
   jobNumber: string
   createdBy: User
   assignedTechnician: User | null  // Null for carried over jobs awaiting reassignment
+  serviceAdvisor?: User | null
   plateNumber: string
   vin: string
   timeRange: TimeRange
@@ -37,6 +39,8 @@ export interface JobOrder {
   parts: Part[]
   status: JobStatus
   date: string
+  originalCreatedDate: string  // Persistent creation date, not overwritten by replotting
+  sourceType?: 'appointment' | 'carry-over' | 'direct'  // Track the source of the job order
   carriedOver?: boolean
   isImportant?: boolean
   qiStatus?: QIStatus

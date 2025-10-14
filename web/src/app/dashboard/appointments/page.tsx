@@ -50,7 +50,7 @@ export default function AppointmentsPage() {
 
   // Fetch technicians
   const { data: techniciansData } = useQuery({
-    queryKey: ['technicians'],
+    queryKey: ['technicians', 'role=technician'],
     queryFn: async () => {
       const res = await fetch(`/api/users?role=technician`, {
         credentials: 'include'
@@ -60,7 +60,7 @@ export default function AppointmentsPage() {
     }
   })
 
-  // Fetch appointments for selected date
+  // Fetch appointments for selected date (excluding no shows)
   const { data: appointmentsData, isLoading } = useQuery({
     queryKey: ['appointments', selectedDate],
     queryFn: async () => {
@@ -69,7 +69,24 @@ export default function AppointmentsPage() {
         { credentials: 'include' }
       )
       if (!res.ok) throw new Error('Failed to fetch appointments')
-      return res.json() as Promise<{ appointments: Appointment[] }>
+      const data = await res.json() as { appointments: Appointment[] }
+      // Filter out no-show appointments
+      return { appointments: data.appointments.filter(apt => !apt.noShow) }
+    }
+  })
+
+  // Fetch no-show appointments
+  const { data: noShowsData } = useQuery({
+    queryKey: ['no-show-appointments'],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/appointments`,
+        { credentials: 'include' }
+      )
+      if (!res.ok) throw new Error('Failed to fetch no-show appointments')
+      const data = await res.json() as { appointments: Appointment[] }
+      // Filter only no-show appointments
+      return { appointments: data.appointments.filter(apt => apt.noShow) }
     }
   })
 
@@ -102,19 +119,22 @@ export default function AppointmentsPage() {
     }
   })
 
-  // Delete appointment mutation
-  const deleteMutation = useMutation({
+  // Mark as no show mutation
+  const markNoShowMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/appointments/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ noShow: true })
       })
-      if (!res.ok) throw new Error('Failed to delete appointment')
+      if (!res.ok) throw new Error('Failed to mark appointment as no show')
       return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
-      toast.success('Appointment deleted (no show)')
+      queryClient.invalidateQueries({ queryKey: ['no-show-appointments'] })
+      toast.success('Appointment marked as no show')
     },
     onError: (error: Error) => {
       toast.error(error.message)
@@ -140,14 +160,14 @@ export default function AppointmentsPage() {
     })
   }
 
-  const handleDelete = (id: string) => {
+  const handleNoShow = (id: string) => {
     setAppointmentToDelete(id)
     setShowDeleteConfirm(true)
   }
 
-  const confirmDelete = () => {
+  const confirmNoShow = () => {
     if (appointmentToDelete) {
-      deleteMutation.mutate(appointmentToDelete)
+      markNoShowMutation.mutate(appointmentToDelete)
     }
     setShowDeleteConfirm(false)
     setAppointmentToDelete(null)
@@ -180,6 +200,7 @@ export default function AppointmentsPage() {
 
   const technicians = techniciansData?.users || []
   const appointments = appointmentsData?.appointments || []
+  const noShowAppointments = noShowsData?.appointments || []
 
   // Auto-focus plate input on mount
   useEffect(() => {
@@ -195,12 +216,12 @@ export default function AppointmentsPage() {
         <p className="text-neutral-600">Record appointments and convert them to job orders</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Entry Form */}
         <div className="bg-white rounded-lg border border-neutral-200 p-6">
           <h2 className="text-lg font-semibold text-neutral-900 mb-4">Quick Entry</h2>
           
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" suppressHydrationWarning>
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Date
@@ -210,6 +231,7 @@ export default function AppointmentsPage() {
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                suppressHydrationWarning
               />
             </div>
 
@@ -222,6 +244,7 @@ export default function AppointmentsPage() {
                 onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                suppressHydrationWarning
               >
                 <option value={30}>30 minutes</option>
                 <option value={60}>1 hour</option>
@@ -249,6 +272,7 @@ export default function AppointmentsPage() {
                 onChange={(e) => setFormData({ ...formData, technician: e.target.value })}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                suppressHydrationWarning
               >
                 <option value="">Select technician...</option>
                 {technicians.map((tech) => (
@@ -281,6 +305,7 @@ export default function AppointmentsPage() {
                 value={formData.startTime}
                 onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                suppressHydrationWarning
               />
               <div className="text-xs text-neutral-500 mt-1">
                 End time: {endTime}
@@ -299,6 +324,7 @@ export default function AppointmentsPage() {
                 placeholder="ABC1234"
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
                 required
+                suppressHydrationWarning
               />
             </div>
 
@@ -350,8 +376,8 @@ export default function AppointmentsPage() {
                         {appointment.plateNumber}
                       </div>
                       <div className="text-sm text-neutral-600">
-                        {appointment.assignedTechnician.name}
-                        {appointment.assignedTechnician.level && (
+                        {appointment.assignedTechnician?.name || 'No technician assigned'}
+                        {appointment.assignedTechnician?.level && (
                           <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
                             {appointment.assignedTechnician.level}
                           </span>
@@ -371,12 +397,56 @@ export default function AppointmentsPage() {
                       Create Job Order
                     </button>
                     <button
-                      onClick={() => handleDelete(appointment._id)}
-                      disabled={deleteMutation.isPending}
+                      onClick={() => handleNoShow(appointment._id)}
+                      disabled={markNoShowMutation.isPending}
                       className="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm font-medium py-1.5 px-3 rounded transition-colors disabled:opacity-50"
                     >
                       ✕ No Show
                     </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* No Show Appointments List */}
+        <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+            No Show List
+          </h2>
+
+          {noShowAppointments.length === 0 ? (
+            <div className="text-center py-8 text-neutral-500">
+              No appointments marked as no show
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+              {noShowAppointments.map((appointment) => (
+                <div
+                  key={appointment._id}
+                  className="border border-red-200 bg-red-50 rounded-lg p-4"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-semibold text-neutral-900">
+                        {appointment.plateNumber}
+                      </div>
+                      <div className="text-sm text-neutral-600">
+                        {appointment.assignedTechnician?.name || 'No technician assigned'}
+                        {appointment.assignedTechnician?.level && (
+                          <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                            {appointment.assignedTechnician.level}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-neutral-500 mt-1">
+                        {new Date(appointment.date).toLocaleDateString()} • {appointment.timeRange.start} - {appointment.timeRange.end}
+                      </div>
+                    </div>
+                    <span className="text-xs bg-red-200 text-red-800 px-2 py-1 rounded font-medium">
+                      NO SHOW
+                    </span>
                   </div>
                 </div>
               ))}
@@ -397,15 +467,15 @@ export default function AppointmentsPage() {
         />
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* No Show Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
-        title="Delete Appointment"
-        message="Mark this appointment as no-show and delete it? This action cannot be undone."
-        confirmLabel="Delete"
+        title="Mark as No Show"
+        message="Mark this appointment as no-show? It will be moved to the No Show List."
+        confirmLabel="Mark as No Show"
         cancelLabel="Cancel"
         confirmVariant="danger"
-        onConfirm={confirmDelete}
+        onConfirm={confirmNoShow}
         onCancel={cancelDelete}
       />
     </div>

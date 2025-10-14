@@ -112,6 +112,15 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
     })
   }, [])
 
+  const calculateDaysInWorkshop = useCallback(() => {
+    if (!jobOrder.originalCreatedDate) return 0
+    const today = new Date()
+    const createdDate = new Date(jobOrder.originalCreatedDate)
+    const diffTime = Math.abs(today.getTime() - createdDate.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }, [jobOrder.originalCreatedDate])
+
   const toggleImportant = useCallback(async () => {
     toggleImportantMutation.mutate(jobOrder._id)
   }, [jobOrder._id, toggleImportantMutation])
@@ -174,13 +183,27 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
         {jobOrder.isImportant ? '★' : '☆'}
       </button>
 
-      {/* Carried Over Badge */}
-      {jobOrder.carriedOver && (
-        <div className="absolute top-2 left-2 bg-red-100 text-red-800 px-1.5 py-0.5 rounded text-xs font-medium flex items-center gap-1">
-          <span className="text-sm">🔄</span>
-          <span>Carried</span>
-        </div>
-      )}
+      {/* Source Type & Carried Over Badge */}
+      <div className="absolute top-2 left-2 flex gap-1">
+        {jobOrder.sourceType === 'appointment' && (
+          <div className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+            <span className="text-sm">📅</span>
+            <span>Appointment</span>
+          </div>
+        )}
+        {jobOrder.sourceType === 'carry-over' && (
+          <div className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+            <span className="text-sm">🔄</span>
+            <span>Carry-over</span>
+          </div>
+        )}
+        {jobOrder.carriedOver && (
+          <div className="bg-red-100 text-red-800 px-1.5 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+            <span className="text-sm">⚠️</span>
+            <span>Carried</span>
+          </div>
+        )}
+      </div>
 
       {/* Header */}
       <div className="flex justify-between items-start mb-3 mt-6">
@@ -227,7 +250,12 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
           </div>
           <p className="font-medium truncate">
             {jobOrder.assignedTechnician ? (
-              <span className="text-gray-900">{jobOrder.assignedTechnician.name}</span>
+              <span className="text-gray-900">
+                {jobOrder.assignedTechnician.name}
+                {jobOrder.assignedTechnician.level && (
+                  <span className="ml-1 text-xs text-gray-500">({jobOrder.assignedTechnician.level})</span>
+                )}
+              </span>
             ) : (
               <span className="text-red-600 font-semibold">⚠️ Needs Assignment</span>
             )}
@@ -271,6 +299,20 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
           </div>
         </div>
       </div>
+
+      {/* Days in Workshop - Only for WP, HC, HW, HI, carry-over */}
+      {(['WP', 'HC', 'HW', 'HI'].includes(jobOrder.status) || jobOrder.carriedOver) && (
+        <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
+          <span className="text-orange-800 font-medium">
+            📊 Days in Workshop: {calculateDaysInWorkshop()} day{calculateDaysInWorkshop() !== 1 ? 's' : ''}
+          </span>
+          {jobOrder.originalCreatedDate && (
+            <span className="text-orange-600 ml-2">
+              (Created: {formatDate(jobOrder.originalCreatedDate)})
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Status Change Modal */}
       {showStatusModal && (
@@ -477,10 +519,12 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
                         }`}
                       >
                         <div className="flex justify-between items-center">
-                          <span>{tech.name}</span>
-                          {tech.level && (
-                            <span className="text-xs text-gray-500">{tech.level}</span>
-                          )}
+                          <div className="flex flex-col">
+                            <span>{tech.name}</span>
+                            {tech.level && (
+                              <span className="text-xs text-gray-500">Level: {tech.level}</span>
+                            )}
+                          </div>
                         </div>
                       </button>
                     ))

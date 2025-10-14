@@ -229,7 +229,7 @@ export default function ReplotJobOrderModal({
                 </option>
                 {availableTechnicians.map((tech) => (
                   <option key={tech._id} value={tech._id}>
-                    {tech.name}
+                    {tech.name} {tech.level ? `(${tech.level})` : ''}
                   </option>
                 ))}
               </select>

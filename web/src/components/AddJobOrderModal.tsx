@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import type { CreateJobOrderRequest, Technician, JobItem, Part } from '@/types/jobOrder'
 import { useCreateJobOrder, useAvailableTechnicians } from '@/hooks/useJobOrders'
+import TechnicianScheduleView from './TechnicianScheduleView'
 
 interface AddJobOrderModalProps {
   onClose: () => void
@@ -245,18 +246,18 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
 
             {/* Time Range with Duration */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Time *
-                </label>
-                <input
-                  type="time"
-                  value={formData.timeRange.start}
-                  onChange={(e) => handleInputChange('timeRange', { ...formData.timeRange, start: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Start Time * {formData.assignedTechnician && <span className="text-xs text-gray-500">(or select from schedule below)</span>}
+              </label>
+              <input
+                type="time"
+                value={formData.timeRange.start}
+                onChange={(e) => handleInputChange('timeRange', { ...formData.timeRange, start: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Duration (hours) *
@@ -302,7 +303,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
                 </option>
                 {technicians.map((tech: any) => (
                   <option key={tech._id} value={tech._id}>
-                    {tech.name}
+                    {tech.name} {tech.level ? `(${tech.level})` : ''}
                   </option>
                 ))}
               </select>
@@ -310,6 +311,19 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
                 <p className="text-sm text-red-600 mt-1">No technicians available for this time slot</p>
               )}
             </div>
+
+            {/* Visual Schedule Selector */}
+            {formData.assignedTechnician && durationHours > 0 && (
+              <div className="border-t border-gray-200 pt-4">
+                <TechnicianScheduleView
+                  technicianId={formData.assignedTechnician}
+                  date={formData.date || new Date().toISOString().split('T')[0]}
+                  duration={durationHours * 60}
+                  onTimeSlotSelect={(startTime) => handleInputChange('timeRange', { ...formData.timeRange, start: startTime })}
+                  selectedStart={formData.timeRange.start}
+                />
+              </div>
+            )}
 
             {/* Job List */}
             <div>

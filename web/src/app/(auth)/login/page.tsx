@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState("")
+  const [emailOrUsername, setEmailOrUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
@@ -19,15 +19,21 @@ export default function LoginPage() {
     setError(null)
     
     try {
+      // Determine if input is email or username
+      const isEmail = emailOrUsername.includes('@')
+      const loginData = isEmail 
+        ? { email: emailOrUsername, password }
+        : { username: emailOrUsername, password }
+      
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(loginData),
       })
       
       if (!res.ok) {
         const errorData = await res.json()
-        setError(errorData.error || "Invalid email or password")
+        setError(errorData.error || "Invalid credentials")
         return
       }
       
@@ -53,8 +59,8 @@ export default function LoginPage() {
         {mounted ? (
           <form onSubmit={onSubmit} className="space-y-4" autoComplete="on">
             <div>
-              <label className="mb-1 block text-sm font-medium">Email</label>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required className="w-full rounded-md border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-[color:var(--color-ford-blue)]" autoComplete="username email" />
+              <label className="mb-1 block text-sm font-medium">Email or Username</label>
+              <input value={emailOrUsername} onChange={(e) => setEmailOrUsername(e.target.value)} type="text" required className="w-full rounded-md border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-[color:var(--color-ford-blue)]" autoComplete="username email" />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">Password</label>

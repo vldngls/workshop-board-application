@@ -5,12 +5,13 @@ import bcrypt from 'bcryptjs'
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
+  username: { type: String, unique: true, sparse: true },
   passwordHash: { type: String, required: true },
-  role: { type: String, required: true, enum: ['administrator', 'job-controller', 'technician'] },
+  role: { type: String, required: true, enum: ['administrator', 'job-controller', 'technician', 'service-advisor'] },
   pictureUrl: String,
   level: { 
     type: String, 
-    enum: ['Junior', 'Senior', 'Master', 'Lead'],
+    enum: ['untrained', 'level-0', 'level-1', 'level-2', 'level-3'],
     required: function() { return this.role === 'technician' }
   },
 }, { timestamps: true })
@@ -19,6 +20,7 @@ const JobOrderSchema = new mongoose.Schema({
   jobNumber: { type: String, required: true, unique: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   assignedTechnician: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
+  serviceAdvisor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
   plateNumber: { type: String, required: true },
   vin: { type: String, required: true },
   timeRange: {
@@ -35,6 +37,8 @@ const JobOrderSchema = new mongoose.Schema({
   }],
   status: { type: String, enum: ['OG', 'WP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU'], default: 'OG' },
   date: { type: Date, required: true },
+  originalCreatedDate: { type: Date, required: true, default: Date.now },
+  sourceType: { type: String, enum: ['appointment', 'carry-over', 'direct'], default: 'direct' },
   carriedOver: { type: Boolean, default: false },
   isImportant: { type: Boolean, default: false },
   qiStatus: { type: String, enum: ['pending', 'approved', 'rejected', null], default: null }
@@ -51,70 +55,80 @@ async function main() {
   await User.createIndexes()
   await JobOrder.createIndexes()
 
-  // Clear existing data
+  // Clear ALL existing data including users
   await JobOrder.deleteMany({})
-  console.log('Cleared existing job orders')
+  await User.deleteMany({})
+  console.log('Cleared all existing data (users and job orders)')
 
-  // Create users
+  // Create users with password 'test123456'
+  const passwordHash = await bcrypt.hash('test123456', 10)
   const users = []
   
   // Admin
-  const admin = await User.findOne({ email: 'admin@example.com' })
-  if (!admin) {
-    const passwordHash = await bcrypt.hash('admin123', 10)
-    const newAdmin = await User.create({
-      name: 'Administrator',
-      email: 'admin@example.com',
-      passwordHash,
-      role: 'administrator',
-    })
-    users.push(newAdmin)
-    console.log('Seeded administrator: admin@example.com / admin123')
-  } else {
-    users.push(admin)
-    console.log('Admin user already exists')
-  }
+  const admin = await User.create({
+    name: 'Admin',
+    email: 'admin@workshop.com',
+    username: 'admin',
+    passwordHash,
+    role: 'administrator',
+  })
+  users.push(admin)
+  console.log('Created Admin: username: admin / password: test123456')
 
   // Job Controller
-  const jc = await User.findOne({ email: 'jc@example.com' })
-  if (!jc) {
-    const passwordHash = await bcrypt.hash('jc12345', 10)
-    const newJc = await User.create({
-      name: 'Job Controller',
-      email: 'jc@example.com',
-      passwordHash,
-      role: 'job-controller',
-    })
-    users.push(newJc)
-    console.log('Seeded job-controller: jc@example.com / jc12345')
-  } else {
-    users.push(jc)
-  }
+  const jobController = await User.create({
+    name: 'Job Controller',
+    email: 'jobcontroller@workshop.com',
+    username: 'jobcontroller',
+    passwordHash,
+    role: 'job-controller',
+  })
+  users.push(jobController)
+  console.log('Created Job Controller: username: jobcontroller / password: test123456')
 
-  // Technicians
+  // Technicians 1-5
   const technicianData = [
-    { name: 'Mike Johnson', email: 'mike@example.com', level: 'Lead' },
-    { name: 'Sarah Williams', email: 'sarah@example.com', level: 'Master' },
-    { name: 'David Brown', email: 'david@example.com', level: 'Senior' },
-    { name: 'Lisa Davis', email: 'lisa@example.com', level: 'Senior' },
-    { name: 'Tom Wilson', email: 'tom@example.com', level: 'Junior' }
+    { name: 'Technician 1', email: 'tech1@workshop.com', username: 'technician1', level: 'level-3' },
+    { name: 'Technician 2', email: 'tech2@workshop.com', username: 'technician2', level: 'level-2' },
+    { name: 'Technician 3', email: 'tech3@workshop.com', username: 'technician3', level: 'level-1' },
+    { name: 'Technician 4', email: 'tech4@workshop.com', username: 'technician4', level: 'level-0' },
+    { name: 'Technician 5', email: 'tech5@workshop.com', username: 'technician5', level: 'untrained' }
   ]
 
   const technicians = []
   for (const techData of technicianData) {
-    let tech = await User.findOne({ email: techData.email })
-    if (!tech) {
-      const passwordHash = await bcrypt.hash('tech1234', 10)
-      tech = await User.create({
-        name: techData.name,
-        email: techData.email,
-        passwordHash,
-        role: 'technician',
-        level: techData.level,
-      })
-      console.log(`Seeded technician: ${techData.email} / tech1234`)
-    }
+    const tech = await User.create({
+      name: techData.name,
+      email: techData.email,
+      username: techData.username,
+      passwordHash,
+      role: 'technician',
+      level: techData.level,
+    })
     technicians.push(tech)
+    console.log(`Created ${techData.name}: username: ${techData.username} / password: test123456`)
+  }
+
+  // Service Advisors 1-5
+  const serviceAdvisorData = [
+    { name: 'Service Advisor 1', email: 'sa1@workshop.com', username: 'serviceadvisor1' },
+    { name: 'Service Advisor 2', email: 'sa2@workshop.com', username: 'serviceadvisor2' },
+    { name: 'Service Advisor 3', email: 'sa3@workshop.com', username: 'serviceadvisor3' },
+    { name: 'Service Advisor 4', email: 'sa4@workshop.com', username: 'serviceadvisor4' },
+    { name: 'Service Advisor 5', email: 'sa5@workshop.com', username: 'serviceadvisor5' }
+  ]
+
+  const serviceAdvisors = []
+  for (const saData of serviceAdvisorData) {
+    const sa = await User.create({
+      name: saData.name,
+      email: saData.email,
+      username: saData.username,
+      passwordHash,
+      role: 'service-advisor',
+    })
+    serviceAdvisors.push(sa)
+    console.log(`Created ${saData.name}: username: ${saData.username} / password: test123456`)
   }
 
   // Create fake job orders
@@ -309,7 +323,10 @@ async function main() {
       ...specialProps,
       createdBy: users[0]._id, // Admin created all
       assignedTechnician: technician._id,
-      date: today
+      serviceAdvisor: serviceAdvisors[Math.floor(Math.random() * serviceAdvisors.length)]._id,
+      date: today,
+      originalCreatedDate: today,
+      sourceType: 'direct'
     })
     
     // Track this job for the technician
@@ -440,6 +457,7 @@ async function main() {
       jobNumber,
       createdBy: users[0]._id, // Admin created all
       assignedTechnician: skipTechnicianAssignment ? null : technician._id,
+      serviceAdvisor: serviceAdvisors[Math.floor(Math.random() * serviceAdvisors.length)]._id,
       plateNumber,
       vin,
       timeRange,
@@ -447,6 +465,8 @@ async function main() {
       parts: partsList,
       status,
       date: jobDate,
+      originalCreatedDate: jobDate,
+      sourceType: i === 10 || i === 11 ? 'carry-over' : 'direct',
       ...specialProps
     })
     

@@ -19,6 +19,8 @@ export default function CreateJobOrderFromAppointmentModal({
   const [vin, setVin] = useState('')
   const [jobList, setJobList] = useState<JobItem[]>([{ description: '', status: 'Unfinished' }])
   const [parts, setParts] = useState<Part[]>([{ name: '', availability: 'Available' }])
+  const [setActualTime, setSetActualTime] = useState(false)
+  const [actualEndTime, setActualEndTime] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -48,16 +50,23 @@ export default function CreateJobOrderFromAppointmentModal({
     setSubmitting(true)
     
     try {
+      const requestBody: any = {
+        jobNumber: jobNumber.trim(),
+        vin: vin.trim(),
+        jobList: validJobs,
+        parts: validParts
+      }
+      
+      // Add actual end time if checkbox is checked
+      if (setActualTime && actualEndTime) {
+        requestBody.actualEndTime = actualEndTime
+      }
+      
       const response = await fetch(`/api/appointments/${appointment._id}/create-job-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          jobNumber: jobNumber.trim(),
-          vin: vin.trim(),
-          jobList: validJobs,
-          parts: validParts
-        })
+        body: JSON.stringify(requestBody)
       })
       
       if (!response.ok) {
@@ -145,6 +154,38 @@ export default function CreateJobOrderFromAppointmentModal({
                 required
               />
             </div>
+          </div>
+
+          {/* Actual Time Section */}
+          <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+            <div className="flex items-center mb-2">
+              <input
+                type="checkbox"
+                id="setActualTime"
+                checked={setActualTime}
+                onChange={(e) => setSetActualTime(e.target.checked)}
+                className="mr-2"
+              />
+              <label htmlFor="setActualTime" className="text-sm font-medium text-neutral-700">
+                Set actual completion time (if job finished early or late)
+              </label>
+            </div>
+            {setActualTime && (
+              <div className="mt-2">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Actual End Time
+                </label>
+                <input
+                  type="time"
+                  value={actualEndTime}
+                  onChange={(e) => setActualEndTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-neutral-600 mt-1">
+                  Scheduled: {appointment.timeRange.start} - {appointment.timeRange.end}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Job List */}

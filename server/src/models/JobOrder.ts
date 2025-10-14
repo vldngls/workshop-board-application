@@ -19,6 +19,7 @@ export interface JobOrderDoc {
   jobNumber: string
   createdBy: mongoose.Types.ObjectId
   assignedTechnician?: mongoose.Types.ObjectId | null  // Optional for carried over jobs
+  serviceAdvisor?: mongoose.Types.ObjectId | null
   plateNumber: string
   vin: string
   timeRange: {
@@ -30,6 +31,8 @@ export interface JobOrderDoc {
   parts: Part[]
   status: JobStatus
   date: Date
+  originalCreatedDate: Date  // Persistent creation date, not overwritten by replotting
+  sourceType?: 'appointment' | 'carry-over' | 'direct'  // Track the source of the job order
   carriedOver?: boolean
   isImportant?: boolean
   qiStatus?: QIStatus
@@ -53,6 +56,11 @@ const jobOrderSchema = new Schema<JobOrderDoc>({
     type: Schema.Types.ObjectId, 
     ref: 'User', 
     required: false  // Not required for carried over jobs awaiting reassignment
+  },
+  serviceAdvisor: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
   },
   plateNumber: { 
     type: String, 
@@ -98,6 +106,16 @@ const jobOrderSchema = new Schema<JobOrderDoc>({
     type: Date, 
     required: true,
     default: Date.now 
+  },
+  originalCreatedDate: {
+    type: Date,
+    required: true,
+    default: Date.now
+  },
+  sourceType: {
+    type: String,
+    enum: ['appointment', 'carry-over', 'direct'],
+    default: 'direct'
   },
   carriedOver: {
     type: Boolean,

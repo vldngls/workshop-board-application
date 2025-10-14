@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json()
+    const body = await req.json()
+    const { email, username, password } = body
 
-    if (!email || !password) {
+    if (!password || (!email && !username)) {
       return NextResponse.json({ error: "Missing credentials" }, { status: 400 })
     }
 
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
     const r = await fetch(`${apiBase}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(body),
     })
     
     if (!r.ok) {

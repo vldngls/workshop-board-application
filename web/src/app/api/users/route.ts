@@ -3,7 +3,7 @@ import { cookies } from "next/headers"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Get JWT token from cookies
     const cookieStore = await cookies()
@@ -13,7 +13,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const r = await fetch(`${API_BASE}/users`, { 
+    // Get query parameters from the request
+    const { searchParams } = new URL(request.url)
+    const queryString = searchParams.toString()
+    const url = queryString ? `${API_BASE}/users?${queryString}` : `${API_BASE}/users`
+    
+    const r = await fetch(url, { 
       headers: { 
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'

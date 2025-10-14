@@ -168,7 +168,8 @@ const updateAppointmentSchema = z.object({
     start: z.string(),
     end: z.string()
   }).optional(),
-  date: z.string().optional()
+  date: z.string().optional(),
+  noShow: z.boolean().optional()
 })
 
 router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
@@ -321,6 +322,9 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
     const allPartsUnavailable = parts.every(part => part.availability === 'Unavailable')
     const initialStatus = hasUnavailableParts ? 'WP' : 'OG'
     
+    // Get current time for actualEndTime if provided
+    const actualEndTime = req.body.actualEndTime
+    
     // Create job order from appointment
     const jobOrder = await JobOrder.create({
       jobNumber: jobNumber.toUpperCase(),
@@ -329,10 +333,13 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
       plateNumber: appointment.plateNumber,
       vin: vin.toUpperCase(),
       timeRange: appointment.timeRange,
+      actualEndTime: actualEndTime || undefined,
       jobList,
       parts,
       status: initialStatus,
-      date: appointment.date
+      date: appointment.date,
+      originalCreatedDate: new Date(),
+      sourceType: 'appointment'
     })
     
     // Delete the appointment

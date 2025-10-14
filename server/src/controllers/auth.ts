@@ -8,8 +8,11 @@ import { User } from '../models/User.js'
 const router = Router()
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().optional(),
+  username: z.string().optional(),
   password: z.string().min(6),
+}).refine(data => data.email || data.username, {
+  message: 'Either email or username is required',
 })
 
 router.post('/login', async (req, res) => {
@@ -18,8 +21,11 @@ router.post('/login', async (req, res) => {
     const parsed = loginSchema.safeParse(req.body)
     if (!parsed.success) return res.status(400).json({ error: 'Invalid payload' })
 
-    const { email, password } = parsed.data
-    const user = await User.findOne({ email }).lean()
+    const { email, username, password } = parsed.data
+    
+    // Find user by email or username
+    const query = email ? { email } : { username }
+    const user = await User.findOne(query).lean()
     if (!user) return res.status(401).json({ error: 'Invalid credentials' })
 
     const ok = await bcrypt.compare(password, user.passwordHash)
@@ -35,6 +41,7 @@ router.post('/login', async (req, res) => {
       {
         userId: user._id,
         email: user.email,
+        username: user.username,
         role: user.role,
         name: user.name,
       },
@@ -47,7 +54,9 @@ router.post('/login', async (req, res) => {
       user: {
         name: user.name,
         email: user.email,
+        username: user.username,
         role: user.role,
+        level: user.level,
         pictureUrl: user.pictureUrl ?? null,
       },
     })

@@ -3,6 +3,7 @@ import mongoose, { Schema } from 'mongoose'
 export interface AppointmentDoc {
   _id?: mongoose.Types.ObjectId
   assignedTechnician: mongoose.Types.ObjectId
+  serviceAdvisor?: mongoose.Types.ObjectId | null
   plateNumber: string
   timeRange: {
     start: string // Format: "07:00"
@@ -10,6 +11,7 @@ export interface AppointmentDoc {
   }
   date: Date
   createdBy: mongoose.Types.ObjectId
+  noShow?: boolean
   createdAt?: Date
   updatedAt?: Date
 }
@@ -19,6 +21,11 @@ const appointmentSchema = new Schema<AppointmentDoc>({
     type: Schema.Types.ObjectId, 
     ref: 'User', 
     required: true 
+  },
+  serviceAdvisor: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
   },
   plateNumber: { 
     type: String, 
@@ -38,6 +45,10 @@ const appointmentSchema = new Schema<AppointmentDoc>({
     type: Schema.Types.ObjectId, 
     ref: 'User', 
     required: true 
+  },
+  noShow: {
+    type: Boolean,
+    default: false
   },
 }, { timestamps: true })
 
