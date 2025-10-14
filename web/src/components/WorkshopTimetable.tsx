@@ -3,6 +3,11 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react'
 import toast, { Toaster } from 'react-hot-toast'
 import type { JobOrder } from '@/types/jobOrder'
+import type { Appointment } from '@/types/appointment'
+import ReassignTimeSlotModal from './ReassignTimeSlotModal'
+import ReplotJobOrderModal from './ReplotJobOrderModal'
+import CreateJobOrderFromAppointmentModal from './CreateJobOrderFromAppointmentModal'
+import ConfirmDialog from './ConfirmDialog'
 
 interface WorkshopTimetableProps {
   date: Date
@@ -46,6 +51,7 @@ const TIME_SLOTS = generateTimeSlots() // 30-minute intervals from 7:00 AM to 6:
 const STATUS_COLORS = {
   'OG': 'bg-blue-100 border-blue-300 text-blue-800',      // On going
   'WP': 'bg-orange-100 border-orange-300 text-orange-800', // Waiting Parts
+  'FP': 'bg-cyan-100 border-cyan-300 text-cyan-800',      // For Plotting
   'QI': 'bg-purple-100 border-purple-300 text-purple-800', // Quality Inspection
   'HC': 'bg-yellow-100 border-yellow-300 text-yellow-800', // Hold Customer
   'HW': 'bg-red-100 border-red-300 text-red-800',         // Hold Warranty
@@ -65,8 +71,34 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
   const [availableTechnicians, setAvailableTechnicians] = useState<any[]>([])
   const [qiJobs, setQiJobs] = useState<JobOrderWithDetails[]>([])
   const [forReleaseJobs, setForReleaseJobs] = useState<JobOrderWithDetails[]>([])
+  const [waitingPartsJobs, setWaitingPartsJobs] = useState<JobOrderWithDetails[]>([])
+  const [forPlottingJobs, setForPlottingJobs] = useState<JobOrderWithDetails[]>([])
+  const [carriedOverJobs, setCarriedOverJobs] = useState<JobOrderWithDetails[]>([])
+  const [holdCustomerJobs, setHoldCustomerJobs] = useState<JobOrderWithDetails[]>([])
+  const [holdWarrantyJobs, setHoldWarrantyJobs] = useState<JobOrderWithDetails[]>([])
+  const [holdInsuranceJobs, setHoldInsuranceJobs] = useState<JobOrderWithDetails[]>([])
+  const [finishedUnclaimedJobs, setFinishedUnclaimedJobs] = useState<JobOrderWithDetails[]>([])
   const [updating, setUpdating] = useState(false)
   const [highlightedJobId, setHighlightedJobId] = useState<string | null>(null)
+  
+  // Appointments state
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
+  const [showCreateJobOrderModal, setShowCreateJobOrderModal] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null)
+  
+  // Reassignment modal state
+  const [showReassignModal, setShowReassignModal] = useState(false)
+  const [reassignmentSlot, setReassignmentSlot] = useState<{
+    technicianId: string
+    technicianName: string
+    startTime: string
+    endTime: string
+  } | null>(null)
+  
+  // Replot modal state
+  const [showReplotModal, setShowReplotModal] = useState(false)
   
   // Break time settings
   const [breakStart, setBreakStart] = useState('12:00')
@@ -135,8 +167,56 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
       const frData = await frResponse.json()
       const forRelease = frData.jobOrders || []
       
+      // Fetch Waiting Parts jobs
+      const wpResponse = await fetch('/api/job-orders?status=WP')
+      if (!wpResponse.ok) throw new Error('Failed to fetch Waiting Parts jobs')
+      const wpData = await wpResponse.json()
+      const waitingParts = wpData.jobOrders || []
+      
+      // Fetch For Plotting jobs
+      const fpResponse = await fetch('/api/job-orders?status=FP')
+      if (!fpResponse.ok) throw new Error('Failed to fetch For Plotting jobs')
+      const fpData = await fpResponse.json()
+      const forPlotting = fpData.jobOrders || []
+      
+      // Fetch Hold Customer jobs
+      const hcResponse = await fetch('/api/job-orders?status=HC')
+      if (!hcResponse.ok) throw new Error('Failed to fetch Hold Customer jobs')
+      const hcData = await hcResponse.json()
+      const holdCustomer = hcData.jobOrders || []
+      
+      // Fetch Hold Warranty jobs
+      const hwResponse = await fetch('/api/job-orders?status=HW')
+      if (!hwResponse.ok) throw new Error('Failed to fetch Hold Warranty jobs')
+      const hwData = await hwResponse.json()
+      const holdWarranty = hwData.jobOrders || []
+      
+      // Fetch Hold Insurance jobs
+      const hiResponse = await fetch('/api/job-orders?status=HI')
+      if (!hiResponse.ok) throw new Error('Failed to fetch Hold Insurance jobs')
+      const hiData = await hiResponse.json()
+      const holdInsurance = hiData.jobOrders || []
+      
+      // Fetch Finished Unclaimed jobs
+      const fuResponse = await fetch('/api/job-orders?status=FU')
+      if (!fuResponse.ok) throw new Error('Failed to fetch Finished Unclaimed jobs')
+      const fuData = await fuResponse.json()
+      const finishedUnclaimed = fuData.jobOrders || []
+      
+      // Fetch all job orders to find carried over ones
+      const allJobsResponse = await fetch('/api/job-orders')
+      if (!allJobsResponse.ok) throw new Error('Failed to fetch all job orders')
+      const allJobsData = await allJobsResponse.json()
+      const carriedOver = (allJobsData.jobOrders || []).filter((job: JobOrderWithDetails) => job.carriedOver === true)
+      
+      // Filter job orders to exclude statuses that should only appear in sections below
+      // Only show OG (On Going), QI (Quality Inspection), FR (For Release), and CP (Complete) on the timetable
+      const timetableJobs = (jobOrdersData.jobOrders || []).filter((job: JobOrderWithDetails) => 
+        !['WP', 'HC', 'HW', 'HI', 'FU'].includes(job.status)
+      )
+      
       // Sort job orders - important ones first, then carried over, then by date
-      const sortedJobs = (jobOrdersData.jobOrders || []).sort((a: JobOrderWithDetails, b: JobOrderWithDetails) => {
+      const sortedJobs = timetableJobs.sort((a: JobOrderWithDetails, b: JobOrderWithDetails) => {
         if (a.isImportant && !b.isImportant) return -1
         if (!a.isImportant && b.isImportant) return 1
         if (a.carriedOver && !b.carriedOver) return -1
@@ -148,6 +228,26 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
       setTechnicians(techniciansData.users?.filter((user: any) => user.role === 'technician') || [])
       setQiJobs(pendingQI)
       setForReleaseJobs(forRelease)
+      setWaitingPartsJobs(waitingParts)
+      setForPlottingJobs(forPlotting)
+      setHoldCustomerJobs(holdCustomer)
+      setHoldWarrantyJobs(holdWarranty)
+      setHoldInsuranceJobs(holdInsurance)
+      setFinishedUnclaimedJobs(finishedUnclaimed)
+      setCarriedOverJobs(carriedOver)
+      
+      // Fetch appointments for the selected date
+      try {
+        const appointmentsResponse = await fetch(`/api/appointments?date=${dateStr}`)
+        if (appointmentsResponse.ok) {
+          const appointmentsData = await appointmentsResponse.json()
+          setAppointments(appointmentsData.appointments || [])
+        }
+      } catch (error) {
+        console.error('Error fetching appointments:', error)
+        // Don't fail the whole fetch if appointments fail
+        setAppointments([])
+      }
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -181,18 +281,57 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
 
   // Memoize expensive calculations
   const getJobAtTime = useCallback((technicianId: string, timeSlot: TimeSlot): JobOrderWithDetails | null => {
+    const parseTimeLocal = (timeStr: string): number => {
+      const [hours, minutes] = timeStr.split(':').map(Number)
+      return hours * 60 + minutes
+    }
     return jobOrders.find(job => {
       // Don't show jobs without assigned technician (e.g., all parts missing)
       if (!job.assignedTechnician || job.assignedTechnician._id !== technicianId) return false
       
-      const jobStart = parseTime(job.timeRange.start)
-      const jobEnd = parseTime(job.timeRange.end)
+      const jobStart = parseTimeLocal(job.timeRange.start)
+      const jobEnd = parseTimeLocal(job.timeRange.end)
       const slotTime = timeSlot.hour * 60 + timeSlot.minute
       
       // Show job if the slot time is within the job's time range
       return slotTime >= jobStart && slotTime < jobEnd
     }) || null
   }, [jobOrders])
+
+  const getAppointmentAtTime = useCallback((technicianId: string, timeSlot: TimeSlot): Appointment | null => {
+    const parseTimeLocal = (timeStr: string): number => {
+      const [hours, minutes] = timeStr.split(':').map(Number)
+      return hours * 60 + minutes
+    }
+    return appointments.find(appt => {
+      if (!appt.assignedTechnician || appt.assignedTechnician._id !== technicianId) return false
+      
+      const apptStart = parseTimeLocal(appt.timeRange.start)
+      const apptEnd = parseTimeLocal(appt.timeRange.end)
+      const slotTime = timeSlot.hour * 60 + timeSlot.minute
+      
+      return slotTime >= apptStart && slotTime < apptEnd
+    }) || null
+  }, [appointments])
+
+  const getAppointmentStartSlot = useCallback((appointment: Appointment): number => {
+    const apptStart = parseTime(appointment.timeRange.start)
+    return TIME_SLOTS.findIndex(slot => {
+      const slotTime = slot.hour * 60 + slot.minute
+      return slotTime === apptStart
+    })
+  }, [])
+
+  const getAppointmentSpan = useCallback((appointment: Appointment): number => {
+    const parseTimeLocal = (timeStr: string): number => {
+      const [hours, minutes] = timeStr.split(':').map(Number)
+      return hours * 60 + minutes
+    }
+    const start = parseTimeLocal(appointment.timeRange.start)
+    const end = parseTimeLocal(appointment.timeRange.end)
+    const duration = end - start
+    return Math.ceil(duration / 30) // Number of 30-min slots
+  }, [])
 
   const getJobStartSlot = useCallback((technicianId: string, job: JobOrderWithDetails): number => {
     const jobStart = parseTime(job.timeRange.start)
@@ -203,7 +342,11 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
   }, [])
 
   const getJobEndSlot = useCallback((technicianId: string, job: JobOrderWithDetails): number => {
-    const jobEnd = parseTime(job.timeRange.end)
+    const parseTimeLocal = (timeStr: string): number => {
+      const [hours, minutes] = timeStr.split(':').map(Number)
+      return hours * 60 + minutes
+    }
+    const jobEnd = parseTimeLocal(job.timeRange.end)
     return TIME_SLOTS.findIndex(slot => {
       const slotTime = slot.hour * 60 + slot.minute
       return slotTime === jobEnd
@@ -211,12 +354,14 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
   }, [])
 
   const getJobSpan = useCallback((job: JobOrderWithDetails): number => {
+    if (!job.assignedTechnician) return 0
     const startSlot = getJobStartSlot(job.assignedTechnician._id, job)
     const endSlot = getJobEndSlot(job.assignedTechnician._id, job)
     return endSlot - startSlot
   }, [getJobStartSlot, getJobEndSlot])
 
   const getJobOffset = useCallback((job: JobOrderWithDetails): number => {
+    if (!job.assignedTechnician) return 0
     const jobStart = parseTime(job.timeRange.start)
     const startSlot = getJobStartSlot(job.assignedTechnician._id, job)
     
@@ -281,6 +426,52 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
     setShowModal(true)
   }, [])
 
+  const handleAppointmentClick = useCallback((appointment: Appointment) => {
+    setSelectedAppointment(appointment)
+    setShowCreateJobOrderModal(true)
+  }, [])
+
+  const handleDeleteAppointment = useCallback((appointmentId: string) => {
+    setAppointmentToDelete(appointmentId)
+    setShowDeleteConfirm(true)
+  }, [])
+
+  const confirmDeleteAppointment = useCallback(async () => {
+    if (!appointmentToDelete) return
+
+    try {
+      const response = await fetch(`/api/appointments/${appointmentToDelete}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete appointment')
+      }
+
+      setAppointments(prev => prev.filter(a => a._id !== appointmentToDelete))
+      toast.success('Appointment deleted (no show)')
+    } catch (error) {
+      console.error('Error deleting appointment:', error)
+      toast.error('Failed to delete appointment')
+    } finally {
+      setShowDeleteConfirm(false)
+      setAppointmentToDelete(null)
+    }
+  }, [appointmentToDelete])
+
+  const cancelDeleteAppointment = useCallback(() => {
+    setShowDeleteConfirm(false)
+    setAppointmentToDelete(null)
+  }, [])
+
+  const handleCreateJobOrderSuccess = useCallback(() => {
+    setShowCreateJobOrderModal(false)
+    setSelectedAppointment(null)
+    fetchData()
+    toast.success('Job order created from appointment!')
+  }, [fetchData])
+
   const formatDuration = useCallback((startTime: string, endTime: string): string => {
     const startMs = new Date(`2000-01-01T${startTime}:00`).getTime()
     const endMs = new Date(`2000-01-01T${endTime}:00`).getTime()
@@ -294,6 +485,9 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
   const jobPositions = useMemo(() => {
     const positions = new Map<string, any>()
     jobOrders.forEach(job => {
+      // Skip jobs without assigned technician (e.g., FP status jobs)
+      if (!job.assignedTechnician) return
+      
       const key = `${job._id}-${job.assignedTechnician._id}`
       positions.set(key, {
         span: getJobSpan(job),
@@ -360,14 +554,6 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
     try {
       setUpdating(true)
       
-      // Optimistic update - update local state immediately
-      setJobOrders(prev => prev.map(job => 
-        job._id === jobId ? { ...job, status: status as any } : job
-      ))
-      if (selectedJob?._id === jobId) {
-        setSelectedJob(prev => prev ? { ...prev, status: status as any } : null)
-      }
-      
       const response = await fetch(`/api/job-orders/${jobId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -376,22 +562,62 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
       
       if (!response.ok) {
         const errorData = await response.json()
-        // Revert optimistic update on error
-        fetchData()
         throw new Error(errorData.error || 'Failed to update job status')
       }
       
-      // Update QI and For Release lists based on new status
-      if (status === 'QI') {
-        setQiJobs(prev => [...prev, selectedJob!])
-      } else if (status === 'FR') {
-        setForReleaseJobs(prev => [...prev, selectedJob!])
-        setQiJobs(prev => prev.filter(job => job._id !== jobId))
+      const data = await response.json()
+      const updatedJob = data.jobOrder
+      
+      // Remove from timetable if status is WP, HC, HW, HI, or FU
+      if (['WP', 'HC', 'HW', 'HI', 'FU'].includes(status)) {
+        setJobOrders(prev => prev.filter(job => job._id !== jobId))
       } else {
-        // Remove from both lists for any other status (including CP - Complete)
-        setQiJobs(prev => prev.filter(job => job._id !== jobId))
-        setForReleaseJobs(prev => prev.filter(job => job._id !== jobId))
+        // Update in timetable for other statuses
+        setJobOrders(prev => prev.map(job => 
+          job._id === jobId ? updatedJob : job
+        ))
       }
+      
+      // Update selected job if it's the one being updated
+      if (selectedJob?._id === jobId) {
+        setSelectedJob(updatedJob)
+      }
+      
+      // Update all status lists
+      setQiJobs(prev => {
+        const filtered = prev.filter(job => job._id !== jobId)
+        return status === 'QI' ? [...filtered, updatedJob] : filtered
+      })
+      
+      setForReleaseJobs(prev => {
+        const filtered = prev.filter(job => job._id !== jobId)
+        return status === 'FR' ? [...filtered, updatedJob] : filtered
+      })
+      
+      setWaitingPartsJobs(prev => {
+        const filtered = prev.filter(job => job._id !== jobId)
+        return status === 'WP' ? [...filtered, updatedJob] : filtered
+      })
+      
+      setHoldCustomerJobs(prev => {
+        const filtered = prev.filter(job => job._id !== jobId)
+        return status === 'HC' ? [...filtered, updatedJob] : filtered
+      })
+      
+      setHoldWarrantyJobs(prev => {
+        const filtered = prev.filter(job => job._id !== jobId)
+        return status === 'HW' ? [...filtered, updatedJob] : filtered
+      })
+      
+      setHoldInsuranceJobs(prev => {
+        const filtered = prev.filter(job => job._id !== jobId)
+        return status === 'HI' ? [...filtered, updatedJob] : filtered
+      })
+      
+      setFinishedUnclaimedJobs(prev => {
+        const filtered = prev.filter(job => job._id !== jobId)
+        return status === 'FU' ? [...filtered, updatedJob] : filtered
+      })
       
       toast.success('Job status updated successfully')
     } catch (error) {
@@ -401,6 +627,8 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
       } else {
         toast.error('Failed to update job status')
       }
+      // Refresh data on error
+      fetchData()
     } finally {
       setUpdating(false)
     }
@@ -438,6 +666,25 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
     }
   }, [selectedJob, fetchData])
 
+  const getCurrentTime = useCallback((): string => {
+    const now = new Date()
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    return `${hours}:${minutes}`
+  }, [])
+
+  const promptReassignment = useCallback((job: JobOrderWithDetails, actualEndTime: string) => {
+    if (!job.assignedTechnician) return
+    
+    setReassignmentSlot({
+      technicianId: job.assignedTechnician._id,
+      technicianName: job.assignedTechnician.name,
+      startTime: actualEndTime,
+      endTime: job.timeRange.end
+    })
+    setShowReassignModal(true)
+  }, [])
+
   const updatePartAvailability = useCallback(async (jobId: string, partIndex: number, availability: 'Available' | 'Unavailable') => {
     try {
       setUpdating(true)
@@ -446,21 +693,46 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
       const updatedParts = [...selectedJob.parts]
       updatedParts[partIndex].availability = availability
       
+      // If parts became unavailable and job is currently on going, set actual end time
+      const hasUnavailableParts = updatedParts.some(part => part.availability === 'Unavailable')
+      const wasOnGoing = selectedJob.status === 'OG'
+      const currentTime = getCurrentTime()
+      
       const response = await fetch(`/api/job-orders/${jobId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parts: updatedParts })
+        body: JSON.stringify({ 
+          parts: updatedParts,
+          ...(hasUnavailableParts && wasOnGoing && availability === 'Unavailable' ? { actualEndTime: currentTime } : {})
+        })
       })
       if (!response.ok) throw new Error('Failed to update part availability')
       const data = await response.json()
-      setSelectedJob(data.jobOrder)
+      const updatedJobOrder = data.jobOrder
+      setSelectedJob(updatedJobOrder)
+      setShowModal(false)
       await fetchData()
       toast.success(`Part marked as ${availability.toLowerCase()}`)
       
-      // Check if all parts are now available and suggest technician reassignment
+      // Check if all parts are now available and status changed to FP
       const allPartsAvailable = updatedParts.every(part => part.availability === 'Available')
-      if (allPartsAvailable && selectedJob.status === 'WP') {
-        toast.success('All parts are now available! Consider reassigning a technician.', { duration: 5000 })
+      const wasWaitingParts = selectedJob.status === 'WP'
+      const nowForPlotting = updatedJobOrder.status === 'FP'
+      
+      if (allPartsAvailable && wasWaitingParts && nowForPlotting) {
+        toast.success('All parts are now available! Status changed to "For Plotting". Use the Replot button to assign a technician and time slot.', { duration: 7000 })
+      }
+      
+      // If parts became unavailable, prompt for reassignment
+      if (hasUnavailableParts && availability === 'Unavailable' && wasOnGoing) {
+        toast.error('Part unavailable. Job interrupted at ' + currentTime, { duration: 4000 })
+        // Prompt user to assign another job to the remaining time slot
+        const timeRemaining = parseTime(selectedJob.timeRange.end) - parseTime(currentTime)
+        if (timeRemaining > 30) { // Only prompt if more than 30 minutes remain
+          setTimeout(() => {
+            promptReassignment(selectedJob, currentTime)
+          }, 1000)
+        }
       }
     } catch (error) {
       console.error('Error updating part availability:', error)
@@ -468,7 +740,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
     } finally {
       setUpdating(false)
     }
-  }, [selectedJob, fetchData])
+  }, [selectedJob, fetchData, getCurrentTime, promptReassignment, parseTime])
 
   const reassignTechnician = useCallback(async (technicianId: string) => {
     try {
@@ -522,6 +794,9 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
   const submitForQI = useCallback(async (jobId: string) => {
     try {
       setUpdating(true)
+      if (!selectedJob) return
+      
+      const currentTime = getCurrentTime()
       const response = await fetch(`/api/job-orders/${jobId}/submit-qi`, {
         method: 'PATCH'
       })
@@ -529,16 +804,30 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         const error = await response.json()
         throw new Error(error.error || 'Failed to submit for QI')
       }
+      
+      // Check if there's remaining time in the time slot
+      const timeRemaining = parseTime(selectedJob.timeRange.end) - parseTime(currentTime)
+      
       setShowModal(false)
       await fetchData()
       toast.success('Job order submitted for Quality Inspection')
+      
+      // If there's more than 30 minutes remaining, prompt to assign another job
+      if (timeRemaining > 30 && selectedJob.assignedTechnician) {
+        setTimeout(() => {
+          const shouldAssign = confirm(`This job finished early. There are ${Math.floor(timeRemaining / 60)}h ${timeRemaining % 60}m remaining. Would you like to assign another job to ${selectedJob.assignedTechnician.name}?`)
+          if (shouldAssign) {
+            promptReassignment(selectedJob, currentTime)
+          }
+        }, 1000)
+      }
     } catch (error: any) {
       console.error('Error submitting for QI:', error)
       toast.error(error.message || 'Failed to submit for QI')
     } finally {
       setUpdating(false)
     }
-  }, [fetchData])
+  }, [fetchData, selectedJob, getCurrentTime, parseTime, promptReassignment])
 
   const approveQI = useCallback(async (jobId: string) => {
     try {
@@ -655,7 +944,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
           <h3 className="text-base font-semibold mb-2">Daily Summary</h3>
           <div className="flex gap-4 text-xs">
             <div>
-              <div className="text-gray-600">Total</div>
+              <div className="text-gray-600">On Timetable</div>
               <div className="text-xl font-bold text-blue-600">{jobOrders.length}</div>
             </div>
             <div>
@@ -667,13 +956,13 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
             <div>
               <div className="text-gray-600">For Release</div>
               <div className="text-xl font-bold text-green-600">
-                {jobOrders.filter(job => job.status === 'FR').length}
+                {forReleaseJobs.length}
               </div>
             </div>
             <div>
               <div className="text-gray-600">On Hold</div>
               <div className="text-xl font-bold text-red-600">
-                {jobOrders.filter(job => ['HC', 'HW', 'HI', 'WP'].includes(job.status)).length}
+                {holdCustomerJobs.length + holdWarrantyJobs.length + holdInsuranceJobs.length + waitingPartsJobs.length}
               </div>
             </div>
           </div>
@@ -690,6 +979,10 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
             <div className="flex items-center space-x-1">
               <div className="w-2 h-2 bg-orange-100 border border-orange-300 rounded flex-shrink-0"></div>
               <span>WP</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-cyan-100 border border-cyan-300 rounded flex-shrink-0"></div>
+              <span>FP</span>
             </div>
             <div className="flex items-center space-x-1">
               <div className="w-2 h-2 bg-purple-100 border border-purple-300 rounded flex-shrink-0"></div>
@@ -752,12 +1045,59 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
                     const job = getJobAtTime(technician._id, slot)
                     const isJobStart = job && getJobStartSlot(technician._id, job) === slotIndex
                     
+                    const appointment = getAppointmentAtTime(technician._id, slot)
+                    const isAppointmentStart = appointment && getAppointmentStartSlot(appointment) === slotIndex
+                    
                     return (
                       <td
                         key={`${technician._id}-${slot.time}`}
                         className="w-16 h-20 px-0 py-0 border-r border-b relative"
                       >
-                        {isJobStart ? (
+                        {isAppointmentStart && !job ? (
+                          <div
+                            className="h-full rounded text-xs font-medium border-2 border-dashed border-pink-400 bg-pink-50 text-pink-800 transition-all hover:shadow-md relative cursor-pointer"
+                            style={{
+                              width: `${getAppointmentSpan(appointment) * 64}px`,
+                              minWidth: '64px',
+                              position: 'absolute',
+                              left: '0px',
+                              top: '0px',
+                              zIndex: 5
+                            }}
+                            title={`Appointment: ${appointment.plateNumber} - ${formatTime(appointment.timeRange.start)} to ${formatTime(appointment.timeRange.end)}`}
+                          >
+                            <div className="p-1 h-full flex flex-col justify-between">
+                              <div>
+                                <div className="truncate font-semibold text-xs">📅 {appointment.plateNumber}</div>
+                                <div className="truncate text-xs opacity-75">
+                                  {formatTime(appointment.timeRange.start)}-{formatTime(appointment.timeRange.end)}
+                                </div>
+                              </div>
+                              <div className="flex gap-0.5">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleAppointmentClick(appointment)
+                                  }}
+                                  className="flex-1 bg-green-500 hover:bg-green-600 text-white text-[10px] py-0.5 px-1 rounded transition-colors"
+                                  title="Create Job Order"
+                                >
+                                  Create JO
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteAppointment(appointment._id)
+                                  }}
+                                  className="bg-red-500 hover:bg-red-600 text-white text-[10px] py-0.5 px-1 rounded transition-colors"
+                                  title="No Show - Delete"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : isJobStart ? (
                           <button
                             onClick={() => handleCellClick(job)}
                             data-job-id={job._id}
@@ -893,51 +1233,52 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         </div>
       </div>
 
-      {/* Quality Inspection & For Release Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* All Status Sections in Multiple Rows */}
+      {/* First Row: QI, FR, WP, FP */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Quality Inspection Section */}
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-purple-800 flex items-center gap-2">
-              <span className="text-2xl">🔍</span>
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-purple-800 flex items-center gap-2">
+              <span className="text-xl">🔍</span>
               Quality Inspection
             </h3>
-            <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
-              {qiJobs.length} job{qiJobs.length !== 1 ? 's' : ''}
+            <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+              {qiJobs.length}
             </span>
           </div>
           
           {qiJobs.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <div className="text-4xl mb-2">✅</div>
-              <p>No jobs pending quality inspection</p>
+            <div className="text-center py-6 text-gray-500">
+              <div className="text-3xl mb-1">✅</div>
+              <p className="text-xs">No jobs pending QI</p>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {qiJobs.map((job) => (
-                <div key={job._id} className="border-2 border-purple-300 rounded-lg p-3 bg-purple-50 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
+                <div key={job._id} className="border-2 border-purple-300 rounded-lg p-2 bg-purple-50 hover:shadow-md transition-shadow">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1 min-w-0">
                       {job.isImportant && (
-                        <span className="text-yellow-500 text-lg flex-shrink-0">★</span>
+                        <span className="text-yellow-500 text-sm flex-shrink-0">★</span>
                       )}
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-base text-purple-900 truncate">{job.jobNumber}</h4>
-                        <p className="text-sm text-gray-600 truncate">{job.plateNumber}</p>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-bold text-sm text-purple-900 truncate">{job.jobNumber}</h4>
+                        <p className="text-xs text-gray-600 truncate">{job.plateNumber}</p>
                       </div>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex gap-1 flex-wrap">
                       <button
                         onClick={() => approveQI(job._id)}
                         disabled={updating}
-                        className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm"
+                        className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-medium px-2 py-1 rounded transition-colors text-xs flex-1"
                       >
                         ✓ Approve
                       </button>
                       <button
                         onClick={() => rejectQI(job._id)}
                         disabled={updating}
-                        className="bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm"
+                        className="bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white font-medium px-2 py-1 rounded transition-colors text-xs flex-1"
                       >
                         ✗ Reject
                       </button>
@@ -950,51 +1291,344 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         </div>
 
         {/* For Release Section */}
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-green-800 flex items-center gap-2">
-              <span className="text-2xl">✅</span>
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-green-800 flex items-center gap-2">
+              <span className="text-xl">✅</span>
               For Release
             </h3>
-            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-              {forReleaseJobs.length} job{forReleaseJobs.length !== 1 ? 's' : ''}
+            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+              {forReleaseJobs.length}
             </span>
           </div>
           
           {forReleaseJobs.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <div className="text-4xl mb-2">🔧</div>
-              <p>No jobs ready for release</p>
+            <div className="text-center py-6 text-gray-500">
+              <div className="text-3xl mb-1">🔧</div>
+              <p className="text-xs">No jobs for release</p>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {forReleaseJobs.map((job) => (
-                <div key={job._id} className="border-2 border-green-300 rounded-lg p-3 bg-green-50 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
+                <div key={job._id} className="border-2 border-green-300 rounded-lg p-2 bg-green-50 hover:shadow-md transition-shadow">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1 min-w-0">
                       {job.isImportant && (
-                        <span className="text-yellow-500 text-lg flex-shrink-0">★</span>
+                        <span className="text-yellow-500 text-sm flex-shrink-0">★</span>
                       )}
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-base text-green-900 truncate">{job.jobNumber}</h4>
-                        <p className="text-sm text-gray-600 truncate">{job.plateNumber}</p>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-bold text-sm text-green-900 truncate">{job.jobNumber}</h4>
+                        <p className="text-xs text-gray-600 truncate">{job.plateNumber}</p>
                       </div>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex gap-1 flex-wrap">
                       <button
                         onClick={() => completeJob(job._id)}
                         disabled={updating}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm"
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium px-2 py-1 rounded transition-colors text-xs flex-1"
                       >
                         ✓ Complete
                       </button>
                       <button
                         onClick={() => redoJob(job._id)}
                         disabled={updating}
-                        className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm"
+                        className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white font-medium px-2 py-1 rounded transition-colors text-xs flex-1"
                       >
                         ↻ Redo
                       </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Waiting Parts Section */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-orange-800 flex items-center gap-2">
+              <span className="text-xl">⏳</span>
+              Waiting Parts
+            </h3>
+            <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
+              {waitingPartsJobs.length}
+            </span>
+          </div>
+          
+          {waitingPartsJobs.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <div className="text-3xl mb-1">📦</div>
+              <p className="text-xs">No jobs waiting parts</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {waitingPartsJobs.map((job) => (
+                <div key={job._id} className="border-2 border-orange-300 rounded-lg p-2 bg-orange-50 hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleCellClick(job)}>
+                  <div className="flex items-center gap-1 min-w-0">
+                    {job.isImportant && (
+                      <span className="text-yellow-500 text-sm flex-shrink-0">★</span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-sm text-orange-900 truncate">{job.jobNumber}</h4>
+                      <p className="text-xs text-gray-600 truncate">{job.plateNumber}</p>
+                      {job.assignedTechnician && (
+                        <p className="text-xs text-gray-500 truncate">Tech: {job.assignedTechnician.name}</p>
+                      )}
+                      <p className="text-xs text-gray-600 mt-1">
+                        Parts: {job.parts.filter(p => p.availability === 'Unavailable').length}/{job.parts.length} missing
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* For Plotting Section */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-cyan-800 flex items-center gap-2">
+              <span className="text-xl">📍</span>
+              For Plotting
+            </h3>
+            <span className="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-full text-xs font-medium">
+              {forPlottingJobs.length}
+            </span>
+          </div>
+          
+          {forPlottingJobs.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <div className="text-3xl mb-1">✨</div>
+              <p className="text-xs">No jobs for plotting</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {forPlottingJobs.map((job) => (
+                <div key={job._id} className="border-2 border-cyan-300 rounded-lg p-2 bg-cyan-50 hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleCellClick(job)}>
+                  <div className="flex items-center gap-1 min-w-0">
+                    {job.isImportant && (
+                      <span className="text-yellow-500 text-sm flex-shrink-0">★</span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-sm text-cyan-900 truncate">{job.jobNumber}</h4>
+                      <p className="text-xs text-gray-600 truncate">{job.plateNumber}</p>
+                      <p className="text-xs text-green-600 mt-1">
+                        ✓ All parts available
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Click to replot this job
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Second Row: CO, HC, HW, HI */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {/* Carry Over Section */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-red-800 flex items-center gap-2">
+              <span className="text-xl">🔄</span>
+              Carry Over
+            </h3>
+            <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
+              {carriedOverJobs.length}
+            </span>
+          </div>
+          
+          {carriedOverJobs.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <div className="text-3xl mb-1">✨</div>
+              <p className="text-xs">No carried over jobs</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {carriedOverJobs.map((job) => (
+                <div key={job._id} className="border-2 border-red-300 rounded-lg p-2 bg-red-50 hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleCellClick(job)}>
+                  <div className="flex items-center gap-1 min-w-0">
+                    {job.isImportant && (
+                      <span className="text-yellow-500 text-sm flex-shrink-0">★</span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-sm text-red-900 truncate">{job.jobNumber}</h4>
+                      <p className="text-xs text-gray-600 truncate">{job.plateNumber}</p>
+                      {job.assignedTechnician && (
+                        <p className="text-xs text-gray-500 truncate">Tech: {job.assignedTechnician.name}</p>
+                      )}
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${STATUS_COLORS[job.status]}`}>
+                          {job.status}
+                        </span>
+                        <span className="text-xs text-gray-600">
+                          {formatTime(job.timeRange.start)}-{formatTime(job.timeRange.end)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Third Row: HC, HW, HI, FU */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {/* Hold Customer Section */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-yellow-800 flex items-center gap-2">
+              <span className="text-xl">👤</span>
+              Hold Customer
+            </h3>
+            <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+              {holdCustomerJobs.length}
+            </span>
+          </div>
+          
+          {holdCustomerJobs.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <div className="text-3xl mb-1">✅</div>
+              <p className="text-xs">No jobs on hold</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {holdCustomerJobs.map((job) => (
+                <div key={job._id} className="border-2 border-yellow-300 rounded-lg p-2 bg-yellow-50 hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleCellClick(job)}>
+                  <div className="flex items-center gap-1 min-w-0">
+                    {job.isImportant && (
+                      <span className="text-yellow-500 text-sm flex-shrink-0">★</span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-sm text-yellow-900 truncate">{job.jobNumber}</h4>
+                      <p className="text-xs text-gray-600 truncate">{job.plateNumber}</p>
+                      {job.assignedTechnician && (
+                        <p className="text-xs text-gray-500 truncate">Tech: {job.assignedTechnician.name}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Hold Warranty Section */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-red-800 flex items-center gap-2">
+              <span className="text-xl">🛡️</span>
+              Hold Warranty
+            </h3>
+            <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
+              {holdWarrantyJobs.length}
+            </span>
+          </div>
+          
+          {holdWarrantyJobs.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <div className="text-3xl mb-1">✅</div>
+              <p className="text-xs">No jobs on hold</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {holdWarrantyJobs.map((job) => (
+                <div key={job._id} className="border-2 border-red-300 rounded-lg p-2 bg-red-50 hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleCellClick(job)}>
+                  <div className="flex items-center gap-1 min-w-0">
+                    {job.isImportant && (
+                      <span className="text-yellow-500 text-sm flex-shrink-0">★</span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-sm text-red-900 truncate">{job.jobNumber}</h4>
+                      <p className="text-xs text-gray-600 truncate">{job.plateNumber}</p>
+                      {job.assignedTechnician && (
+                        <p className="text-xs text-gray-500 truncate">Tech: {job.assignedTechnician.name}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Hold Insurance Section */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-indigo-800 flex items-center gap-2">
+              <span className="text-xl">🏥</span>
+              Hold Insurance
+            </h3>
+            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs font-medium">
+              {holdInsuranceJobs.length}
+            </span>
+          </div>
+          
+          {holdInsuranceJobs.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <div className="text-3xl mb-1">✅</div>
+              <p className="text-xs">No jobs on hold</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {holdInsuranceJobs.map((job) => (
+                <div key={job._id} className="border-2 border-indigo-300 rounded-lg p-2 bg-indigo-50 hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleCellClick(job)}>
+                  <div className="flex items-center gap-1 min-w-0">
+                    {job.isImportant && (
+                      <span className="text-yellow-500 text-sm flex-shrink-0">★</span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-sm text-indigo-900 truncate">{job.jobNumber}</h4>
+                      <p className="text-xs text-gray-600 truncate">{job.plateNumber}</p>
+                      {job.assignedTechnician && (
+                        <p className="text-xs text-gray-500 truncate">Tech: {job.assignedTechnician.name}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Finished Unclaimed Section */}
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <span className="text-xl">📋</span>
+              Finished Unclaimed
+            </h3>
+            <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">
+              {finishedUnclaimedJobs.length}
+            </span>
+          </div>
+          
+          {finishedUnclaimedJobs.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <div className="text-3xl mb-1">✅</div>
+              <p className="text-xs">No unclaimed jobs</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {finishedUnclaimedJobs.map((job) => (
+                <div key={job._id} className="border-2 border-gray-300 rounded-lg p-2 bg-gray-50 hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleCellClick(job)}>
+                  <div className="flex items-center gap-1 min-w-0">
+                    {job.isImportant && (
+                      <span className="text-yellow-500 text-sm flex-shrink-0">★</span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-sm text-gray-900 truncate">{job.jobNumber}</h4>
+                      <p className="text-xs text-gray-600 truncate">{job.plateNumber}</p>
+                      {job.assignedTechnician && (
+                        <p className="text-xs text-gray-500 truncate">Tech: {job.assignedTechnician.name}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1006,7 +1640,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
 
       {/* Job Details Modal */}
       {showModal && selectedJob && (
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+        <div className="modal-backdrop">
           <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
@@ -1045,6 +1679,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
                     >
                       <option value="OG">OG - On Going</option>
                       <option value="WP">WP - Waiting Parts</option>
+                      <option value="FP">FP - For Plotting</option>
                       <option value="QI">QI - Quality Inspection</option>
                       <option value="HC">HC - Hold Customer</option>
                       <option value="HW">HW - Hold Warranty</option>
@@ -1150,8 +1785,25 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
                   </div>
                 </div>
 
+                {/* Replot Button for FP Status */}
+                {selectedJob.status === 'FP' && (
+                  <div className="pt-4 border-t">
+                    <button
+                      onClick={() => {
+                        setShowModal(false)
+                        setShowReplotModal(true)
+                      }}
+                      disabled={updating}
+                      className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-300 text-white font-medium py-3 rounded-lg transition-colors"
+                    >
+                      Replot Job Order
+                    </button>
+                    <p className="text-xs text-gray-600 mt-2 text-center">Assign technician and time slot to add this job to the workshop board</p>
+                  </div>
+                )}
+
                 {/* Submit for QI Button */}
-                {selectedJob.status !== 'QI' && selectedJob.status !== 'FR' && selectedJob.status !== 'FU' && selectedJob.status !== 'CP' && (
+                {selectedJob.status !== 'FP' && selectedJob.status !== 'QI' && selectedJob.status !== 'FR' && selectedJob.status !== 'FU' && selectedJob.status !== 'CP' && (
                   <div className="pt-4 border-t">
                     <button
                       onClick={() => submitForQI(selectedJob._id)}
@@ -1180,7 +1832,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
 
       {/* Technician Reassignment Modal */}
       {showTechnicianModal && selectedJob && (
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+        <div className="modal-backdrop">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
@@ -1235,6 +1887,61 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
           </div>
         </div>
       )}
+
+      {/* Time Slot Reassignment Modal */}
+      {showReassignModal && reassignmentSlot && (
+        <ReassignTimeSlotModal
+          onClose={() => {
+            setShowReassignModal(false)
+            setReassignmentSlot(null)
+          }}
+          technicianId={reassignmentSlot.technicianId}
+          technicianName={reassignmentSlot.technicianName}
+          date={date.toISOString().split('T')[0]}
+          startTime={reassignmentSlot.startTime}
+          endTime={reassignmentSlot.endTime}
+          onJobAssigned={() => {
+            fetchData()
+          }}
+        />
+      )}
+
+      {/* Replot Job Order Modal */}
+      {showReplotModal && selectedJob && (
+        <ReplotJobOrderModal
+          onClose={() => setShowReplotModal(false)}
+          jobId={selectedJob._id}
+          jobNumber={selectedJob.jobNumber}
+          currentDate={selectedJob.date.split('T')[0]}
+          onSuccess={() => {
+            fetchData()
+          }}
+        />
+      )}
+
+      {/* Create Job Order from Appointment Modal */}
+      {showCreateJobOrderModal && selectedAppointment && (
+        <CreateJobOrderFromAppointmentModal
+          appointment={selectedAppointment}
+          onClose={() => {
+            setShowCreateJobOrderModal(false)
+            setSelectedAppointment(null)
+          }}
+          onSuccess={handleCreateJobOrderSuccess}
+        />
+      )}
+
+      {/* Delete Appointment Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Appointment"
+        message="Mark this appointment as no-show and delete it? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        confirmVariant="danger"
+        onConfirm={confirmDeleteAppointment}
+        onCancel={cancelDeleteAppointment}
+      />
     </div>
   )
 }

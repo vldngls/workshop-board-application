@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, memo, useCallback } from 'react'
+import toast from 'react-hot-toast'
 import type { JobOrder, JobStatus, JobItemStatus } from '@/types/jobOrder'
 import { 
   useUpdateJobOrderStatus, 
@@ -17,6 +18,7 @@ interface JobOrderCardProps {
 const STATUS_LABELS: Record<JobStatus, string> = {
   'OG': 'On Going',
   'WP': 'Waiting Parts',
+  'FP': 'For Plotting',
   'QI': 'Quality Inspection',
   'HC': 'Hold Customer',
   'HW': 'Hold Warranty',
@@ -29,6 +31,7 @@ const STATUS_LABELS: Record<JobStatus, string> = {
 const STATUS_COLORS: Record<JobStatus, string> = {
   'OG': 'bg-blue-100 text-blue-800',
   'WP': 'bg-yellow-100 text-yellow-800',
+  'FP': 'bg-cyan-100 text-cyan-800',
   'QI': 'bg-purple-100 text-purple-800',
   'HC': 'bg-orange-100 text-orange-800',
   'HW': 'bg-red-100 text-red-800',
@@ -122,15 +125,31 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
       availability: newAvailability
     }
     
+    // Check if all parts will be available after this update
+    const allPartsAvailable = updatedParts.every(part => part.availability === 'Available')
+    const hasUnavailableParts = updatedParts.some(part => part.availability === 'Unavailable')
+    const wasWaitingParts = jobOrder.status === 'WP'
+    
     updateJobMutation.mutate(
       { id: jobOrder._id, updates: { parts: updatedParts } },
       {
         onSettled: () => {
           setUpdatingPartIndex(null)
+        },
+        onSuccess: () => {
+          // If all parts are now available and job was in WP status, show guidance message
+          if (allPartsAvailable && wasWaitingParts) {
+            toast.success('All parts are now available! Please replot this job by assigning a technician and setting the time range to add it back to the workshop board.', { duration: 7000 })
+          }
+          
+          // If parts became unavailable, notify user about re-plotting requirement
+          if (hasUnavailableParts && newAvailability === 'Unavailable' && !wasWaitingParts) {
+            toast.error('Part marked unavailable. Job removed from workshop board and will need to be re-plotted once parts are available.', { duration: 6000 })
+          }
         }
       }
     )
-  }, [jobOrder._id, jobOrder.parts, updateJobMutation])
+  }, [jobOrder._id, jobOrder.parts, jobOrder.status, updateJobMutation])
 
   const handleTechnicianReassign = useCallback(async (technicianId: string) => {
     updateJobMutation.mutate(
@@ -255,7 +274,7 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
 
       {/* Status Change Modal */}
       {showStatusModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="modal-backdrop">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
@@ -297,7 +316,7 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
 
       {/* Job Tasks Modal */}
       {showJobTasksModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="modal-backdrop">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
@@ -358,7 +377,7 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
 
       {/* Parts Management Modal */}
       {showPartsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="modal-backdrop">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
@@ -419,7 +438,7 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
 
       {/* Technician Reassignment Modal */}
       {showTechnicianModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="modal-backdrop">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">

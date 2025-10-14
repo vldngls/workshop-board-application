@@ -76,6 +76,111 @@ router.get('/', verifyToken, async (req, res) => {
   }
 })
 
+// Get available technicians for a specific time range
+router.get('/technicians/available', verifyToken, async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const { date, startTime, endTime } = req.query
+    
+    if (!date || !startTime || !endTime) {
+      return res.status(400).json({ error: 'Date, startTime, and endTime are required' })
+    }
+    
+    const jobDate = new Date(date as string)
+    const startDateTime = new Date(`${jobDate.toISOString().split('T')[0]}T${startTime}:00`)
+    const endDateTime = new Date(`${jobDate.toISOString().split('T')[0]}T${endTime}:00`)
+    
+    // Find technicians with conflicting job orders
+    const conflictingJobs = await JobOrder.find({
+      date: {
+        $gte: new Date(jobDate.toISOString().split('T')[0]),
+        $lt: new Date(new Date(jobDate).setDate(jobDate.getDate() + 1))
+      },
+      $or: [
+        {
+          'timeRange.start': { $lt: endTime },
+          'timeRange.end': { $gt: startTime }
+        }
+      ]
+    }).select('assignedTechnician')
+    
+    const busyTechnicianIds = conflictingJobs.map(job => job.assignedTechnician)
+    
+    // Get all technicians excluding busy ones
+    const availableTechnicians = await User.find({
+      role: 'technician',
+      _id: { $nin: busyTechnicianIds }
+    }).select('name email level').lean()
+    
+    res.json({ technicians: availableTechnicians })
+  } catch (error) {
+    console.error('Error fetching available technicians:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Get job orders that can fit in a specific time slot (for reassignment)
+router.get('/available-for-slot', verifyToken, async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const { date, startTime, endTime } = req.query
+    
+    if (!date || !startTime || !endTime) {
+      return res.status(400).json({ error: 'Date, startTime, and endTime are required' })
+    }
+    
+    // Calculate available duration in minutes
+    const [startHour, startMinute] = (startTime as string).split(':').map(Number)
+    const [endHour, endMinute] = (endTime as string).split(':').map(Number)
+    const availableMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute)
+    
+    // Find unassigned jobs (no technician or in FP status - for plotting)
+    // that could fit in this time slot
+    const availableJobs = await JobOrder.find({
+      $and: [
+        {
+          $or: [
+            // Jobs without technician assignment  
+            { assignedTechnician: null, status: { $nin: ['CP', 'FR', 'FU', 'QI'] } },
+            // Jobs in FP status (for plotting - parts are available)
+            { status: 'FP' }
+          ]
+        }
+      ]
+    })
+      .populate('createdBy', 'name email')
+      .populate('assignedTechnician', 'name email')
+      .sort({ isImportant: -1, carriedOver: -1, createdAt: -1 })
+      .lean()
+    
+    // Filter jobs that can reasonably fit (we'll let user adjust duration)
+    // Show all jobs but indicate which ones might be tight on time
+    const jobsWithFitInfo = availableJobs.map((job: any) => {
+      const [jobStartHour, jobStartMinute] = job.timeRange.start.split(':').map(Number)
+      const [jobEndHour, jobEndMinute] = job.timeRange.end.split(':').map(Number)
+      const jobDuration = (jobEndHour * 60 + jobEndMinute) - (jobStartHour * 60 + jobStartMinute)
+      
+      return {
+        ...job,
+        originalDuration: jobDuration,
+        canFit: jobDuration <= availableMinutes,
+        suggestedDuration: Math.min(jobDuration, availableMinutes)
+      }
+    })
+    
+    res.json({ 
+      jobs: jobsWithFitInfo,
+      availableMinutes,
+      timeSlot: { start: startTime, end: endTime }
+    })
+  } catch (error) {
+    console.error('Error fetching available jobs for slot:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // Get job order by ID or job number
 router.get('/:id', verifyToken, async (req, res) => {
   try {
@@ -128,7 +233,8 @@ const createJobOrderSchema = z.object({
     name: z.string().min(1),
     availability: z.enum(['Available', 'Unavailable'])
   })),
-  date: z.string().optional()
+  date: z.string().optional(),
+  status: z.enum(['OG', 'WP', 'FP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU', 'CP']).optional()
 })
 
 router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
@@ -140,7 +246,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
       return res.status(400).json({ error: 'Invalid payload', details: parsed.error.errors })
     }
     
-    const { jobNumber, assignedTechnician, plateNumber, vin, timeRange, jobList, parts, date } = parsed.data
+    const { jobNumber, assignedTechnician, plateNumber, vin, timeRange, jobList, parts, date, status } = parsed.data
     
     // Check if job number already exists
     const existingJob = await JobOrder.findOne({ jobNumber: jobNumber.toUpperCase() })
@@ -183,13 +289,16 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
       return res.status(401).json({ error: 'User not authenticated' })
     }
     
-    // Auto-set status based on parts availability
-    const hasUnavailableParts = parts.some(part => part.availability === 'Unavailable')
-    const allPartsUnavailable = parts.every(part => part.availability === 'Unavailable')
+    // Determine initial status
+    // If status is provided in request, use it; otherwise auto-set based on parts availability
+    let initialStatus = status || 'OG'
+    if (!status) {
+      const hasUnavailableParts = parts.some(part => part.availability === 'Unavailable')
+      // If parts are unavailable but not all, can still be OG
+      initialStatus = hasUnavailableParts ? 'WP' : 'OG'
+    }
     
-    // If ALL parts are unavailable, set to WP and don't assign technician yet
-    // If some parts are unavailable but not all, can still be OG
-    const initialStatus = hasUnavailableParts ? 'WP' : 'OG'
+    const allPartsUnavailable = parts.every(part => part.availability === 'Unavailable')
     
     const jobOrder = await JobOrder.create({
       jobNumber: jobNumber.toUpperCase(),
@@ -218,12 +327,13 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
 
 // Status transition validation rules
 const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
-  'OG': ['WP', 'QI', 'HC', 'HW', 'HI', 'OG'], // Can stay OG or move to other statuses
-  'WP': ['OG', 'HC', 'HW', 'HI', 'WP'], // Waiting parts can go back to ongoing or hold
+  'OG': ['WP', 'FP', 'QI', 'HC', 'HW', 'HI', 'OG'], // Can stay OG or move to other statuses
+  'WP': ['FP', 'OG', 'HC', 'HW', 'HI', 'WP'], // Waiting parts can go to for plotting or other statuses
+  'FP': ['OG', 'WP', 'FP'], // For plotting can be plotted to ongoing or back to WP
   'QI': ['FR', 'OG', 'QI'], // QI can approve to release or reject back to ongoing
-  'HC': ['OG', 'WP', 'HC'], // Hold customer can resume
-  'HW': ['OG', 'WP', 'HW'], // Hold warranty can resume
-  'HI': ['OG', 'WP', 'HI'], // Hold insurance can resume
+  'HC': ['OG', 'WP', 'FP', 'HC'], // Hold customer can resume
+  'HW': ['OG', 'WP', 'FP', 'HW'], // Hold warranty can resume
+  'HI': ['OG', 'WP', 'FP', 'HI'], // Hold insurance can resume
   'FR': ['FU', 'CP', 'OG', 'FR'], // For release can complete, finish unclaimed, or redo
   'FU': ['CP', 'FU'], // Finished unclaimed can be marked complete
   'CP': ['CP'] // Complete is final state
@@ -231,13 +341,14 @@ const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
 
 // Update job order
 const updateJobOrderSchema = z.object({
-  assignedTechnician: z.string().optional(),
+  assignedTechnician: z.string().nullable().optional(),
   plateNumber: z.string().optional(),
   vin: z.string().optional(),
   timeRange: z.object({
     start: z.string(),
     end: z.string()
   }).optional(),
+  actualEndTime: z.string().optional(),
   jobList: z.array(z.object({
     description: z.string().min(1),
     status: z.enum(['Finished', 'Unfinished'])
@@ -246,7 +357,7 @@ const updateJobOrderSchema = z.object({
     name: z.string().min(1),
     availability: z.enum(['Available', 'Unavailable'])
   })).optional(),
-  status: z.enum(['OG', 'WP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU', 'CP']).optional(),
+  status: z.enum(['OG', 'WP', 'FP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU', 'CP']).optional(),
   carriedOver: z.boolean().optional(),
   isImportant: z.boolean().optional(),
   qiStatus: z.enum(['pending', 'approved', 'rejected']).nullable().optional()
@@ -293,16 +404,29 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
       }
     }
     
-    // Auto-set status to 'WP' if parts are being updated and any are unavailable
+    // Auto-set status based on parts availability
     if (updateData.parts) {
       const hasUnavailableParts = updateData.parts.some(part => part.availability === 'Unavailable')
+      const allPartsAvailable = updateData.parts.every(part => part.availability === 'Available')
+      
+      // If parts become unavailable, change to WP and clear technician and time assignments
+      // This forces the job to be fully re-plotted when parts become available again
       if (hasUnavailableParts && (!updateData.status || updateData.status === 'OG')) {
         updateData.status = 'WP'
+        // Clear technician and time range so job needs to be fully re-plotted
+        updateData.assignedTechnician = null
+        // Reset time range to default placeholder values
+        updateData.timeRange = { start: '00:00', end: '00:00' }
+      }
+      
+      // If all parts become available and job is in WP status, change to FP (For Plotting)
+      if (allPartsAvailable && jobOrder.status === 'WP' && !updateData.status) {
+        updateData.status = 'FP'
       }
     }
     
-    // If updating technician, check availability
-    if (updateData.assignedTechnician) {
+    // If updating technician, check availability (skip if setting to null)
+    if (updateData.assignedTechnician !== undefined && updateData.assignedTechnician !== null) {
       const technician = await User.findById(updateData.assignedTechnician)
       if (!technician || technician.role !== 'technician') {
         return res.status(400).json({ error: 'Invalid technician assigned' })
@@ -578,50 +702,6 @@ router.post('/mark-carry-over', verifyToken, requireRole(['administrator', 'job-
     })
   } catch (error) {
     console.error('Error marking carry over:', error)
-    res.status(500).json({ error: 'Internal server error' })
-  }
-})
-
-// Get available technicians for a specific time range
-router.get('/technicians/available', verifyToken, async (req, res) => {
-  try {
-    await connectToMongo()
-    
-    const { date, startTime, endTime } = req.query
-    
-    if (!date || !startTime || !endTime) {
-      return res.status(400).json({ error: 'Date, startTime, and endTime are required' })
-    }
-    
-    const jobDate = new Date(date as string)
-    const startDateTime = new Date(`${jobDate.toISOString().split('T')[0]}T${startTime}:00`)
-    const endDateTime = new Date(`${jobDate.toISOString().split('T')[0]}T${endTime}:00`)
-    
-    // Find technicians with conflicting job orders
-    const conflictingJobs = await JobOrder.find({
-      date: {
-        $gte: new Date(jobDate.toISOString().split('T')[0]),
-        $lt: new Date(new Date(jobDate).setDate(jobDate.getDate() + 1))
-      },
-      $or: [
-        {
-          'timeRange.start': { $lt: endTime },
-          'timeRange.end': { $gt: startTime }
-        }
-      ]
-    }).select('assignedTechnician')
-    
-    const busyTechnicianIds = conflictingJobs.map(job => job.assignedTechnician)
-    
-    // Get all technicians excluding busy ones
-    const availableTechnicians = await User.find({
-      role: 'technician',
-      _id: { $nin: busyTechnicianIds }
-    }).select('name email level').lean()
-    
-    res.json({ technicians: availableTechnicians })
-  } catch (error) {
-    console.error('Error fetching available technicians:', error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })

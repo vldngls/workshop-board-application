@@ -15,6 +15,7 @@ const STATUS_LABELS: Record<JobStatus | 'all' | 'hold' | 'carried' | 'important'
   'all': 'All Statuses',
   'OG': 'On Going',
   'WP': 'Waiting Parts',
+  'FP': 'For Plotting',
   'QI': 'Quality Inspection',
   'HC': 'Hold Customer',
   'HW': 'Hold Warranty',

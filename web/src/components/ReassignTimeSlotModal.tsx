@@ -1,0 +1,307 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import toast from 'react-hot-toast'
+import type { JobOrder, Technician } from '@/types/jobOrder'
+
+interface ReassignTimeSlotModalProps {
+  onClose: () => void
+  technicianId: string
+  technicianName: string
+  date: string
+  startTime: string
+  endTime: string
+  onJobAssigned: () => void
+}
+
+interface AvailableJob extends JobOrder {
+  originalDuration: number
+  canFit: boolean
+  suggestedDuration: number
+}
+
+export default function ReassignTimeSlotModal({
+  onClose,
+  technicianId,
+  technicianName,
+  date,
+  startTime,
+  endTime,
+  onJobAssigned
+}: ReassignTimeSlotModalProps) {
+  const [availableJobs, setAvailableJobs] = useState<AvailableJob[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+  const [adjustedDuration, setAdjustedDuration] = useState<number>(30)
+  const [assigning, setAssigning] = useState(false)
+  const [showCreateNew, setShowCreateNew] = useState(false)
+  const [availableMinutes, setAvailableMinutes] = useState(0)
+
+  useEffect(() => {
+    fetchAvailableJobs()
+  }, [date, startTime, endTime])
+
+  const fetchAvailableJobs = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(
+        `/api/job-orders/available-for-slot?date=${date}&startTime=${startTime}&endTime=${endTime}`
+      )
+      if (!response.ok) throw new Error('Failed to fetch available jobs')
+      const data = await response.json()
+      setAvailableJobs(data.jobs || [])
+      setAvailableMinutes(data.availableMinutes || 0)
+    } catch (error) {
+      console.error('Error fetching available jobs:', error)
+      toast.error('Failed to fetch available jobs')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const calculateEndTime = (start: string, durationMinutes: number): string => {
+    const [hour, minute] = start.split(':').map(Number)
+    const totalMinutes = hour * 60 + minute + durationMinutes
+    const endHour = Math.floor(totalMinutes / 60)
+    const endMinute = totalMinutes % 60
+    return `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`
+  }
+
+  const handleSelectJob = (job: AvailableJob) => {
+    setSelectedJobId(job._id)
+    setAdjustedDuration(job.suggestedDuration)
+  }
+
+  const handleAssignJob = async () => {
+    if (!selectedJobId) return
+
+    try {
+      setAssigning(true)
+      const calculatedEndTime = calculateEndTime(startTime, adjustedDuration)
+
+      const response = await fetch(`/api/job-orders/${selectedJobId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignedTechnician: technicianId,
+          timeRange: {
+            start: startTime,
+            end: calculatedEndTime
+          },
+          status: 'OG',
+          date: date
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to assign job')
+      }
+
+      toast.success('Job assigned successfully!')
+      onJobAssigned()
+      onClose()
+    } catch (error: any) {
+      console.error('Error assigning job:', error)
+      toast.error(error.message || 'Failed to assign job')
+    } finally {
+      setAssigning(false)
+    }
+  }
+
+  const formatMinutesToHours = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (hours > 0 && mins > 0) return `${hours}h ${mins}m`
+    if (hours > 0) return `${hours}h`
+    return `${mins}m`
+  }
+
+  const formatTime = (timeStr: string): string => {
+    const [hours, minutes] = timeStr.split(':')
+    const hour = parseInt(hours)
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+    return `${displayHour}:${minutes} ${ampm}`
+  }
+
+  return (
+    <div className="modal-backdrop">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900">Assign Other Job?</h3>
+              <p className="text-sm text-gray-600 mt-2">
+                Technician: <span className="font-medium">{technicianName}</span>
+              </p>
+              <p className="text-sm text-gray-600">
+                Available Time: <span className="font-medium">{formatTime(startTime)} - {formatTime(endTime)}</span>
+                <span className="ml-2 text-blue-600">({formatMinutesToHours(availableMinutes)} available)</span>
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-2xl"
+            >
+              ×
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="text-gray-600">Loading available jobs...</div>
+            </div>
+          ) : (
+            <>
+              {/* Available Jobs List */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold mb-4">Available Job Orders</h4>
+                
+                {availableJobs.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <p className="text-gray-600">No unassigned jobs available</p>
+                    <p className="text-sm text-gray-500 mt-2">You can create a new job order</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {availableJobs.map((job) => (
+                      <div
+                        key={job._id}
+                        onClick={() => handleSelectJob(job)}
+                        className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                          selectedJobId === job._id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              {job.isImportant && (
+                                <span className="text-yellow-500 text-lg">★</span>
+                              )}
+                              {job.carriedOver && (
+                                <span className="text-red-500 text-sm">🔄</span>
+                              )}
+                              <h5 className="font-bold text-gray-900">{job.jobNumber}</h5>
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                job.status === 'WP' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {job.status}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">{job.plateNumber} | {job.vin}</p>
+                            <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                              <span>Tasks: {job.jobList.filter(t => t.status === 'Finished').length}/{job.jobList.length}</span>
+                              <span>Parts: {job.parts.filter(p => p.availability === 'Available').length}/{job.parts.length}</span>
+                              <span>Original Duration: {formatMinutesToHours(job.originalDuration)}</span>
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            {job.canFit ? (
+                              <span className="text-green-600 text-sm font-medium">✓ Fits</span>
+                            ) : (
+                              <span className="text-orange-600 text-sm font-medium">Adjust needed</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Selected Job Details */}
+              {selectedJobId && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <h4 className="font-semibold text-blue-900 mb-3">Adjust Time Slot</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Start Time
+                      </label>
+                      <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700">
+                        {formatTime(startTime)}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Duration (minutes) *
+                      </label>
+                      <input
+                        type="number"
+                        value={adjustedDuration}
+                        onChange={(e) => setAdjustedDuration(parseInt(e.target.value) || 30)}
+                        min="30"
+                        max={availableMinutes}
+                        step="30"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Max: {formatMinutesToHours(availableMinutes)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Calculated End Time
+                    </label>
+                    <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-700">
+                      {formatTime(calculateEndTime(startTime, adjustedDuration))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-between items-center gap-4 pt-4 border-t">
+                <button
+                  onClick={() => setShowCreateNew(true)}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  + Create New Job Order
+                </button>
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={onClose}
+                    className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium transition-colors"
+                  >
+                    Skip
+                  </button>
+                  <button
+                    onClick={handleAssignJob}
+                    disabled={!selectedJobId || assigning || adjustedDuration <= 0 || adjustedDuration > availableMinutes}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg font-medium transition-colors"
+                  >
+                    {assigning ? 'Assigning...' : 'Assign Selected Job'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Note about creating new job */}
+          {showCreateNew && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>Note:</strong> Please use the "Add Job Order" button in the main interface to create a new job order with this time slot ({formatTime(startTime)} - {formatTime(endTime)}).
+              </p>
+              <button
+                onClick={() => {
+                  onClose()
+                  // Could trigger parent to open Add Job Order modal with pre-filled time
+                }}
+                className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Close and create new job →
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+

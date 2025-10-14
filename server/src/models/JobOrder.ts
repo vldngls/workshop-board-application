@@ -1,6 +1,6 @@
 import mongoose, { Schema } from 'mongoose'
 
-export type JobStatus = 'OG' | 'WP' | 'QI' | 'HC' | 'HW' | 'HI' | 'FR' | 'FU' | 'CP'
+export type JobStatus = 'OG' | 'WP' | 'FP' | 'QI' | 'HC' | 'HW' | 'HI' | 'FR' | 'FU' | 'CP'
 export type JobItemStatus = 'Finished' | 'Unfinished'
 export type QIStatus = 'pending' | 'approved' | 'rejected' | null
 
@@ -25,6 +25,7 @@ export interface JobOrderDoc {
     start: string // Format: "07:00"
     end: string   // Format: "12:00"
   }
+  actualEndTime?: string  // Format: "10:00" - when job actually ended (if early/interrupted)
   jobList: JobItem[]
   parts: Part[]
   status: JobStatus
@@ -67,6 +68,10 @@ const jobOrderSchema = new Schema<JobOrderDoc>({
     start: { type: String, required: true },
     end: { type: String, required: true }
   },
+  actualEndTime: {
+    type: String,
+    required: false  // Only set when job ends early or is interrupted
+  },
   jobList: [{
     description: { type: String, required: true },
     status: { 
@@ -85,7 +90,7 @@ const jobOrderSchema = new Schema<JobOrderDoc>({
   }],
   status: { 
     type: String, 
-    enum: ['OG', 'WP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU', 'CP'], 
+    enum: ['OG', 'WP', 'FP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU', 'CP'], 
     required: true,
     default: 'OG'
   },

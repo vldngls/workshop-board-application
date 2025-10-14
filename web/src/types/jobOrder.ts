@@ -1,4 +1,4 @@
-export type JobStatus = 'OG' | 'WP' | 'QI' | 'HC' | 'HW' | 'HI' | 'FR' | 'FU' | 'CP'
+export type JobStatus = 'OG' | 'WP' | 'FP' | 'QI' | 'HC' | 'HW' | 'HI' | 'FR' | 'FU' | 'CP'
 export type JobItemStatus = 'Finished' | 'Unfinished'
 export type PartAvailability = 'Available' | 'Unavailable'
 export type QIStatus = 'pending' | 'approved' | 'rejected' | null
@@ -32,6 +32,7 @@ export interface JobOrder {
   plateNumber: string
   vin: string
   timeRange: TimeRange
+  actualEndTime?: string  // Format: "10:00" - when job actually ended (if early/interrupted)
   jobList: JobItem[]
   parts: Part[]
   status: JobStatus
@@ -52,6 +53,7 @@ export interface CreateJobOrderRequest {
   jobList: JobItem[]
   parts: Part[]
   date?: string
+  status?: JobStatus
 }
 
 export interface UpdateJobOrderRequest {
@@ -59,6 +61,7 @@ export interface UpdateJobOrderRequest {
   plateNumber?: string
   vin?: string
   timeRange?: TimeRange
+  actualEndTime?: string
   jobList?: JobItem[]
   parts?: Part[]
   status?: JobStatus

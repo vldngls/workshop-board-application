@@ -18,7 +18,8 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
     timeRange: { start: '', end: '' },
     jobList: [{ description: '', status: 'Unfinished' }],
     parts: [{ name: '', availability: 'Available' }],
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    status: 'OG'
   })
   
   const [durationHours, setDurationHours] = useState<number>(2) // Default 2 hours
@@ -144,7 +145,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="modal-backdrop">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
@@ -165,7 +166,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Job Number *
@@ -189,6 +190,28 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status *
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => handleInputChange('status', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="OG">OG - On Going</option>
+                  <option value="WP">WP - Waiting Parts</option>
+                  <option value="FP">FP - For Plotting</option>
+                  <option value="QI">QI - Quality Inspection</option>
+                  <option value="HC">HC - Hold Customer</option>
+                  <option value="HW">HW - Hold Warranty</option>
+                  <option value="HI">HI - Hold Insurance</option>
+                  <option value="FR">FR - For Release</option>
+                  <option value="FU">FU - Finished Unclaimed</option>
+                  <option value="CP">CP - Complete</option>
+                </select>
               </div>
             </div>
 

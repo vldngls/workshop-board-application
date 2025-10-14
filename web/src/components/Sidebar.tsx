@@ -16,6 +16,7 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
           { href: "/dashboard", label: "Dashboard" },
           { href: "/dashboard/workshop", label: "Workshop" },
           { href: "/dashboard/job-orders", label: "Job Orders" },
+          { href: "/dashboard/appointments", label: "Appointments" },
           { href: "/dashboard/account-management", label: "Account Management" },
         ],
       }
@@ -26,6 +27,7 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
           { href: "/dashboard", label: "Dashboard" },
           { href: "/dashboard/workshop", label: "Workshop" },
           { href: "/dashboard/job-orders", label: "Job Orders" },
+          { href: "/dashboard/appointments", label: "Appointments" },
         ],
       }
     case "technician":

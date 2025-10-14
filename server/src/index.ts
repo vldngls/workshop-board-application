@@ -6,6 +6,7 @@ import { connectToMongo } from './config/mongo.js';
 import authRouter from './controllers/auth.js';
 import usersRouter from './controllers/users.js';
 import jobOrdersRouter from './controllers/jobOrders.js';
+import appointmentsRouter from './controllers/appointments.js';
 
 dotenv.config();
 
@@ -55,6 +56,7 @@ app.get('/', (_req, res) => {
 app.use('/auth', authRouter); // login/register without JWT
 app.use('/users', usersRouter); // protected by JWT
 app.use('/job-orders', jobOrdersRouter); // protected by JWT
+app.use('/appointments', appointmentsRouter); // protected by JWT
 
 // Admin-only endpoint using JWT middleware
 import { requireRole } from './middleware/auth.js';
