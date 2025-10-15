@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { FiAlertTriangle, FiRefreshCw } from 'react-icons/fi'
 import { calculateWorkDuration, formatTime } from '@/utils/timetableUtils'
 import type { JobOrderWithDetails } from '@/utils/timetableUtils'
 
@@ -71,7 +72,7 @@ const JobDetailsModal = memo(({
                   value={job.status}
                   onChange={(e) => onUpdateJobStatus(job._id, e.target.value)}
                   disabled={updating}
-                  className="px-3 py-1 rounded-lg text-sm font-medium border-2 border-gray-300 focus:outline-none focus:border-blue-500"
+                  className="px-3 py-1 rounded-xl text-sm font-medium border-2 border-gray-300 focus:outline-none focus:border-blue-500"
                 >
                   <option value="OG">OG - On Going</option>
                   <option value="WP">WP - Waiting Parts</option>
@@ -111,7 +112,10 @@ const JobDetailsModal = memo(({
                   </button>
                 </div>
                 <p className="text-lg">{job.assignedTechnician ? job.assignedTechnician.name : (
-                  <span className="text-red-600 font-semibold">⚠️ Unassigned</span>
+                  <span className="text-red-600 font-semibold flex items-center gap-1">
+                    <FiAlertTriangle size={14} />
+                    Unassigned
+                  </span>
                 )}</p>
               </div>
               <div>
@@ -127,7 +131,7 @@ const JobDetailsModal = memo(({
             {job.carriedOver && (
               <div className="bg-red-500/20 backdrop-blur-sm border border-red-300/30 rounded-xl p-3">
                 <div className="flex items-center gap-2 text-red-800">
-                  <span className="text-xl">🔄</span>
+                  <FiRefreshCw size={20} />
                   <span className="font-semibold">This job was carried over from a previous day</span>
                 </div>
               </div>
@@ -137,7 +141,7 @@ const JobDetailsModal = memo(({
               <label className="text-sm font-medium text-gray-600 mb-2 block">Job Tasks</label>
               <div className="space-y-2">
                 {job.jobList.map((task, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                  <div key={index} className="flex items-center justify-between p-3 bg-white rounded-xl border">
                     <span className="text-sm flex-1">{task.description}</span>
                     <select
                       value={task.status}
@@ -161,7 +165,7 @@ const JobDetailsModal = memo(({
               <label className="text-sm font-medium text-gray-600 mb-2 block">Parts Required</label>
               <div className="space-y-2">
                 {job.parts.map((part, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                  <div key={index} className="flex items-center justify-between p-3 bg-white rounded-xl border">
                     <span className="text-sm flex-1">{part.name}</span>
                     <select
                       value={part.availability}

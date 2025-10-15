@@ -3,6 +3,23 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import toast, { Toaster } from 'react-hot-toast'
+import { 
+  FiCalendar, 
+  FiClock, 
+  FiSettings, 
+  FiClipboard, 
+  FiTool, 
+  FiCheckCircle, 
+  FiPause, 
+  FiRefreshCw, 
+  FiStar, 
+  FiSearch, 
+  FiPackage,
+  FiBarChart,
+  FiAlertTriangle,
+  FiUsers,
+  FiSettings as FiWrench
+} from 'react-icons/fi'
 import type { JobOrder } from '@/types/jobOrder'
 
 interface DashboardStats {
@@ -50,6 +67,7 @@ export default function MainDashboard() {
   const [showBreakSettings, setShowBreakSettings] = useState(false)
   const [showJobDetailsModal, setShowJobDetailsModal] = useState(false)
   const [selectedJobForDetails, setSelectedJobForDetails] = useState<JobOrderWithTechnician | null>(null)
+  const [currentTime, setCurrentTime] = useState(new Date())
   
   // Break time settings (stored in localStorage)
   const [breakStart, setBreakStart] = useState('12:00')
@@ -65,6 +83,15 @@ export default function MainDashboard() {
 
   useEffect(() => {
     fetchDashboardData()
+  }, [])
+
+  // Update current time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000) // Update every minute
+
+    return () => clearInterval(timer)
   }, [])
 
   // Calculate end time from start time and duration, accounting for lunch break
@@ -167,8 +194,103 @@ export default function MainDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading dashboard...</div>
+      <div className="space-y-6">
+        <Toaster position="top-right" />
+        
+        {/* Loading Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 to-slate-700 p-8 text-white">
+          <div className="absolute inset-0 bg-black/5"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="h-8 bg-white/20 rounded-md w-80 mb-2 animate-pulse"></div>
+                <div className="h-5 bg-white/20 rounded-md w-96 mb-3 animate-pulse"></div>
+                <div className="flex items-center gap-6 mt-4">
+                  <div className="h-5 bg-white/20 rounded-md w-48 animate-pulse"></div>
+                  <div className="h-5 bg-white/20 rounded-md w-24 animate-pulse"></div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="w-16 h-16 bg-white/20 rounded-md mb-2 animate-pulse"></div>
+                <div className="h-5 bg-white/20 rounded-md w-32 animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Loading Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="relative overflow-hidden rounded-xl bg-white p-4 border border-slate-200">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-10 h-10 bg-gray-200 rounded-md mb-2 animate-pulse"></div>
+                <div className="h-3 bg-gray-200 rounded-md w-12 mb-1 animate-pulse"></div>
+                <div className="h-5 bg-gray-200 rounded-md w-6 animate-pulse"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Loading Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-gray-200 rounded-md animate-pulse"></div>
+                <div className="flex-1">
+                  <div className="h-5 bg-gray-200 rounded-md w-32 mb-1 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded-md w-24 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Loading Widgets */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200">
+            <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-gray-200 rounded-md animate-pulse"></div>
+              <div>
+                <div className="h-5 bg-gray-200 rounded-md w-40 mb-1 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded-md w-32 animate-pulse"></div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-md p-4 border border-slate-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="h-4 bg-gray-200 rounded-md w-20 animate-pulse"></div>
+                    <div className="w-5 h-5 bg-gray-200 rounded-sm animate-pulse"></div>
+                  </div>
+                  <div className="h-6 bg-gray-200 rounded-md w-12 mb-1 animate-pulse"></div>
+                  <div className="h-3 bg-gray-200 rounded-md w-24 animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200">
+            <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-gray-200 rounded-md animate-pulse"></div>
+              <div>
+                <div className="h-5 bg-gray-200 rounded-md w-24 mb-1 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded-md w-28 animate-pulse"></div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-md p-3 border border-slate-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded-md w-20 animate-pulse"></div>
+                  </div>
+                  <div className="h-3 bg-gray-200 rounded-md w-24 animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -177,87 +299,132 @@ export default function MainDashboard() {
     <div className="space-y-6">
       <Toaster position="top-right" />
       
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <div className="text-sm text-gray-600">
-            Overview of all job orders and key metrics
+      {/* Professional Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 to-slate-700 p-8 text-white">
+        <div className="absolute inset-0 bg-black/5"></div>
+        <div className="relative z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-2 text-white">Workshop Dashboard</h1>
+              <p className="text-slate-300 text-base font-medium">
+                Real-time overview of job orders and workshop operations
+              </p>
+              <div className="flex items-center gap-6 mt-4">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <FiCalendar size={18} />
+                  <span className="font-medium text-sm">{currentTime.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <FiClock size={18} />
+                  <span className="font-medium text-sm">{currentTime.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })}</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="w-16 h-16 bg-slate-600/50 rounded-md flex items-center justify-center mb-2">
+                <FiWrench size={32} color="white" />
+              </div>
+              <div className="text-slate-300 font-medium text-sm">Workshop Management</div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Statistics Grid - Clickable */}
+      {/* Professional Statistics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
         {/* Total Jobs */}
-        <Link href="/dashboard/job-orders" className="floating-card p-3 cursor-pointer">
+        <Link href="/dashboard/job-orders" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <span className="text-xl mb-1">📋</span>
-            <p className="text-xs text-gray-600 mb-0.5 font-medium">Total</p>
-            <p className="text-xl font-bold text-gray-900">{stats.total}</p>
+            <div className="w-10 h-10 bg-gray-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-gray-200 transition-colors duration-200">
+              <FiClipboard size={18} color="#475569" />
+            </div>
+            <p className="text-xs text-slate-600 mb-1 font-medium">Total</p>
+            <p className="text-lg font-bold text-slate-900">{stats.total}</p>
           </div>
         </Link>
 
         {/* On Going */}
-        <Link href="/dashboard/job-orders?filter=OG" className="floating-card p-3 cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=OG" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <span className="text-xl mb-1">🔧</span>
-            <p className="text-xs text-gray-600 mb-0.5 font-medium">On Going</p>
-            <p className="text-xl font-bold text-blue-600">{stats.onGoing}</p>
+            <div className="w-10 h-10 bg-blue-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors duration-200">
+              <FiTool size={18} color="#2563eb" />
+            </div>
+            <p className="text-xs text-slate-600 mb-1 font-medium">On Going</p>
+            <p className="text-lg font-bold text-slate-900">{stats.onGoing}</p>
           </div>
         </Link>
 
         {/* For Release */}
-        <Link href="/dashboard/job-orders?filter=FR" className="floating-card p-3 cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=FR" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <span className="text-xl mb-1">✅</span>
-            <p className="text-xs text-gray-600 mb-0.5 font-medium">Release</p>
-            <p className="text-xl font-bold text-green-600">{stats.forRelease}</p>
+            <div className="w-10 h-10 bg-green-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-green-100 transition-colors duration-200">
+              <FiCheckCircle size={18} color="#16a34a" />
+            </div>
+            <p className="text-xs text-slate-600 mb-1 font-medium">For Release</p>
+            <p className="text-lg font-bold text-slate-900">{stats.forRelease}</p>
           </div>
         </Link>
 
         {/* On Hold */}
-        <Link href="/dashboard/job-orders?filter=hold" className="floating-card p-3 cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=hold" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <span className="text-xl mb-1">⏸️</span>
-            <p className="text-xs text-gray-600 mb-0.5 font-medium">On Hold</p>
-            <p className="text-xl font-bold text-red-600">{stats.onHold}</p>
+            <div className="w-10 h-10 bg-red-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-red-100 transition-colors duration-200">
+              <FiPause size={18} color="#dc2626" />
+            </div>
+            <p className="text-xs text-slate-600 mb-1 font-medium">On Hold</p>
+            <p className="text-lg font-bold text-slate-900">{stats.onHold}</p>
           </div>
         </Link>
 
         {/* Carried Over */}
-        <Link href="/dashboard/job-orders?filter=carried" className="floating-card p-3 cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=carried" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <span className="text-xl mb-1">🔄</span>
-            <p className="text-xs text-gray-600 mb-0.5 font-medium">Carried</p>
-            <p className="text-xl font-bold text-orange-600">{stats.carriedOver}</p>
+            <div className="w-10 h-10 bg-orange-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-orange-100 transition-colors duration-200">
+              <FiRefreshCw size={18} color="#ea580c" />
+            </div>
+            <p className="text-xs text-slate-600 mb-1 font-medium">Carried Over</p>
+            <p className="text-lg font-bold text-slate-900">{stats.carriedOver}</p>
           </div>
         </Link>
 
         {/* Important */}
-        <Link href="/dashboard/job-orders?filter=important" className="floating-card p-3 cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=important" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <span className="text-xl mb-1">⭐</span>
-            <p className="text-xs text-gray-600 mb-0.5 font-medium">Important</p>
-            <p className="text-xl font-bold text-yellow-600">{stats.important}</p>
+            <div className="w-10 h-10 bg-yellow-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-yellow-100 transition-colors duration-200">
+              <FiStar size={18} color="#ca8a04" />
+            </div>
+            <p className="text-xs text-slate-600 mb-1 font-medium">Important</p>
+            <p className="text-lg font-bold text-slate-900">{stats.important}</p>
           </div>
         </Link>
 
         {/* Quality Inspection */}
-        <Link href="/dashboard/job-orders?filter=QI" className="floating-card p-3 cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=QI" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <span className="text-xl mb-1">🔍</span>
-            <p className="text-xs text-gray-600 mb-0.5 font-medium">QI</p>
-            <p className="text-xl font-bold text-purple-600">{stats.qualityInspection}</p>
+            <div className="w-10 h-10 bg-purple-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-purple-100 transition-colors duration-200">
+              <FiSearch size={18} color="#9333ea" />
+            </div>
+            <p className="text-xs text-slate-600 mb-1 font-medium">Quality Check</p>
+            <p className="text-lg font-bold text-slate-900">{stats.qualityInspection}</p>
           </div>
         </Link>
 
         {/* Finished Unclaimed */}
-        <Link href="/dashboard/job-orders?filter=unclaimed" className="floating-card p-3 cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=unclaimed" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <span className="text-xl mb-1">📦</span>
-            <p className="text-xs text-gray-600 mb-0.5 font-medium">Unclaimed</p>
-            <p className="text-xl font-bold text-gray-600">{stats.finishedUnclaimed}</p>
+            <div className="w-10 h-10 bg-gray-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-gray-100 transition-colors duration-200">
+              <FiPackage size={18} color="#6b7280" />
+            </div>
+            <p className="text-xs text-slate-600 mb-1 font-medium">Unclaimed</p>
+            <p className="text-lg font-bold text-slate-900">{stats.finishedUnclaimed}</p>
           </div>
         </Link>
       </div>
@@ -405,7 +572,7 @@ export default function MainDashboard() {
                 <div key={job._id} className="bg-orange-500/20 backdrop-blur-sm border border-orange-300/30 rounded-xl p-3 hover:shadow-lg transition-all w-64 flex-shrink-0 hover:-translate-y-1">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-bold text-sm text-orange-900">{job.jobNumber}</h3>
-                    <span className={`px-2 py-1 rounded-lg text-xs font-semibold backdrop-blur-sm ${
+                    <span className={`px-2 py-1 rounded-md text-xs font-semibold backdrop-blur-sm ${
                       job.status === 'OG' ? 'bg-blue-500/20 text-blue-700 border border-blue-300/30' :
                       job.status === 'QI' ? 'bg-purple-500/20 text-purple-700 border border-purple-300/30' :
                       job.status === 'WP' ? 'bg-orange-500/20 text-orange-700 border border-orange-300/30' :
@@ -475,7 +642,7 @@ export default function MainDashboard() {
                 <div key={job._id} className="bg-orange-500/20 backdrop-blur-sm border-2 border-orange-400/30 rounded-xl p-3 hover:shadow-lg transition-all w-64 flex-shrink-0 hover:-translate-y-1">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-bold text-sm text-orange-900">{job.jobNumber}</h3>
-                    <span className={`px-2 py-1 rounded-lg text-xs font-semibold backdrop-blur-sm ${
+                    <span className={`px-2 py-1 rounded-md text-xs font-semibold backdrop-blur-sm ${
                       job.status === 'OG' ? 'bg-blue-500/20 text-blue-700 border border-blue-300/30' :
                       job.status === 'QI' ? 'bg-purple-500/20 text-purple-700 border border-purple-300/30' :
                       job.status === 'WP' ? 'bg-orange-500/20 text-orange-700 border border-orange-300/30' :
@@ -528,7 +695,7 @@ export default function MainDashboard() {
                 <div key={job._id} className="bg-yellow-500/20 backdrop-blur-sm border border-yellow-300/30 rounded-xl p-3 hover:shadow-lg transition-all w-64 flex-shrink-0 hover:-translate-y-1">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-bold text-sm text-yellow-900">{job.jobNumber}</h3>
-                    <span className={`px-2 py-1 rounded-lg text-xs font-semibold backdrop-blur-sm ${
+                    <span className={`px-2 py-1 rounded-md text-xs font-semibold backdrop-blur-sm ${
                       job.status === 'OG' ? 'bg-blue-500/20 text-blue-700 border border-blue-300/30' :
                       job.status === 'QI' ? 'bg-purple-500/20 text-purple-700 border border-purple-300/30' :
                       job.status === 'WP' ? 'bg-orange-500/20 text-orange-700 border border-orange-300/30' :
@@ -558,55 +725,184 @@ export default function MainDashboard() {
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Link href="/dashboard/job-orders" className="floating-card p-6">
+      {/* Professional Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Link href="/dashboard/job-orders" className="group relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-blue-300/30">
-              <span className="text-2xl">📋</span>
+            <div className="w-12 h-12 bg-gray-50 rounded-md flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
+              <FiClipboard size={20} color="#475569" />
             </div>
-            <div>
-              <h3 className="font-bold text-lg text-gray-900">Job Orders</h3>
-              <p className="text-sm text-gray-600 font-medium">View all job orders</p>
+            <div className="flex-1">
+              <h3 className="font-bold text-lg text-slate-900 mb-1">Job Orders</h3>
+              <p className="text-sm text-slate-600 font-medium">Manage all job orders</p>
             </div>
           </div>
         </Link>
 
-        <Link href="/dashboard/workshop" className="floating-card p-6">
+        <Link href="/dashboard/workshop" className="group relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-green-300/30">
-              <span className="text-2xl">🔧</span>
+            <div className="w-12 h-12 bg-gray-50 rounded-md flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
+              <FiTool size={20} color="#475569" />
             </div>
-            <div>
-              <h3 className="font-bold text-lg text-gray-900">Workshop Board</h3>
-              <p className="text-sm text-gray-600 font-medium">View timetable</p>
+            <div className="flex-1">
+              <h3 className="font-bold text-lg text-slate-900 mb-1">Workshop Board</h3>
+              <p className="text-sm text-slate-600 font-medium">View timetable & schedule</p>
             </div>
           </div>
         </Link>
 
-        <Link href="/dashboard/account-management" className="floating-card p-6">
+        <Link href="/dashboard/account-management" className="group relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-purple-300/30">
-              <span className="text-2xl">👥</span>
+            <div className="w-12 h-12 bg-gray-50 rounded-md flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
+              <FiUsers size={20} color="#475569" />
             </div>
-            <div>
-              <h3 className="font-bold text-lg text-gray-900">Account Management</h3>
-              <p className="text-sm text-gray-600 font-medium">Manage users</p>
+            <div className="flex-1">
+              <h3 className="font-bold text-lg text-slate-900 mb-1">Account Management</h3>
+              <p className="text-sm text-slate-600 font-medium">Manage users & roles</p>
             </div>
           </div>
         </Link>
 
-        <button onClick={() => setShowBreakSettings(true)} className="floating-card p-6 text-left">
+        <button onClick={() => setShowBreakSettings(true)} className="group relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 text-left">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-orange-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-orange-300/30">
-              <span className="text-2xl">⏰</span>
+            <div className="w-12 h-12 bg-gray-50 rounded-md flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
+              <FiSettings size={20} color="#475569" />
             </div>
-            <div>
-              <h3 className="font-bold text-lg text-gray-900">Break Settings</h3>
-              <p className="text-sm text-gray-600 font-medium">{breakStart} - {breakEnd}</p>
+            <div className="flex-1">
+              <h3 className="font-bold text-lg text-slate-900 mb-1">Break Settings</h3>
+              <p className="text-sm text-slate-600 font-medium">{breakStart} - {breakEnd}</p>
             </div>
           </div>
         </button>
+      </div>
+
+      {/* Professional Dashboard Widgets */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Performance Metrics Widget */}
+        <div className="lg:col-span-2 relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-gray-50 rounded-md flex items-center justify-center">
+              <FiBarChart size={18} color="#475569" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg text-slate-900">Performance Metrics</h3>
+              <p className="text-sm text-slate-600">Today's workshop efficiency</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-md p-4 border border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-slate-700">Completion Rate</span>
+                <FiCheckCircle size={18} color="#16a34a" />
+              </div>
+              <div className="text-2xl font-bold text-slate-900">
+                {stats.total > 0 ? Math.round((stats.forRelease / stats.total) * 100) : 0}%
+              </div>
+              <div className="text-xs text-slate-600 mt-1">
+                {stats.forRelease} of {stats.total} jobs completed
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-md p-4 border border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-slate-700">Active Jobs</span>
+                <FiTool size={18} color="#2563eb" />
+              </div>
+              <div className="text-2xl font-bold text-slate-900">{stats.onGoing}</div>
+              <div className="text-xs text-slate-600 mt-1">
+                Currently in progress
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-md p-4 border border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-slate-700">Pending QI</span>
+                <FiSearch size={18} color="#9333ea" />
+              </div>
+              <div className="text-2xl font-bold text-slate-900">{stats.qualityInspection}</div>
+              <div className="text-xs text-slate-600 mt-1">
+                Awaiting inspection
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-md p-4 border border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-slate-700">On Hold</span>
+                <FiPause size={18} color="#dc2626" />
+              </div>
+              <div className="text-2xl font-bold text-slate-900">{stats.onHold}</div>
+              <div className="text-xs text-slate-600 mt-1">
+                Require attention
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Alerts Widget */}
+        <div className="relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-gray-50 rounded-md flex items-center justify-center">
+              <FiAlertTriangle size={18} color="#475569" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg text-slate-900">Quick Alerts</h3>
+              <p className="text-sm text-slate-600">Items needing attention</p>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            {anomalyJobs.length > 0 && (
+              <div className="bg-orange-50 rounded-md p-3 border border-orange-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <FiAlertTriangle size={14} color="#ea580c" />
+                  <span className="font-semibold text-orange-900 text-sm">Pending Jobs</span>
+                </div>
+                <p className="text-xs text-orange-800">{anomalyJobs.length} jobs need attention</p>
+              </div>
+            )}
+            
+            {carriedOverJobs.length > 0 && (
+              <div className="bg-blue-50 rounded-md p-3 border border-blue-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <FiRefreshCw size={14} color="#2563eb" />
+                  <span className="font-semibold text-blue-900 text-sm">Carried Over</span>
+                </div>
+                <p className="text-xs text-blue-800">{carriedOverJobs.length} jobs need reassignment</p>
+              </div>
+            )}
+            
+            {stats.important > 0 && (
+              <div className="bg-yellow-50 rounded-md p-3 border border-yellow-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <FiStar size={14} color="#ca8a04" />
+                  <span className="font-semibold text-yellow-900 text-sm">Important Jobs</span>
+                </div>
+                <p className="text-xs text-yellow-800">{stats.important} high-priority jobs</p>
+              </div>
+            )}
+            
+            {stats.finishedUnclaimed > 0 && (
+              <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <FiPackage size={14} color="#6b7280" />
+                  <span className="font-semibold text-gray-900 text-sm">Unclaimed</span>
+                </div>
+                <p className="text-xs text-gray-800">{stats.finishedUnclaimed} jobs ready for pickup</p>
+              </div>
+            )}
+            
+            {anomalyJobs.length === 0 && carriedOverJobs.length === 0 && stats.important === 0 && stats.finishedUnclaimed === 0 && (
+              <div className="bg-green-50 rounded-md p-3 border border-green-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <FiCheckCircle size={14} color="#16a34a" />
+                  <span className="font-semibold text-green-900 text-sm">All Good!</span>
+                </div>
+                <p className="text-xs text-green-800">No urgent items requiring attention</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Reassignment Modal */}
@@ -1377,7 +1673,7 @@ function ReassignmentModal({ job, breakStart, breakEnd, calculateEndTime, onClos
                         <h5 className="font-bold text-sm mb-2">Existing Jobs ({technicianSchedule.length})</h5>
                         <div className="space-y-1 max-h-32 overflow-y-auto">
                           {technicianSchedule.map((j: any) => (
-                            <div key={j._id} className="text-xs flex justify-between items-center p-2 bg-white/40 rounded-lg">
+                            <div key={j._id} className="text-xs flex justify-between items-center p-2 bg-white/40 rounded-xl">
                               <span className="font-bold">{j.jobNumber}</span>
                               <span className="text-gray-700 font-medium">{j.timeRange.start} - {j.timeRange.end}</span>
                             </div>

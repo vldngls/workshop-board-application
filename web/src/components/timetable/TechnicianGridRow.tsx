@@ -32,7 +32,7 @@ const TechnicianGridRow = memo(({
     <>
       {/* Technician Name Cell */}
       <div 
-        className="px-2 py-3 text-sm font-medium text-gray-900 bg-gray-50 border-b border-gray-300 flex items-center"
+        className="px-2 py-3 text-sm font-medium text-gray-900 bg-white border-b border-gray-300 flex items-center"
         style={{ 
           gridRow: rowIndex + 2,
           borderRight: '1px solid #d1d5db'

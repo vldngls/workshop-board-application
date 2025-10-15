@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { FiCalendar } from 'react-icons/fi'
 import { getAppointmentSpan, formatTime } from '@/utils/timetableUtils'
 import type { Appointment } from '@/utils/timetableUtils'
 
@@ -31,7 +32,10 @@ const AppointmentBlock = memo(({ appointment, onClick, onDelete }: AppointmentBl
     >
       <div className="p-1 h-full flex flex-col justify-between">
         <div>
-          <div className="truncate font-semibold text-xs">📅 {appointment.plateNumber}</div>
+          <div className="truncate font-semibold text-xs flex items-center gap-1">
+            <FiCalendar size={12} />
+            {appointment.plateNumber}
+          </div>
           <div className="truncate text-xs opacity-75">
             {formatTime(appointment.timeRange.start)}-{formatTime(appointment.timeRange.end)}
           </div>

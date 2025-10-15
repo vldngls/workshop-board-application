@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { FiStar, FiRefreshCw } from 'react-icons/fi'
 import { STATUS_COLORS, getJobSpan, getJobOffset, getJobProgress, formatTime } from '@/utils/timetableUtils'
 import type { JobOrderWithDetails } from '@/utils/timetableUtils'
 
@@ -76,13 +77,13 @@ const JobBlock = memo(({ job, highlightedJobId, breakStart, breakEnd, onClick }:
       title={`${job.jobNumber} - ${job.plateNumber} (${progress.toFixed(0)}% complete) - ${formatTime(job.timeRange.start)} to ${formatTime(job.timeRange.end)}`}
     >
       {job.isImportant && (
-        <div className="absolute top-0 right-0 text-yellow-500 text-lg">
-          ★
+        <div className="absolute top-0 right-0 text-yellow-500">
+          <FiStar size={14} />
         </div>
       )}
       {job.carriedOver && (
-        <div className="absolute top-0 left-0 text-red-500 text-xs">
-          🔄
+        <div className="absolute top-0 left-0 text-red-500">
+          <FiRefreshCw size={12} />
         </div>
       )}
       <div className="truncate font-semibold">{job.jobNumber}</div>

@@ -3,13 +3,13 @@ import type { JobOrderWithDetails } from '@/utils/timetableUtils'
 
 interface JobStatusSectionProps {
   title: string
-  icon: string
+  icon: React.ReactNode
   jobs: JobOrderWithDetails[]
   bgColor: string
   borderColor: string
   textColor: string
   badgeColor: string
-  emptyIcon: string
+  emptyIcon: React.ReactNode
   emptyText: string
   onJobClick?: (job: JobOrderWithDetails) => void
   actions?: React.ReactNode
@@ -39,7 +39,7 @@ const JobStatusSection = memo(({
           <span className="text-lg">{icon}</span>
           {title}
         </h3>
-        <span className={`${hasJobs ? badgeColor : 'bg-gray-300/50 text-gray-600'} px-2.5 py-1 rounded-lg text-xs font-bold`}>
+        <span className={`${hasJobs ? badgeColor : 'bg-gray-300/50 text-gray-600'} px-2.5 py-1 rounded-md text-xs font-bold`}>
           {jobs.length}
         </span>
       </div>
@@ -54,7 +54,7 @@ const JobStatusSection = memo(({
           {jobs.map((job) => (
             <div 
               key={job._id} 
-              className={`bg-white/60 backdrop-blur-sm border border-white/60 rounded-xl p-3 hover:bg-white/80 transition-all hover:-translate-y-0.5 ${onJobClick ? 'cursor-pointer' : ''}`}
+              className={`bg-white/50 backdrop-blur-sm border border-white/60 rounded-xl p-3 hover:bg-white/60 transition-all hover:-translate-y-0.5 ${onJobClick ? 'cursor-pointer' : ''}`}
               onClick={onJobClick ? () => onJobClick(job) : undefined}
               onMouseDown={(e) => e.stopPropagation()}
             >

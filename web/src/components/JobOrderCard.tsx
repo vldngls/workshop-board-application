@@ -2,6 +2,7 @@
 
 import { useState, memo, useCallback } from 'react'
 import toast from 'react-hot-toast'
+import { FiCalendar, FiRefreshCw, FiAlertTriangle } from 'react-icons/fi'
 import type { JobOrder, JobStatus, JobItemStatus } from '@/types/jobOrder'
 import { 
   useUpdateJobOrderStatus, 
@@ -186,20 +187,20 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
       {/* Source Type & Carried Over Badge */}
       <div className="absolute top-3 left-3 flex gap-1.5">
         {jobOrder.sourceType === 'appointment' && (
-          <div className="bg-blue-500/20 backdrop-blur-sm text-blue-700 px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 border border-blue-300/30">
-            <span className="text-sm">📅</span>
+          <div className="bg-blue-500/20 backdrop-blur-sm text-blue-700 px-2 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 border border-blue-300/30">
+            <FiCalendar size={14} />
             <span>Appointment</span>
           </div>
         )}
         {jobOrder.sourceType === 'carry-over' && (
-          <div className="bg-purple-500/20 backdrop-blur-sm text-purple-700 px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 border border-purple-300/30">
-            <span className="text-sm">🔄</span>
+          <div className="bg-purple-500/20 backdrop-blur-sm text-purple-700 px-2 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 border border-purple-300/30">
+            <FiRefreshCw size={14} />
             <span>Carry-over</span>
           </div>
         )}
         {jobOrder.carriedOver && (
-          <div className="bg-red-500/20 backdrop-blur-sm text-red-700 px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 border border-red-300/30">
-            <span className="text-sm">⚠️</span>
+          <div className="bg-red-500/20 backdrop-blur-sm text-red-700 px-2 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 border border-red-300/30">
+            <FiAlertTriangle size={14} />
             <span>Carried</span>
           </div>
         )}
@@ -226,19 +227,19 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
 
       {/* Info Grid - Compact */}
       <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
-        <div className="bg-white/40 backdrop-blur-sm rounded-xl p-2.5 border border-white/40">
+        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
           <span className="text-gray-600 font-medium">Plate:</span>
           <p className="font-bold text-gray-900 mt-0.5">{jobOrder.plateNumber}</p>
         </div>
-        <div className="bg-white/40 backdrop-blur-sm rounded-xl p-2.5 border border-white/40">
+        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
           <span className="text-gray-600 font-medium">VIN:</span>
           <p className="font-bold text-gray-900 font-mono truncate mt-0.5">{jobOrder.vin}</p>
         </div>
-        <div className="bg-white/40 backdrop-blur-sm rounded-xl p-2.5 border border-white/40">
+        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
           <span className="text-gray-600 font-medium">Time:</span>
           <p className="font-bold text-gray-900 mt-0.5">{jobOrder.timeRange.start} - {jobOrder.timeRange.end}</p>
         </div>
-        <div className="bg-white/40 backdrop-blur-sm rounded-xl p-2.5 border border-white/40">
+        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
           <div className="flex justify-between items-center mb-0.5">
             <span className="text-gray-600 font-medium">Technician:</span>
             <button
@@ -257,7 +258,10 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
                 )}
               </span>
             ) : (
-              <span className="text-red-600 font-bold">⚠️ Needs Assignment</span>
+              <span className="text-red-600 font-bold flex items-center gap-1">
+                <FiAlertTriangle size={14} />
+                Needs Assignment
+              </span>
             )}
           </p>
         </div>
@@ -265,7 +269,7 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
 
       {/* Job & Parts - Compact */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-white/40 backdrop-blur-sm rounded-xl p-2.5 border border-white/40 text-xs">
+        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50 text-xs">
           <div className="flex justify-between items-center mb-1">
             <span className="text-gray-600 font-semibold">Tasks ({jobOrder.jobList.filter(j => j.status === 'Finished').length}/{jobOrder.jobList.length})</span>
             <button
@@ -279,7 +283,7 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
             {jobOrder.jobList.length} task{jobOrder.jobList.length > 1 ? 's' : ''}
           </div>
         </div>
-        <div className="bg-white/40 backdrop-blur-sm rounded-xl p-2.5 border border-white/40 text-xs">
+        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50 text-xs">
           <div className="flex justify-between items-center mb-1">
             <span className="text-gray-600 font-semibold">Parts ({jobOrder.parts.filter(p => p.availability === 'Available').length}/{jobOrder.parts.length})</span>
             <button
@@ -373,10 +377,10 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
               
               <div className="space-y-3">
                 {jobOrder.jobList.map((job, index) => (
-                  <div key={index} className="bg-white/40 backdrop-blur-sm border border-white/40 rounded-xl p-4">
+                  <div key={index} className="bg-white/50 backdrop-blur-sm border border-white/50 rounded-xl p-4">
                     <div className="flex justify-between items-start mb-3">
                       <h4 className="font-bold text-gray-900">{job.description}</h4>
-                      <span className={`px-3 py-1 rounded-lg text-xs font-semibold backdrop-blur-sm ${
+                      <span className={`px-3 py-1 rounded-xl text-xs font-semibold backdrop-blur-sm ${
                         job.status === 'Finished' 
                           ? 'bg-green-500/20 text-green-700 border border-green-300/30' 
                           : 'bg-gray-500/20 text-gray-700 border border-gray-300/30'
@@ -434,10 +438,10 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
               
               <div className="space-y-3">
                 {jobOrder.parts.map((part, index) => (
-                  <div key={index} className="bg-white/40 backdrop-blur-sm border border-white/40 rounded-xl p-4">
+                  <div key={index} className="bg-white/50 backdrop-blur-sm border border-white/50 rounded-xl p-4">
                     <div className="flex justify-between items-start mb-3">
                       <h4 className="font-bold text-gray-900">{part.name}</h4>
-                      <span className={`px-3 py-1 rounded-lg text-xs font-semibold backdrop-blur-sm ${
+                      <span className={`px-3 py-1 rounded-xl text-xs font-semibold backdrop-blur-sm ${
                         part.availability === 'Available' 
                           ? 'bg-green-500/20 text-green-700 border border-green-300/30' 
                           : 'bg-red-500/20 text-red-700 border border-red-300/30'

@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { FiSearch, FiCheckCircle, FiTool, FiPackage, FiRefreshCw, FiShield, FiClipboard } from 'react-icons/fi'
 import JobStatusSection from './JobStatusSection'
 import { useDragScroll } from '@/hooks/useDragScroll'
 import type { JobOrderWithDetails } from '@/utils/timetableUtils'
@@ -55,13 +56,13 @@ const JobStatusSections = memo(({
           {/* Quality Inspection Section */}
           <JobStatusSection
             title="Quality Inspection"
-            icon="🔍"
+            icon={<FiSearch />}
             jobs={qiJobs}
             bgColor="bg-purple-500/20 backdrop-blur-sm border-2 border-purple-400/30"
             borderColor="border-purple-400/30"
             textColor="text-purple-900"
             badgeColor="bg-purple-500/30 text-purple-900"
-            emptyIcon="✅"
+            emptyIcon={<FiCheckCircle />}
             emptyText="No jobs pending QI"
             actions={
               <div className="flex gap-1">
@@ -94,13 +95,13 @@ const JobStatusSections = memo(({
           {/* For Release Section */}
           <JobStatusSection
             title="For Release"
-            icon="✅"
+            icon={<FiCheckCircle />}
             jobs={forReleaseJobs}
             bgColor="bg-green-500/20 backdrop-blur-sm border-2 border-green-400/30"
             borderColor="border-green-400/30"
             textColor="text-green-900"
             badgeColor="bg-green-500/30 text-green-900"
-            emptyIcon="🔧"
+            emptyIcon={<FiTool />}
             emptyText="No jobs for release"
             actions={
               <div className="flex gap-1">
@@ -139,7 +140,7 @@ const JobStatusSections = memo(({
             borderColor="border-orange-400/30"
             textColor="text-orange-900"
             badgeColor="bg-orange-500/30 text-orange-900"
-            emptyIcon="📦"
+            emptyIcon={<FiPackage />}
             emptyText="No jobs waiting parts"
             onJobClick={onJobClick}
           />
@@ -161,7 +162,7 @@ const JobStatusSections = memo(({
           {/* Carry Over Section */}
           <JobStatusSection
             title="Carried Over"
-            icon="🔄"
+            icon={<FiRefreshCw />}
             jobs={carriedOverJobs}
             bgColor="bg-red-500/20 backdrop-blur-sm border-2 border-red-400/30"
             borderColor="border-red-400/30"
@@ -181,7 +182,7 @@ const JobStatusSections = memo(({
             borderColor="border-yellow-400/30"
             textColor="text-yellow-900"
             badgeColor="bg-yellow-500/30 text-yellow-900"
-            emptyIcon="✅"
+            emptyIcon={<FiCheckCircle />}
             emptyText="No jobs on hold"
             onJobClick={onJobClick}
           />
@@ -189,13 +190,13 @@ const JobStatusSections = memo(({
           {/* Hold Warranty Section */}
           <JobStatusSection
             title="Hold Warranty"
-            icon="🛡️"
+            icon={<FiShield />}
             jobs={holdWarrantyJobs}
             bgColor="bg-red-500/20 backdrop-blur-sm border-2 border-red-400/30"
             borderColor="border-red-400/30"
             textColor="text-red-900"
             badgeColor="bg-red-500/30 text-red-900"
-            emptyIcon="✅"
+            emptyIcon={<FiCheckCircle />}
             emptyText="No jobs on hold"
             onJobClick={onJobClick}
           />
@@ -209,7 +210,7 @@ const JobStatusSections = memo(({
             borderColor="border-indigo-400/30"
             textColor="text-indigo-900"
             badgeColor="bg-indigo-500/30 text-indigo-900"
-            emptyIcon="✅"
+            emptyIcon={<FiCheckCircle />}
             emptyText="No jobs on hold"
             onJobClick={onJobClick}
           />
@@ -217,13 +218,13 @@ const JobStatusSections = memo(({
           {/* Finished Unclaimed Section */}
           <JobStatusSection
             title="Finished Unclaimed"
-            icon="📋"
+            icon={<FiClipboard />}
             jobs={finishedUnclaimedJobs}
             bgColor="bg-gray-500/20 backdrop-blur-sm border-2 border-gray-400/30"
             borderColor="border-gray-400/30"
             textColor="text-gray-900"
             badgeColor="bg-gray-500/30 text-gray-900"
-            emptyIcon="✅"
+            emptyIcon={<FiCheckCircle />}
             emptyText="No unclaimed jobs"
             onJobClick={onJobClick}
           />

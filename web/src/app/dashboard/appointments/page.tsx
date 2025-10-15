@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast, { Toaster } from 'react-hot-toast'
+import { FiTrash2, FiCalendar } from 'react-icons/fi'
 import type { Appointment, CreateAppointmentRequest } from "@/types/appointment"
 import CreateJobOrderFromAppointmentModal from '@/components/CreateJobOrderFromAppointmentModal'
 import ConfirmDialog from '@/components/ConfirmDialog'
@@ -407,7 +408,7 @@ export default function AppointmentsPage() {
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   suppressHydrationWarning
                 />
                 <button
@@ -416,7 +417,7 @@ export default function AppointmentsPage() {
                     const today = new Date().toISOString().split('T')[0]
                     setSelectedDate(today)
                   }}
-                  className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-md transition-colors"
                   title="Set to today"
                 >
                   Today
@@ -431,7 +432,7 @@ export default function AppointmentsPage() {
               <select
                 value={formData.duration}
                 onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
                 suppressHydrationWarning
               >
@@ -459,7 +460,7 @@ export default function AppointmentsPage() {
               <select
                 value={formData.technician}
                 onChange={(e) => setFormData({ ...formData, technician: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
                 suppressHydrationWarning
               >
@@ -493,7 +494,7 @@ export default function AppointmentsPage() {
                 type="time"
                 value={formData.startTime}
                 onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 suppressHydrationWarning
               />
               <div className="text-xs text-neutral-500 mt-1">
@@ -511,7 +512,7 @@ export default function AppointmentsPage() {
                 value={formData.plateNumber}
                 onChange={(e) => setFormData({ ...formData, plateNumber: e.target.value.toUpperCase() })}
                 placeholder="ABC1234"
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
                 required
                 suppressHydrationWarning
               />
@@ -552,7 +553,7 @@ export default function AppointmentsPage() {
                 placeholder="Search appointments..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-1.5 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -568,7 +569,7 @@ export default function AppointmentsPage() {
               {filteredAppointments.map((appointment) => (
                 <div
                   key={appointment._id}
-                  className="bg-white/40 backdrop-blur-sm border border-white/40 rounded-lg p-3 hover:bg-white/60 transition-all hover:shadow-md hover:-translate-y-0.5"
+                  className="bg-white/40 backdrop-blur-sm border border-white/40 rounded-md p-3 hover:bg-white/60 transition-all hover:shadow-md hover:-translate-y-0.5"
                 >
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex-1">
@@ -620,9 +621,10 @@ export default function AppointmentsPage() {
               <button
                 onClick={handleDeleteAllNoShow}
                 disabled={deleteAllNoShowMutation.isPending}
-                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-50"
               >
-                🗑️ Delete All
+                <FiTrash2 size={14} className="inline mr-1" />
+                Delete All
               </button>
             )}
           </div>
@@ -636,7 +638,7 @@ export default function AppointmentsPage() {
               {filteredNoShowAppointments.map((appointment) => (
                 <div
                   key={appointment._id}
-                  className="bg-red-500/20 backdrop-blur-sm border border-red-300/30 rounded-lg p-3"
+                  className="bg-red-500/20 backdrop-blur-sm border border-red-300/30 rounded-md p-3"
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
@@ -655,7 +657,7 @@ export default function AppointmentsPage() {
                         {new Date(appointment.date).toLocaleDateString()} • {appointment.timeRange.start} - {appointment.timeRange.end}
                       </div>
                     </div>
-                    <span className="text-xs bg-red-500/30 backdrop-blur-sm text-red-800 px-2 py-1 rounded-lg font-bold border border-red-400/30">
+                    <span className="text-xs bg-red-500/30 backdrop-blur-sm text-red-800 px-2 py-1 rounded-md font-bold border border-red-400/30">
                       NO SHOW
                     </span>
                   </div>
@@ -665,14 +667,16 @@ export default function AppointmentsPage() {
                       onClick={() => handleReappoint(appointment)}
                       className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs py-1.5 px-2 rounded transition-colors"
                     >
-                      📅 Reappoint
+                      <FiCalendar size={14} className="inline mr-1" />
+                      Reappoint
                     </button>
                     <button
                       onClick={() => handleDeleteNoShow(appointment._id)}
                       disabled={deleteNoShowMutation.isPending}
                       className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-1.5 px-2 rounded transition-colors disabled:opacity-50"
                     >
-                      🗑️ Delete
+                      <FiTrash2 size={14} className="inline mr-1" />
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -734,7 +738,7 @@ export default function AppointmentsPage() {
               </div>
               
               <div className="space-y-4">
-                <div className="bg-blue-500/20 backdrop-blur-sm border border-blue-300/30 rounded-xl p-3">
+                <div className="bg-blue-500/20 backdrop-blur-sm border border-blue-300/30 rounded-lg p-3">
                   <p className="text-sm text-gray-700 font-medium">
                     <strong>Plate:</strong> {appointmentToReappoint.plateNumber}
                   </p>
@@ -751,7 +755,7 @@ export default function AppointmentsPage() {
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -773,7 +777,7 @@ export default function AppointmentsPage() {
                           }
                         })
                       }}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <input
                       type="time"
@@ -787,7 +791,7 @@ export default function AppointmentsPage() {
                           }
                         })
                       }}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
@@ -810,7 +814,7 @@ export default function AppointmentsPage() {
                         } : null
                       })
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select technician...</option>
                     {technicians.map((tech) => (
@@ -826,7 +830,7 @@ export default function AppointmentsPage() {
                 <button
                   type="button"
                   onClick={() => setShowReappointModal(false)}
-                  className="flex-1 px-6 py-2.5 bg-white/50 hover:bg-white/70 rounded-xl font-semibold text-neutral-700 transition-all duration-200 border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
+                  className="flex-1 px-6 py-2.5 bg-white/50 hover:bg-white/70 rounded-lg font-semibold text-neutral-700 transition-all duration-200 border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
                 >
                   Cancel
                 </button>

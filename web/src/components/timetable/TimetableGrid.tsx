@@ -40,13 +40,13 @@ const TimetableGrid = memo(({
           }}
         >
           {/* Header Row */}
-          <div className="bg-gray-50 px-2 py-3 text-left text-sm font-medium text-gray-700 border-b border-gray-300">
+          <div className="bg-white px-2 py-3 text-left text-sm font-medium text-gray-700 border-b border-gray-300">
             Technician
           </div>
           {TIME_SLOTS.map((slot) => (
             <div
               key={slot.time}
-              className="bg-gray-50 px-1 py-3 text-center text-xs font-medium text-gray-600 border-b border-gray-300"
+              className="bg-white px-1 py-3 text-center text-xs font-medium text-gray-600 border-b border-gray-300"
               style={{ borderRight: '1px solid #d1d5db' }}
             >
               {formatTime(slot.time)}

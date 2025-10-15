@@ -115,7 +115,7 @@ export default function CreateJobOrderFromAppointmentModal({
     <div className="modal-backdrop">
       <div className="floating-card max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
         {/* Header */}
-        <div className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-gray-200 px-6 py-5 rounded-t-[20px]">
+        <div className="sticky top-0 bg-white/60 backdrop-blur-md border-b border-gray-200 px-6 py-5 rounded-t-[20px]">
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Create Job Order from Appointment</h2>

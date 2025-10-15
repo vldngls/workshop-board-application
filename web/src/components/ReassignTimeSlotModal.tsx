@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
+import { FiRefreshCw, FiStar } from 'react-icons/fi'
 import type { JobOrder, Technician } from '@/types/jobOrder'
 
 interface ReassignTimeSlotModalProps {
@@ -159,7 +160,7 @@ export default function ReassignTimeSlotModal({
                 <h4 className="text-lg font-semibold mb-4">Available Job Orders</h4>
                 
                 {availableJobs.length === 0 ? (
-                  <div className="text-center py-8 bg-white/40 backdrop-blur-sm rounded-xl border border-white/40">
+                  <div className="text-center py-8 bg-white/50 backdrop-blur-sm rounded-xl border border-white/40">
                     <p className="text-gray-700 font-medium">No unassigned jobs available</p>
                     <p className="text-sm text-gray-600 mt-2 font-medium">You can create a new job order</p>
                   </div>
@@ -172,17 +173,17 @@ export default function ReassignTimeSlotModal({
                         className={`border-2 rounded-xl p-4 cursor-pointer transition-all backdrop-blur-sm ${
                           selectedJobId === job._id
                             ? 'border-blue-500/50 bg-blue-500/20 shadow-lg'
-                            : 'border-white/40 bg-white/30 hover:bg-white/50 hover:shadow-lg hover:-translate-y-1'
+                            : 'border-white/40 bg-white/50 hover:bg-white/50 hover:shadow-lg hover:-translate-y-1'
                         }`}
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               {job.isImportant && (
-                                <span className="text-yellow-500 text-lg">★</span>
+                                <FiStar size={18} color="#eab308" />
                               )}
                               {job.carriedOver && (
-                                <span className="text-red-500 text-sm">🔄</span>
+                                <FiRefreshCw size={14} color="#ef4444" />
                               )}
                               <h5 className="font-bold text-gray-900">{job.jobNumber}</h5>
                               <span className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -266,7 +267,7 @@ export default function ReassignTimeSlotModal({
                 <div className="flex gap-3">
                   <button
                     onClick={onClose}
-                    className="px-4 py-2 text-gray-700 bg-white/50 hover:bg-white/70 rounded-xl font-semibold transition-all border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
+                    className="px-4 py-2 text-gray-700 bg-white/50 hover:bg-white/60 rounded-xl font-semibold transition-all border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
                   >
                     Skip
                   </button>

@@ -80,9 +80,9 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
     <aside className="fixed top-0 left-0 w-64 min-w-64 max-w-64 flex-shrink-0 p-4 flex flex-col h-screen overflow-hidden glass border-r border-white/30 z-10">
       <div>
         <div className="mb-8">
-          <div className="text-xl font-bold bg-gradient-to-r from-ford-blue to-ford-blue-light bg-clip-text text-transparent">{title}</div>
+          <div className="text-xl font-bold text-ford-blue">{title}</div>
           <div className="text-sm text-neutral-600 font-medium">Workshop Board</div>
-          {name ? <div className="mt-3 px-3 py-2 bg-white/40 rounded-xl text-sm text-neutral-700 font-medium backdrop-blur-sm">Hi, {name}</div> : null}
+          {name ? <div className="mt-3 px-3 py-2 bg-white/50 rounded-xl text-sm text-neutral-700 font-medium backdrop-blur-sm">Hi, {name}</div> : null}
         </div>
         <nav className="space-y-2">
           {items.map((item) => (
@@ -104,7 +104,7 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
         <button 
           type="submit"
           disabled={isLoggingOut}
-          className="px-3 py-2.5 rounded-xl w-full text-left text-neutral-700 hover:bg-white/60 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+          className="px-3 py-2.5 rounded-xl w-full text-left text-neutral-700 hover:bg-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
         >
           {isLoggingOut ? "Logging out..." : "Logout"}
         </button>
