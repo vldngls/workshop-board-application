@@ -374,21 +374,21 @@ export default function AppointmentsPage() {
 
       {/* Statistics Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-blue-500/20 backdrop-blur-sm border border-blue-300/30 rounded-xl p-3">
-          <div className="text-2xl font-bold text-blue-900">{stats.total}</div>
-          <div className="text-sm text-blue-700">Total Appointments</div>
+        <div className="floating-card p-3">
+          <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+          <div className="text-sm text-gray-600">Total Appointments</div>
         </div>
-        <div className="bg-green-500/20 backdrop-blur-sm border border-green-300/30 rounded-xl p-3">
-          <div className="text-2xl font-bold text-green-900">{stats.completed}</div>
-          <div className="text-sm text-green-700">Completed</div>
+        <div className="floating-card p-3">
+          <div className="text-2xl font-bold text-gray-900">{stats.completed}</div>
+          <div className="text-sm text-gray-600">Completed</div>
         </div>
-        <div className="bg-red-500/20 backdrop-blur-sm border border-red-300/30 rounded-xl p-3">
-          <div className="text-2xl font-bold text-red-900">{stats.noShow}</div>
-          <div className="text-sm text-red-700">No Shows</div>
+        <div className="floating-card p-3">
+          <div className="text-2xl font-bold text-gray-900">{stats.noShow}</div>
+          <div className="text-sm text-gray-600">No Shows</div>
         </div>
-        <div className="bg-purple-500/20 backdrop-blur-sm border border-purple-300/30 rounded-xl p-3">
-          <div className="text-2xl font-bold text-purple-900">{stats.today}</div>
-          <div className="text-sm text-purple-700">Today</div>
+        <div className="floating-card p-3">
+          <div className="text-2xl font-bold text-gray-900">{stats.today}</div>
+          <div className="text-sm text-gray-600">Today</div>
         </div>
       </div>
 

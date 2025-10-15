@@ -113,12 +113,24 @@ export default function CreateJobOrderFromAppointmentModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="floating-card max-w-3xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
-        <div className="sticky top-0 bg-white/60 backdrop-blur-md border-b border-white/30 px-6 py-4 rounded-t-[20px]">
-          <h2 className="text-xl font-bold text-neutral-900">Create Job Order from Appointment</h2>
-          <p className="text-sm text-neutral-700 mt-1 font-medium">
-            Plate: {appointment.plateNumber} | Technician: {appointment.assignedTechnician?.name || 'No technician assigned'}
-          </p>
+      <div className="floating-card max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+        {/* Header */}
+        <div className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-gray-200 px-6 py-5 rounded-t-[20px]">
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Create Job Order from Appointment</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Plate: <span className="font-semibold text-gray-800">{appointment.plateNumber}</span> | 
+                Technician: <span className="font-semibold text-gray-800">{appointment.assignedTechnician?.name || 'No technician assigned'}</span>
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 text-2xl leading-none transition-colors"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -129,59 +141,61 @@ export default function CreateJobOrderFromAppointmentModal({
           )}
 
           {/* Job Number and VIN */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Job Number *
               </label>
               <input
                 type="text"
                 value={jobNumber}
                 onChange={(e) => setJobNumber(e.target.value.toUpperCase())}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase font-medium text-gray-900"
+                placeholder="Enter job number"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 VIN *
               </label>
               <input
                 type="text"
                 value={vin}
                 onChange={(e) => setVin(e.target.value.toUpperCase())}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase font-medium text-gray-900"
+                placeholder="Enter VIN number"
                 required
               />
             </div>
           </div>
 
           {/* Actual Time Section */}
-          <div className="bg-blue-500/20 backdrop-blur-sm border border-blue-300/30 rounded-xl p-4">
-            <div className="flex items-center mb-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+            <div className="flex items-center mb-3">
               <input
                 type="checkbox"
                 id="setActualTime"
                 checked={setActualTime}
                 onChange={(e) => setSetActualTime(e.target.checked)}
-                className="mr-2 w-4 h-4 rounded accent-blue-600"
+                className="mr-3 w-5 h-5 rounded accent-blue-600"
               />
-              <label htmlFor="setActualTime" className="text-sm font-semibold text-neutral-800">
+              <label htmlFor="setActualTime" className="text-sm font-semibold text-gray-800">
                 Set actual completion time (if job finished early or late)
               </label>
             </div>
             {setActualTime && (
-              <div className="mt-3">
-                <label className="block text-sm font-semibold text-neutral-800 mb-1">
+              <div className="mt-4 pl-8">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
                   Actual End Time
                 </label>
                 <input
                   type="time"
                   value={actualEndTime}
                   onChange={(e) => setActualEndTime(e.target.value)}
-                  className="w-full px-3 py-2"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-                <p className="text-xs text-neutral-700 mt-2 font-medium">
+                <p className="text-sm text-gray-600 mt-2 font-medium">
                   Scheduled: {appointment.timeRange.start} - {appointment.timeRange.end}
                 </p>
               </div>
@@ -190,30 +204,30 @@ export default function CreateJobOrderFromAppointmentModal({
 
           {/* Job List */}
           <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-neutral-700">Job List *</label>
+            <div className="flex justify-between items-center mb-3">
+              <label className="block text-sm font-semibold text-gray-700">Job List *</label>
               <button
                 type="button"
                 onClick={addJobItem}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sm text-blue-600 hover:text-blue-700 font-semibold px-3 py-1 rounded-lg hover:bg-blue-50 transition-colors"
               >
                 + Add Job
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {jobList.map((job, index) => (
-                <div key={index} className="flex gap-2">
+                <div key={index} className="flex gap-3 items-center">
                   <input
                     type="text"
                     value={job.description}
                     onChange={(e) => updateJobItem(index, 'description', e.target.value)}
                     placeholder="Job description"
-                    className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   <select
                     value={job.status}
                     onChange={(e) => updateJobItem(index, 'status', e.target.value)}
-                    className="px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px]"
                   >
                     <option value="Unfinished">Unfinished</option>
                     <option value="Finished">Finished</option>
@@ -222,7 +236,8 @@ export default function CreateJobOrderFromAppointmentModal({
                     <button
                       type="button"
                       onClick={() => removeJobItem(index)}
-                      className="px-3 py-2 text-red-600 hover:text-red-700"
+                      className="px-3 py-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors"
+                      title="Remove job"
                     >
                       ✕
                     </button>
@@ -234,30 +249,30 @@ export default function CreateJobOrderFromAppointmentModal({
 
           {/* Parts */}
           <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-neutral-700">Parts *</label>
+            <div className="flex justify-between items-center mb-3">
+              <label className="block text-sm font-semibold text-gray-700">Parts *</label>
               <button
                 type="button"
                 onClick={addPart}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sm text-blue-600 hover:text-blue-700 font-semibold px-3 py-1 rounded-lg hover:bg-blue-50 transition-colors"
               >
                 + Add Part
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {parts.map((part, index) => (
-                <div key={index} className="flex gap-2">
+                <div key={index} className="flex gap-3 items-center">
                   <input
                     type="text"
                     value={part.name}
                     onChange={(e) => updatePart(index, 'name', e.target.value)}
                     placeholder="Part name"
-                    className="flex-1 px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   <select
                     value={part.availability}
                     onChange={(e) => updatePart(index, 'availability', e.target.value)}
-                    className="px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px]"
                   >
                     <option value="Available">Available</option>
                     <option value="Unavailable">Unavailable</option>
@@ -266,7 +281,8 @@ export default function CreateJobOrderFromAppointmentModal({
                     <button
                       type="button"
                       onClick={() => removePart(index)}
-                      className="px-3 py-2 text-red-600 hover:text-red-700"
+                      className="px-3 py-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors"
+                      title="Remove part"
                     >
                       ✕
                     </button>
@@ -277,19 +293,19 @@ export default function CreateJobOrderFromAppointmentModal({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t border-white/30">
+          <div className="flex gap-4 pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="flex-1 px-6 py-2.5 bg-white/50 hover:bg-white/70 rounded-xl font-semibold text-neutral-700 transition-all duration-200 border border-white/50 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+              className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold text-gray-700 transition-all duration-200 border border-gray-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue text-white font-semibold py-2.5 px-6 rounded-xl transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+              className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? 'Creating...' : 'Create Job Order'}
             </button>
