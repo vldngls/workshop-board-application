@@ -113,17 +113,17 @@ export default function CreateJobOrderFromAppointmentModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-neutral-200 px-6 py-4">
+      <div className="floating-card max-w-3xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+        <div className="sticky top-0 bg-white/60 backdrop-blur-md border-b border-white/30 px-6 py-4 rounded-t-[20px]">
           <h2 className="text-xl font-bold text-neutral-900">Create Job Order from Appointment</h2>
-          <p className="text-sm text-neutral-600 mt-1">
-            Plate: {appointment.plateNumber} | Technician: {appointment.assignedTechnician.name}
+          <p className="text-sm text-neutral-700 mt-1 font-medium">
+            Plate: {appointment.plateNumber} | Technician: {appointment.assignedTechnician?.name || 'No technician assigned'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="bg-red-500/20 backdrop-blur-sm border border-red-300/30 text-red-700 px-4 py-3 rounded-xl font-medium">
               {error}
             </div>
           )}
@@ -157,31 +157,31 @@ export default function CreateJobOrderFromAppointmentModal({
           </div>
 
           {/* Actual Time Section */}
-          <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+          <div className="bg-blue-500/20 backdrop-blur-sm border border-blue-300/30 rounded-xl p-4">
             <div className="flex items-center mb-2">
               <input
                 type="checkbox"
                 id="setActualTime"
                 checked={setActualTime}
                 onChange={(e) => setSetActualTime(e.target.checked)}
-                className="mr-2"
+                className="mr-2 w-4 h-4 rounded accent-blue-600"
               />
-              <label htmlFor="setActualTime" className="text-sm font-medium text-neutral-700">
+              <label htmlFor="setActualTime" className="text-sm font-semibold text-neutral-800">
                 Set actual completion time (if job finished early or late)
               </label>
             </div>
             {setActualTime && (
-              <div className="mt-2">
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+              <div className="mt-3">
+                <label className="block text-sm font-semibold text-neutral-800 mb-1">
                   Actual End Time
                 </label>
                 <input
                   type="time"
                   value={actualEndTime}
                   onChange={(e) => setActualEndTime(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2"
                 />
-                <p className="text-xs text-neutral-600 mt-1">
+                <p className="text-xs text-neutral-700 mt-2 font-medium">
                   Scheduled: {appointment.timeRange.start} - {appointment.timeRange.end}
                 </p>
               </div>
@@ -277,19 +277,19 @@ export default function CreateJobOrderFromAppointmentModal({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t border-neutral-200">
+          <div className="flex gap-3 pt-4 border-t border-white/30">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
+              className="flex-1 px-6 py-2.5 bg-white/50 hover:bg-white/70 rounded-xl font-semibold text-neutral-700 transition-all duration-200 border border-white/50 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 bg-[color:var(--color-ford-blue)] hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+              className="flex-1 bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue text-white font-semibold py-2.5 px-6 rounded-xl transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
             >
               {submitting ? 'Creating...' : 'Create Job Order'}
             </button>

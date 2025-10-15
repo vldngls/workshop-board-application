@@ -147,20 +147,20 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
 
   return (
     <div className="modal-backdrop">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="floating-card max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Add New Job Order</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl"
+              className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
             >
               ×
             </button>
           </div>
 
           {createJobMutation.isError && (
-            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            <div className="mb-4 p-4 bg-red-500/20 backdrop-blur-sm border border-red-300/30 text-red-700 rounded-xl font-medium">
               {createJobMutation.error.message}
             </div>
           )}
@@ -420,18 +420,18 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
             </div>
 
             {/* Submit Buttons */}
-            <div className="flex justify-end space-x-3 pt-4 border-t">
+            <div className="flex justify-end space-x-3 pt-4 border-t border-white/30">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md font-medium transition-colors"
+                className="px-6 py-2.5 text-gray-700 bg-white/50 hover:bg-white/70 rounded-xl font-semibold transition-all duration-200 border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={createJobMutation.isPending || technicians.length === 0}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-md font-medium transition-colors"
+                className="px-6 py-2.5 bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-semibold transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-none"
               >
                 {createJobMutation.isPending ? 'Creating...' : 'Create Job Order'}
               </button>

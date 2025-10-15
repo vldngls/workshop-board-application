@@ -148,7 +148,7 @@ export default function MainDashboard() {
         
         // Check for jobs with all tasks finished but not submitted for QI
         const allTasksFinished = job.jobList && job.jobList.every(task => task.status === 'Finished')
-        const notSubmittedForQI = allTasksFinished && job.status !== 'QI' && job.status !== 'FR'
+        const notSubmittedForQI = allTasksFinished && job.status !== 'QI'
         
         return hasUnavailableParts || isOverdue || notSubmittedForQI
       })
@@ -179,82 +179,84 @@ export default function MainDashboard() {
       
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <div className="text-sm text-gray-600">
-          Overview of all job orders and key metrics
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <div className="text-sm text-gray-600">
+            Overview of all job orders and key metrics
+          </div>
         </div>
       </div>
 
       {/* Statistics Grid - Clickable */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
         {/* Total Jobs */}
-        <Link href="/dashboard/job-orders" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
+        <Link href="/dashboard/job-orders" className="floating-card p-3 cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">📋</span>
-            <p className="text-xs text-gray-600 mb-0.5">Total</p>
+            <p className="text-xs text-gray-600 mb-0.5 font-medium">Total</p>
             <p className="text-xl font-bold text-gray-900">{stats.total}</p>
           </div>
         </Link>
 
         {/* On Going */}
-        <Link href="/dashboard/job-orders?filter=OG" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=OG" className="floating-card p-3 cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">🔧</span>
-            <p className="text-xs text-gray-600 mb-0.5">On Going</p>
+            <p className="text-xs text-gray-600 mb-0.5 font-medium">On Going</p>
             <p className="text-xl font-bold text-blue-600">{stats.onGoing}</p>
           </div>
         </Link>
 
         {/* For Release */}
-        <Link href="/dashboard/job-orders?filter=FR" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=FR" className="floating-card p-3 cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">✅</span>
-            <p className="text-xs text-gray-600 mb-0.5">Release</p>
+            <p className="text-xs text-gray-600 mb-0.5 font-medium">Release</p>
             <p className="text-xl font-bold text-green-600">{stats.forRelease}</p>
           </div>
         </Link>
 
         {/* On Hold */}
-        <Link href="/dashboard/job-orders?filter=hold" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=hold" className="floating-card p-3 cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">⏸️</span>
-            <p className="text-xs text-gray-600 mb-0.5">On Hold</p>
+            <p className="text-xs text-gray-600 mb-0.5 font-medium">On Hold</p>
             <p className="text-xl font-bold text-red-600">{stats.onHold}</p>
           </div>
         </Link>
 
         {/* Carried Over */}
-        <Link href="/dashboard/job-orders?filter=carried" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=carried" className="floating-card p-3 cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">🔄</span>
-            <p className="text-xs text-gray-600 mb-0.5">Carried</p>
+            <p className="text-xs text-gray-600 mb-0.5 font-medium">Carried</p>
             <p className="text-xl font-bold text-orange-600">{stats.carriedOver}</p>
           </div>
         </Link>
 
         {/* Important */}
-        <Link href="/dashboard/job-orders?filter=important" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=important" className="floating-card p-3 cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">⭐</span>
-            <p className="text-xs text-gray-600 mb-0.5">Important</p>
+            <p className="text-xs text-gray-600 mb-0.5 font-medium">Important</p>
             <p className="text-xl font-bold text-yellow-600">{stats.important}</p>
           </div>
         </Link>
 
         {/* Quality Inspection */}
-        <Link href="/dashboard/job-orders?filter=QI" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=QI" className="floating-card p-3 cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">🔍</span>
-            <p className="text-xs text-gray-600 mb-0.5">QI</p>
+            <p className="text-xs text-gray-600 mb-0.5 font-medium">QI</p>
             <p className="text-xl font-bold text-purple-600">{stats.qualityInspection}</p>
           </div>
         </Link>
 
         {/* Finished Unclaimed */}
-        <Link href="/dashboard/job-orders?filter=unclaimed" className="bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer">
+        <Link href="/dashboard/job-orders?filter=unclaimed" className="floating-card p-3 cursor-pointer">
           <div className="flex flex-col items-center text-center">
             <span className="text-xl mb-1">📦</span>
-            <p className="text-xs text-gray-600 mb-0.5">Unclaimed</p>
+            <p className="text-xs text-gray-600 mb-0.5 font-medium">Unclaimed</p>
             <p className="text-xl font-bold text-gray-600">{stats.finishedUnclaimed}</p>
           </div>
         </Link>
@@ -263,8 +265,8 @@ export default function MainDashboard() {
       {/* Quick Stats Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Status Breakdown */}
-        <div className="bg-white rounded-lg shadow-sm border p-4">
-          <h3 className="text-lg font-semibold mb-3 text-gray-900">Status Breakdown</h3>
+        <div className="floating-card p-5">
+          <h3 className="text-lg font-bold mb-3 text-gray-900">Status Breakdown</h3>
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">On Going (OG)</span>
@@ -306,8 +308,8 @@ export default function MainDashboard() {
         </div>
 
         {/* Technician Summary */}
-        <div className="bg-white rounded-lg shadow-sm border p-4">
-          <h3 className="text-lg font-semibold mb-3 text-gray-900">Technician Summary</h3>
+        <div className="floating-card p-5">
+          <h3 className="text-lg font-bold mb-3 text-gray-900">Technician Summary</h3>
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Active Jobs</span>
@@ -325,8 +327,8 @@ export default function MainDashboard() {
         </div>
 
         {/* Today's Progress */}
-        <div className="bg-white rounded-lg shadow-sm border p-4">
-          <h3 className="text-lg font-semibold mb-3 text-gray-900">Jobs by Completion</h3>
+        <div className="floating-card p-5">
+          <h3 className="text-lg font-bold mb-3 text-gray-900">Jobs by Completion</h3>
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Not Started</span>
@@ -379,13 +381,13 @@ export default function MainDashboard() {
 
       {/* Pending Job Orders Section - Horizontal Scroll */}
       {anomalyJobs.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border-2 border-orange-300 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-orange-800 flex items-center gap-2">
+        <div className="floating-card p-5 border-2 border-orange-400/30">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-orange-800 flex items-center gap-2">
               <span className="text-xl">⏳</span>
               Pending Job Orders
             </h2>
-            <span className="text-xs text-gray-600">{anomalyJobs.length} job(s) need attention</span>
+            <span className="text-xs text-gray-700 font-semibold">{anomalyJobs.length} job(s) need attention</span>
           </div>
           <div className="overflow-x-auto pb-2">
             <div className="flex gap-2 min-w-max">
@@ -400,14 +402,14 @@ export default function MainDashboard() {
               const notSubmittedForQI = allTasksFinished && job.status !== 'QI' && job.status !== 'FR'
 
               return (
-                <div key={job._id} className="border border-orange-300 rounded-lg p-3 bg-orange-50 hover:shadow-md transition-shadow w-64 flex-shrink-0">
+                <div key={job._id} className="bg-orange-500/20 backdrop-blur-sm border border-orange-300/30 rounded-xl p-3 hover:shadow-lg transition-all w-64 flex-shrink-0 hover:-translate-y-1">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-bold text-sm text-orange-900">{job.jobNumber}</h3>
-                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                      job.status === 'OG' ? 'bg-blue-100 text-blue-800' :
-                      job.status === 'QI' ? 'bg-purple-100 text-purple-800' :
-                      job.status === 'WP' ? 'bg-orange-100 text-orange-800' :
-                      'bg-gray-100 text-gray-800'
+                    <span className={`px-2 py-1 rounded-lg text-xs font-semibold backdrop-blur-sm ${
+                      job.status === 'OG' ? 'bg-blue-500/20 text-blue-700 border border-blue-300/30' :
+                      job.status === 'QI' ? 'bg-purple-500/20 text-purple-700 border border-purple-300/30' :
+                      job.status === 'WP' ? 'bg-orange-500/20 text-orange-700 border border-orange-300/30' :
+                      'bg-gray-500/20 text-gray-700 border border-gray-300/30'
                     }`}>
                       {job.status}
                     </span>
@@ -445,7 +447,7 @@ export default function MainDashboard() {
                       setSelectedJobForDetails(job)
                       setShowJobDetailsModal(true)
                     }}
-                    className="block w-full text-center bg-orange-600 hover:bg-orange-700 text-white font-medium py-1.5 rounded transition-colors text-xs"
+                    className="block w-full text-center bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-600 text-white font-semibold py-1.5 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5 text-xs"
                   >
                     View Details
                   </button>
@@ -459,25 +461,25 @@ export default function MainDashboard() {
 
       {/* Carried Over Jobs Section - Horizontal Scroll */}
       {carriedOverJobs.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-orange-800 flex items-center gap-2">
+        <div className="floating-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-orange-800 flex items-center gap-2">
               <span className="text-xl">🔄</span>
               Carried Over Jobs - Awaiting Reassignment
             </h2>
-            <span className="text-xs text-gray-600">{carriedOverJobs.length} job(s)</span>
+            <span className="text-xs text-gray-700 font-semibold">{carriedOverJobs.length} job(s)</span>
           </div>
           <div className="overflow-x-auto pb-2">
             <div className="flex gap-2 min-w-max">
               {carriedOverJobs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((job) => (
-                <div key={job._id} className="border-2 border-orange-400 rounded-lg p-3 bg-orange-50 hover:shadow-md transition-shadow w-64 flex-shrink-0">
+                <div key={job._id} className="bg-orange-500/20 backdrop-blur-sm border-2 border-orange-400/30 rounded-xl p-3 hover:shadow-lg transition-all w-64 flex-shrink-0 hover:-translate-y-1">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-bold text-sm text-orange-900">{job.jobNumber}</h3>
-                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                      job.status === 'OG' ? 'bg-blue-100 text-blue-800' :
-                      job.status === 'QI' ? 'bg-purple-100 text-purple-800' :
-                      job.status === 'WP' ? 'bg-orange-100 text-orange-800' :
-                      'bg-gray-100 text-gray-800'
+                    <span className={`px-2 py-1 rounded-lg text-xs font-semibold backdrop-blur-sm ${
+                      job.status === 'OG' ? 'bg-blue-500/20 text-blue-700 border border-blue-300/30' :
+                      job.status === 'QI' ? 'bg-purple-500/20 text-purple-700 border border-purple-300/30' :
+                      job.status === 'WP' ? 'bg-orange-500/20 text-orange-700 border border-orange-300/30' :
+                      'bg-gray-500/20 text-gray-700 border border-gray-300/30'
                     }`}>
                       {job.status}
                     </span>
@@ -499,7 +501,7 @@ export default function MainDashboard() {
                       setSelectedJobForReassign(job)
                       setShowReassignModal(true)
                     }}
-                    className="block w-full text-center bg-orange-600 hover:bg-orange-700 text-white font-medium py-1.5 rounded transition-colors text-xs"
+                    className="block w-full text-center bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-600 text-white font-semibold py-1.5 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5 text-xs"
                   >
                     {job.assignedTechnician ? 'Reassign' : 'Assign Now'}
                   </button>
@@ -512,25 +514,25 @@ export default function MainDashboard() {
 
       {/* Important Jobs Section - Horizontal Scroll */}
       {importantJobs.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-yellow-800 flex items-center gap-2">
+        <div className="floating-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-yellow-800 flex items-center gap-2">
               <span className="text-xl">⭐</span>
               Important Jobs
             </h2>
-            <span className="text-xs text-gray-600">{importantJobs.length} job(s)</span>
+            <span className="text-xs text-gray-700 font-semibold">{importantJobs.length} job(s)</span>
           </div>
           <div className="overflow-x-auto pb-2">
             <div className="flex gap-2 min-w-max">
               {importantJobs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((job) => (
-                <div key={job._id} className="border border-yellow-300 rounded-lg p-3 bg-yellow-50 hover:shadow-md transition-shadow w-64 flex-shrink-0">
+                <div key={job._id} className="bg-yellow-500/20 backdrop-blur-sm border border-yellow-300/30 rounded-xl p-3 hover:shadow-lg transition-all w-64 flex-shrink-0 hover:-translate-y-1">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-bold text-sm text-yellow-900">{job.jobNumber}</h3>
-                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                      job.status === 'OG' ? 'bg-blue-100 text-blue-800' :
-                      job.status === 'QI' ? 'bg-purple-100 text-purple-800' :
-                      job.status === 'WP' ? 'bg-orange-100 text-orange-800' :
-                      'bg-gray-100 text-gray-800'
+                    <span className={`px-2 py-1 rounded-lg text-xs font-semibold backdrop-blur-sm ${
+                      job.status === 'OG' ? 'bg-blue-500/20 text-blue-700 border border-blue-300/30' :
+                      job.status === 'QI' ? 'bg-purple-500/20 text-purple-700 border border-purple-300/30' :
+                      job.status === 'WP' ? 'bg-orange-500/20 text-orange-700 border border-orange-300/30' :
+                      'bg-gray-500/20 text-gray-700 border border-gray-300/30'
                     }`}>
                       {job.status}
                     </span>
@@ -545,7 +547,7 @@ export default function MainDashboard() {
 
                   <Link 
                     href={`/dashboard/workshop?highlight=${job._id}&date=${new Date(job.date).toISOString().split('T')[0]}`}
-                    className="block w-full text-center bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-1.5 rounded transition-colors text-xs"
+                    className="block w-full text-center bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-600 text-white font-semibold py-1.5 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5 text-xs"
                   >
                     View
                   </Link>
@@ -558,50 +560,50 @@ export default function MainDashboard() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Link href="/dashboard/job-orders" className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+        <Link href="/dashboard/job-orders" className="floating-card p-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-blue-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-blue-300/30">
               <span className="text-2xl">📋</span>
             </div>
             <div>
-              <h3 className="font-semibold text-lg">Job Orders</h3>
-              <p className="text-sm text-gray-600">View all job orders</p>
+              <h3 className="font-bold text-lg text-gray-900">Job Orders</h3>
+              <p className="text-sm text-gray-600 font-medium">View all job orders</p>
             </div>
           </div>
         </Link>
 
-        <Link href="/dashboard/workshop" className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+        <Link href="/dashboard/workshop" className="floating-card p-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-green-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-green-300/30">
               <span className="text-2xl">🔧</span>
             </div>
             <div>
-              <h3 className="font-semibold text-lg">Workshop Board</h3>
-              <p className="text-sm text-gray-600">View timetable</p>
+              <h3 className="font-bold text-lg text-gray-900">Workshop Board</h3>
+              <p className="text-sm text-gray-600 font-medium">View timetable</p>
             </div>
           </div>
         </Link>
 
-        <Link href="/dashboard/account-management" className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+        <Link href="/dashboard/account-management" className="floating-card p-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-purple-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-purple-300/30">
               <span className="text-2xl">👥</span>
             </div>
             <div>
-              <h3 className="font-semibold text-lg">Account Management</h3>
-              <p className="text-sm text-gray-600">Manage users</p>
+              <h3 className="font-bold text-lg text-gray-900">Account Management</h3>
+              <p className="text-sm text-gray-600 font-medium">Manage users</p>
             </div>
           </div>
         </Link>
 
-        <button onClick={() => setShowBreakSettings(true)} className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow text-left">
+        <button onClick={() => setShowBreakSettings(true)} className="floating-card p-6 text-left">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-orange-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-orange-300/30">
               <span className="text-2xl">⏰</span>
             </div>
             <div>
-              <h3 className="font-semibold text-lg">Break Settings</h3>
-              <p className="text-sm text-gray-600">{breakStart} - {breakEnd}</p>
+              <h3 className="font-bold text-lg text-gray-900">Break Settings</h3>
+              <p className="text-sm text-gray-600 font-medium">{breakStart} - {breakEnd}</p>
             </div>
           </div>
         </button>
@@ -647,14 +649,14 @@ export default function MainDashboard() {
 
       {/* Break Settings Modal */}
       {showBreakSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div className="modal-backdrop">
+          <div className="floating-card max-w-md w-full mx-4 animate-fade-in">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">Break Time Settings</h3>
+              <div className="flex justify-between items-center mb-5">
+                <h3 className="text-xl font-bold text-gray-900">Break Time Settings</h3>
                 <button
                   onClick={() => setShowBreakSettings(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
                 >
                   ×
                 </button>
@@ -662,31 +664,31 @@ export default function MainDashboard() {
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Break Start Time
                   </label>
                   <input
                     type="time"
                     value={breakStart}
                     onChange={(e) => setBreakStart(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-3 py-2"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Break End Time
                   </label>
                   <input
                     type="time"
                     value={breakEnd}
                     onChange={(e) => setBreakEnd(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-3 py-2"
                   />
                 </div>
                 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-800">
+                <div className="bg-blue-500/20 backdrop-blur-sm border border-blue-300/30 rounded-xl p-3">
+                  <p className="text-sm text-blue-800 font-medium">
                     ℹ️ This break time will be automatically accounted for when calculating job end times.
                   </p>
                 </div>
@@ -694,7 +696,7 @@ export default function MainDashboard() {
                 <div className="flex gap-3 pt-2">
                   <button
                     onClick={() => setShowBreakSettings(false)}
-                    className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md font-medium transition-colors"
+                    className="flex-1 px-6 py-2.5 bg-white/50 hover:bg-white/70 rounded-xl font-semibold transition-all border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
                   >
                     Cancel
                   </button>
@@ -705,7 +707,7 @@ export default function MainDashboard() {
                       setShowBreakSettings(false)
                       toast.success('Break time settings saved!')
                     }}
-                    className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-medium transition-colors"
+                    className="flex-1 px-6 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5"
                   >
                     Save
                   </button>
@@ -793,18 +795,18 @@ function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose,
   const allPartsAvailable = localJob.parts.every((p: any) => p.availability === 'Available')
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto">
+    <div className="modal-backdrop">
+      <div className="floating-card max-w-4xl w-full max-h-[95vh] overflow-y-auto animate-fade-in">
         <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold">Job Order Details</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">
+          <div className="flex justify-between items-center mb-5">
+            <h3 className="text-xl font-bold text-gray-900">Job Order Details</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors">
               ×
             </button>
           </div>
 
           {/* Job Info Header */}
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+          <div className="bg-orange-500/20 backdrop-blur-sm border border-orange-300/30 rounded-xl p-4 mb-4">
             <div className="flex justify-between items-start">
               <div>
                 <h4 className="font-bold text-lg text-orange-900">{localJob.jobNumber}</h4>
@@ -815,10 +817,10 @@ function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose,
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  localJob.status === 'WP' ? 'bg-orange-100 text-orange-800' :
-                  localJob.status === 'OG' ? 'bg-blue-100 text-blue-800' :
-                  'bg-gray-100 text-gray-800'
+                <span className={`px-3 py-1 rounded-xl text-xs font-semibold backdrop-blur-sm border ${
+                  localJob.status === 'WP' ? 'bg-orange-500/20 text-orange-700 border-orange-300/30' :
+                  localJob.status === 'OG' ? 'bg-blue-500/20 text-blue-700 border-blue-300/30' :
+                  'bg-gray-500/20 text-gray-700 border-gray-300/30'
                 }`}>
                   {localJob.status === 'WP' ? 'Waiting Parts' :
                    localJob.status === 'OG' ? 'On Going' : localJob.status}
@@ -838,7 +840,7 @@ function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose,
               </div>
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 {localJob.parts.map((part: any, index: number) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-3">
+                  <div key={index} className="bg-white/40 backdrop-blur-sm border border-white/40 rounded-xl p-3">
                     <div className="flex justify-between items-start mb-2">
                       <h5 className="font-medium text-gray-900 text-sm">{part.name}</h5>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -853,10 +855,10 @@ function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose,
                       <button
                         onClick={() => updatePartAvailability(index, 'Available')}
                         disabled={updating || part.availability === 'Available'}
-                        className={`flex-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        className={`flex-1 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                           part.availability === 'Available'
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-300'
+                            ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
+                            : 'bg-green-500/20 text-green-700 hover:bg-green-500/30 border border-green-300/30 hover:shadow-lg hover:-translate-y-0.5'
                         }`}
                       >
                         Mark Available
@@ -864,10 +866,10 @@ function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose,
                       <button
                         onClick={() => updatePartAvailability(index, 'Unavailable')}
                         disabled={updating || part.availability === 'Unavailable'}
-                        className={`flex-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        className={`flex-1 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                           part.availability === 'Unavailable'
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-300'
+                            ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
+                            : 'bg-red-500/20 text-red-700 hover:bg-red-500/30 border border-red-300/30 hover:shadow-lg hover:-translate-y-0.5'
                         }`}
                       >
                         Mark Unavailable
@@ -888,7 +890,7 @@ function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose,
               </div>
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 {localJob.jobList.map((task: any, index: number) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-3">
+                  <div key={index} className="bg-white/40 backdrop-blur-sm border border-white/40 rounded-xl p-3">
                     <div className="flex justify-between items-start mb-2">
                       <h5 className="font-medium text-gray-900 text-sm">{task.description}</h5>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -903,10 +905,10 @@ function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose,
                       <button
                         onClick={() => updateTaskStatus(index, 'Finished')}
                         disabled={updating || task.status === 'Finished'}
-                        className={`flex-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        className={`flex-1 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                           task.status === 'Finished'
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-300'
+                            ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
+                            : 'bg-green-500/20 text-green-700 hover:bg-green-500/30 border border-green-300/30 hover:shadow-lg hover:-translate-y-0.5'
                         }`}
                       >
                         Mark Finished
@@ -914,10 +916,10 @@ function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose,
                       <button
                         onClick={() => updateTaskStatus(index, 'Unfinished')}
                         disabled={updating || task.status === 'Unfinished'}
-                        className={`flex-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        className={`flex-1 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                           task.status === 'Unfinished'
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-300'
+                            ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
+                            : 'bg-gray-500/20 text-gray-700 hover:bg-gray-500/30 border border-gray-300/30 hover:shadow-lg hover:-translate-y-0.5'
                         }`}
                       >
                         Mark Unfinished
@@ -930,43 +932,43 @@ function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose,
           </div>
 
           {/* Technician Assignment Section */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+          <div className="mt-6 p-4 bg-white/40 backdrop-blur-sm rounded-xl border border-white/40">
             <div className="flex justify-between items-center mb-2">
               <div>
-                <h4 className="font-semibold text-gray-900">Assigned Technician</h4>
-                <p className="text-sm text-gray-600">
+                <h4 className="font-bold text-gray-900">Assigned Technician</h4>
+                <p className="text-sm text-gray-700 font-medium">
                   {localJob.assignedTechnician ? localJob.assignedTechnician.name : (
-                    <span className="text-orange-600 font-medium">⚠️ Not Assigned</span>
+                    <span className="text-orange-600 font-bold">⚠️ Not Assigned</span>
                   )}
                 </p>
               </div>
               <button
                 onClick={() => setShowReassign(!showReassign)}
                 disabled={!allPartsAvailable}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-md font-medium transition-colors text-sm"
+                className="px-4 py-2 bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-semibold transition-all text-sm hover:shadow-lg hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                 title={!allPartsAvailable ? 'All parts must be available before assigning' : 'Assign or reassign technician'}
               >
                 {localJob.assignedTechnician ? 'Reassign' : 'Assign Technician'}
               </button>
             </div>
             {!allPartsAvailable && (
-              <p className="text-xs text-orange-600 mt-2">
+              <p className="text-xs text-orange-600 mt-2 font-medium">
                 ⚠️ All parts must be available before assigning a technician
               </p>
             )}
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 mt-6 pt-4 border-t">
+          <div className="flex gap-3 mt-6 pt-4 border-t border-white/30">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md font-medium transition-colors"
+              className="flex-1 px-6 py-2.5 bg-white/50 hover:bg-white/70 rounded-xl font-semibold transition-all border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
             >
               Close
             </button>
             <button
               onClick={onSuccess}
-              className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md font-medium transition-colors"
+              className="flex-1 px-6 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5"
             >
               Save & Refresh
             </button>
@@ -1181,21 +1183,21 @@ function ReassignmentModal({ job, breakStart, breakEnd, calculateEndTime, onClos
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-y-auto">
+    <div className="modal-backdrop">
+      <div className="floating-card max-w-6xl w-full max-h-[95vh] overflow-y-auto animate-fade-in">
         <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold">Reassign Job Order - Visual Schedule</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">
+          <div className="flex justify-between items-center mb-5">
+            <h3 className="text-xl font-bold text-gray-900">Reassign Job Order - Visual Schedule</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors">
               ×
             </button>
           </div>
 
           {/* Job Info */}
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+          <div className="bg-orange-500/20 backdrop-blur-sm border border-orange-300/30 rounded-xl p-4 mb-4">
             <h4 className="font-bold text-orange-900">{job.jobNumber}</h4>
-            <p className="text-sm text-gray-600">{job.plateNumber} - {job.vin}</p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-sm text-gray-700 font-medium">{job.plateNumber} - {job.vin}</p>
+            <p className="text-xs text-gray-600 mt-1 font-medium">
               Current: {job.timeRange.start} - {job.timeRange.end} ({job.assignedTechnician ? job.assignedTechnician.name : 'Unassigned'})
             </p>
           </div>
@@ -1265,23 +1267,23 @@ function ReassignmentModal({ job, breakStart, breakEnd, calculateEndTime, onClos
               </div>
 
               {hasConflict() && (
-                <div className="bg-red-50 border border-red-300 rounded-lg p-3">
-                  <p className="text-sm text-red-800 font-medium">⚠️ Time Conflict Detected</p>
-                  <p className="text-xs text-red-600 mt-1">Selected time overlaps with existing job</p>
+                <div className="bg-red-500/20 backdrop-blur-sm border border-red-300/30 rounded-xl p-3">
+                  <p className="text-sm text-red-800 font-bold">⚠️ Time Conflict Detected</p>
+                  <p className="text-xs text-red-600 mt-1 font-medium">Selected time overlaps with existing job</p>
                 </div>
               )}
 
               <div className="flex gap-2 pt-4">
                 <button
                   onClick={onClose}
-                  className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md font-medium transition-colors"
+                  className="flex-1 px-6 py-2.5 bg-white/50 hover:bg-white/70 rounded-xl font-semibold transition-all border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmit}
                   disabled={submitting || !selectedTechnician || hasConflict()}
-                  className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white rounded-md font-medium transition-colors"
+                  className="flex-1 px-6 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                 >
                   {submitting ? 'Assigning...' : 'Assign'}
                 </button>
@@ -1290,7 +1292,7 @@ function ReassignmentModal({ job, breakStart, breakEnd, calculateEndTime, onClos
 
             {/* Right: Visual Timeline */}
             <div className="lg:col-span-2">
-              <div className="bg-gray-50 rounded-lg p-4 border">
+              <div className="bg-white/40 backdrop-blur-sm rounded-xl p-4 border border-white/40">
                 <h4 className="font-semibold mb-3">
                   {selectedTechnician ? (
                     <>Schedule for {allTechnicians.find(t => t._id === selectedTechnician)?.name}</>
@@ -1371,13 +1373,13 @@ function ReassignmentModal({ job, breakStart, breakEnd, calculateEndTime, onClos
 
                     {/* Existing Jobs Summary */}
                     {technicianSchedule.length > 0 && (
-                      <div className="mt-4 p-3 bg-white rounded border">
-                        <h5 className="font-medium text-sm mb-2">Existing Jobs ({technicianSchedule.length})</h5>
+                      <div className="mt-4 p-3 bg-white/60 backdrop-blur-sm rounded-xl border border-white/50">
+                        <h5 className="font-bold text-sm mb-2">Existing Jobs ({technicianSchedule.length})</h5>
                         <div className="space-y-1 max-h-32 overflow-y-auto">
                           {technicianSchedule.map((j: any) => (
-                            <div key={j._id} className="text-xs flex justify-between items-center p-2 bg-gray-50 rounded">
-                              <span className="font-semibold">{j.jobNumber}</span>
-                              <span className="text-gray-600">{j.timeRange.start} - {j.timeRange.end}</span>
+                            <div key={j._id} className="text-xs flex justify-between items-center p-2 bg-white/40 rounded-lg">
+                              <span className="font-bold">{j.jobNumber}</span>
+                              <span className="text-gray-700 font-medium">{j.timeRange.start} - {j.timeRange.end}</span>
                             </div>
                           ))}
                         </div>

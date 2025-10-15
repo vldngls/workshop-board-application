@@ -19,7 +19,7 @@ export default function WorkshopPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div>
         <h1 className="text-3xl font-bold text-gray-900">Workshop Board</h1>
         <div className="text-sm text-gray-600">
           Interactive timetable view of all job orders

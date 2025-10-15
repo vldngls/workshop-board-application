@@ -53,21 +53,23 @@ export default function LoginPage() {
 
   return (
     <main className="grid min-h-dvh place-items-center p-6">
-      <div className="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-        <h1 className="mb-1 text-2xl font-semibold">Workshop Board</h1>
-        <p className="mb-6 text-sm text-neutral-600">Sign in to continue</p>
+      <div className="w-full max-w-md floating-card p-8 animate-fade-in">
+        <div className="text-center mb-8">
+          <h1 className="mb-2 text-3xl font-bold bg-gradient-to-r from-ford-blue to-ford-blue-light bg-clip-text text-transparent">Workshop Board</h1>
+          <p className="text-sm text-neutral-600 font-medium">Sign in to continue</p>
+        </div>
         {mounted ? (
-          <form onSubmit={onSubmit} className="space-y-4" autoComplete="on">
+          <form onSubmit={onSubmit} className="space-y-5" autoComplete="on">
             <div>
-              <label className="mb-1 block text-sm font-medium">Email or Username</label>
-              <input value={emailOrUsername} onChange={(e) => setEmailOrUsername(e.target.value)} type="text" required className="w-full rounded-md border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-[color:var(--color-ford-blue)]" autoComplete="username email" />
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Email or Username</label>
+              <input value={emailOrUsername} onChange={(e) => setEmailOrUsername(e.target.value)} type="text" required className="w-full px-4 py-3" autoComplete="username email" />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Password</label>
-              <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required className="w-full rounded-md border border-neutral-300 px-3 py-2 outline-none focus:ring-2 focus:ring-[color:var(--color-ford-blue)]" autoComplete="current-password" />
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Password</label>
+              <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required className="w-full px-4 py-3" autoComplete="current-password" />
             </div>
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            <button type="submit" className="btn btn-primary w-full">Sign In</button>
+            {error ? <p className="text-sm text-red-600 font-medium bg-red-500/20 backdrop-blur-sm border border-red-300/30 rounded-xl p-3">{error}</p> : null}
+            <button type="submit" className="btn btn-primary w-full py-3 text-base">Sign In</button>
           </form>
         ) : null}
       </div>

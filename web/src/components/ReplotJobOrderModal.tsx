@@ -144,16 +144,16 @@ export default function ReplotJobOrderModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="floating-card max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="text-2xl font-bold text-gray-900">Replot Job Order</h3>
-              <p className="text-sm text-gray-600 mt-1">Job Number: <span className="font-medium">{jobNumber}</span></p>
+              <p className="text-sm text-gray-700 mt-1 font-medium">Job Number: <span className="font-bold">{jobNumber}</span></p>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl"
+              className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
             >
               ×
             </button>
@@ -229,7 +229,7 @@ export default function ReplotJobOrderModal({
                 </option>
                 {availableTechnicians.map((tech) => (
                   <option key={tech._id} value={tech._id}>
-                    {tech.name} {tech.level ? `(${tech.level})` : ''}
+                    {tech.name} {(tech as any).level ? `(${(tech as any).level})` : ''}
                   </option>
                 ))}
               </select>
@@ -240,17 +240,17 @@ export default function ReplotJobOrderModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/30">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium transition-colors"
+              className="px-6 py-2.5 text-gray-700 bg-white/50 hover:bg-white/70 rounded-xl font-semibold transition-all border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
             >
               Cancel
             </button>
             <button
               onClick={handleReplot}
               disabled={loading || !assignedTechnician || availableTechnicians.length === 0}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg font-medium transition-colors"
+              className="px-6 py-2.5 bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-none"
             >
               {loading ? 'Replotting...' : 'Replot Job Order'}
             </button>

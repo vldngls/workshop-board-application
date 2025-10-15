@@ -39,9 +39,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const { role, name } = payload
 
   return (
-    <div className="flex min-h-dvh">
+    <div className="h-screen overflow-hidden">
       <Sidebar role={role} name={name ?? null} />
-      <main className="flex-1 bg-neutral-50 p-6 min-w-0 transition-all duration-300 ease-in-out">{children}</main>
+      <main className="ml-64 h-full overflow-auto p-6 min-w-0 transition-all duration-300 ease-in-out">{children}</main>
     </div>
   )
 }

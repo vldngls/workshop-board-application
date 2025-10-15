@@ -127,22 +127,22 @@ export default function ReassignTimeSlotModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="floating-card max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
         <div className="p-6">
           <div className="flex justify-between items-start mb-6">
             <div>
               <h3 className="text-2xl font-bold text-gray-900">Assign Other Job?</h3>
-              <p className="text-sm text-gray-600 mt-2">
-                Technician: <span className="font-medium">{technicianName}</span>
+              <p className="text-sm text-gray-700 mt-2 font-medium">
+                Technician: <span className="font-bold">{technicianName}</span>
               </p>
-              <p className="text-sm text-gray-600">
-                Available Time: <span className="font-medium">{formatTime(startTime)} - {formatTime(endTime)}</span>
-                <span className="ml-2 text-blue-600">({formatMinutesToHours(availableMinutes)} available)</span>
+              <p className="text-sm text-gray-700 font-medium">
+                Available Time: <span className="font-bold">{formatTime(startTime)} - {formatTime(endTime)}</span>
+                <span className="ml-2 text-blue-600 font-bold">({formatMinutesToHours(availableMinutes)} available)</span>
               </p>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl"
+              className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
             >
               ×
             </button>
@@ -159,9 +159,9 @@ export default function ReassignTimeSlotModal({
                 <h4 className="text-lg font-semibold mb-4">Available Job Orders</h4>
                 
                 {availableJobs.length === 0 ? (
-                  <div className="text-center py-8 bg-gray-50 rounded-lg">
-                    <p className="text-gray-600">No unassigned jobs available</p>
-                    <p className="text-sm text-gray-500 mt-2">You can create a new job order</p>
+                  <div className="text-center py-8 bg-white/40 backdrop-blur-sm rounded-xl border border-white/40">
+                    <p className="text-gray-700 font-medium">No unassigned jobs available</p>
+                    <p className="text-sm text-gray-600 mt-2 font-medium">You can create a new job order</p>
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -169,10 +169,10 @@ export default function ReassignTimeSlotModal({
                       <div
                         key={job._id}
                         onClick={() => handleSelectJob(job)}
-                        className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                        className={`border-2 rounded-xl p-4 cursor-pointer transition-all backdrop-blur-sm ${
                           selectedJobId === job._id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-blue-500/50 bg-blue-500/20 shadow-lg'
+                            : 'border-white/40 bg-white/30 hover:bg-white/50 hover:shadow-lg hover:-translate-y-1'
                         }`}
                       >
                         <div className="flex justify-between items-start">
@@ -214,7 +214,7 @@ export default function ReassignTimeSlotModal({
 
               {/* Selected Job Details */}
               {selectedJobId && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="bg-blue-500/20 backdrop-blur-sm border border-blue-300/30 rounded-xl p-4 mb-6">
                   <h4 className="font-semibold text-blue-900 mb-3">Adjust Time Slot</h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -255,10 +255,10 @@ export default function ReassignTimeSlotModal({
               )}
 
               {/* Action Buttons */}
-              <div className="flex justify-between items-center gap-4 pt-4 border-t">
+              <div className="flex justify-between items-center gap-4 pt-4 border-t border-white/30">
                 <button
                   onClick={() => setShowCreateNew(true)}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-600 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5"
                 >
                   + Create New Job Order
                 </button>
@@ -266,14 +266,14 @@ export default function ReassignTimeSlotModal({
                 <div className="flex gap-3">
                   <button
                     onClick={onClose}
-                    className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium transition-colors"
+                    className="px-4 py-2 text-gray-700 bg-white/50 hover:bg-white/70 rounded-xl font-semibold transition-all border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
                   >
                     Skip
                   </button>
                   <button
                     onClick={handleAssignJob}
                     disabled={!selectedJobId || assigning || adjustedDuration <= 0 || adjustedDuration > availableMinutes}
-                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg font-medium transition-colors"
+                    className="px-6 py-2 bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                   >
                     {assigning ? 'Assigning...' : 'Assign Selected Job'}
                   </button>
@@ -284,8 +284,8 @@ export default function ReassignTimeSlotModal({
 
           {/* Note about creating new job */}
           {showCreateNew && (
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
+            <div className="mt-4 p-4 bg-yellow-500/20 backdrop-blur-sm border border-yellow-300/30 rounded-xl">
+              <p className="text-sm text-yellow-800 font-medium">
                 <strong>Note:</strong> Please use the "Add Job Order" button in the main interface to create a new job order with this time slot ({formatTime(startTime)} - {formatTime(endTime)}).
               </p>
               <button
@@ -293,7 +293,7 @@ export default function ReassignTimeSlotModal({
                   onClose()
                   // Could trigger parent to open Add Job Order modal with pre-filled time
                 }}
-                className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-semibold hover:underline"
               >
                 Close and create new job →
               </button>

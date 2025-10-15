@@ -7,7 +7,7 @@ export default function AccountManagementPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'all' | 'technicians'>('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'technicians' | 'service-advisors'>('all')
 
   const apiBase = useMemo(() => "/api/users", [])
 
@@ -31,7 +31,8 @@ export default function AccountManagementPage() {
   }, [fetchUsers])
 
   const technicians = users.filter(user => user.role === 'technician')
-  const otherUsers = users.filter(user => user.role !== 'technician')
+  const serviceAdvisors = users.filter(user => user.role === 'service-advisor')
+  const otherUsers = users.filter(user => user.role !== 'technician' && user.role !== 'service-advisor')
 
   return (
     <div className="space-y-6">
@@ -39,7 +40,9 @@ export default function AccountManagementPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Account Management</h1>
-          <p className="text-gray-600">Manage users and technician levels</p>
+          <div className="text-sm text-gray-600">
+            Manage users and technician levels
+          </div>
         </div>
         <CreateUserForm apiBase={apiBase} onCreated={fetchUsers} />
       </div>
@@ -67,6 +70,16 @@ export default function AccountManagementPage() {
           >
             Technicians ({technicians.length})
           </button>
+          <button
+            onClick={() => setActiveTab('service-advisors')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'service-advisors'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Service Advisors ({serviceAdvisors.length})
+          </button>
         </nav>
       </div>
 
@@ -80,32 +93,51 @@ export default function AccountManagementPage() {
           {activeTab === 'all' ? (
             <div className="grid gap-6">
               {/* Technicians Section */}
-              <div className="bg-white rounded-lg shadow-sm border">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">Technicians</h2>
-                  <p className="text-sm text-gray-600">Manage technician levels and assignments</p>
+              <div className="floating-card">
+                <div className="px-6 py-4 border-b border-white/30">
+                  <h2 className="text-lg font-bold text-gray-900">Technicians</h2>
+                  <p className="text-sm text-gray-600 font-medium">Manage technician levels and assignments</p>
                 </div>
                 <TechnicianTable technicians={technicians} apiBase={apiBase} onUpdated={fetchUsers} />
               </div>
 
+              {/* Service Advisors Section */}
+              {serviceAdvisors.length > 0 && (
+                <div className="floating-card">
+                  <div className="px-6 py-4 border-b border-white/30">
+                    <h2 className="text-lg font-bold text-gray-900">Service Advisors</h2>
+                    <p className="text-sm text-gray-600 font-medium">Customer service and appointment management</p>
+                  </div>
+                  <UserTable users={serviceAdvisors} apiBase={apiBase} onUpdated={fetchUsers} />
+                </div>
+              )}
+
               {/* Other Users Section */}
               {otherUsers.length > 0 && (
-                <div className="bg-white rounded-lg shadow-sm border">
-                  <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-900">Administrators & Job Controllers</h2>
-                    <p className="text-sm text-gray-600">System administrators and job controllers</p>
+                <div className="floating-card">
+                  <div className="px-6 py-4 border-b border-white/30">
+                    <h2 className="text-lg font-bold text-gray-900">Other Users</h2>
+                    <p className="text-sm text-gray-600 font-medium">System administrators and job controllers</p>
                   </div>
                   <UserTable users={otherUsers} apiBase={apiBase} onUpdated={fetchUsers} />
                 </div>
               )}
             </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-sm border">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">Technician Management</h2>
-                <p className="text-sm text-gray-600">View and manage all technicians with their levels</p>
+          ) : activeTab === 'technicians' ? (
+            <div className="floating-card">
+              <div className="px-6 py-4 border-b border-white/30">
+                <h2 className="text-lg font-bold text-gray-900">Technician Management</h2>
+                <p className="text-sm text-gray-600 font-medium">View and manage all technicians with their levels</p>
               </div>
               <TechnicianTable technicians={technicians} apiBase={apiBase} onUpdated={fetchUsers} />
+            </div>
+          ) : (
+            <div className="floating-card">
+              <div className="px-6 py-4 border-b border-white/30">
+                <h2 className="text-lg font-bold text-gray-900">Service Advisor Management</h2>
+                <p className="text-sm text-gray-600 font-medium">View and manage all service advisors</p>
+              </div>
+              <UserTable users={serviceAdvisors} apiBase={apiBase} onUpdated={fetchUsers} />
             </div>
           )}
         </>
@@ -120,7 +152,7 @@ function CreateUserForm({ apiBase, onCreated }: { apiBase: string; onCreated: ()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [role, setRole] = useState<Role>("technician")
-  const [level, setLevel] = useState<TechnicianLevel>("Junior")
+  const [level, setLevel] = useState<TechnicianLevel>("untrained")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -140,7 +172,7 @@ function CreateUserForm({ apiBase, onCreated }: { apiBase: string; onCreated: ()
       setEmail("")
       setPassword("")
       setRole("technician")
-      setLevel("Junior")
+      setLevel("untrained")
       onCreated()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Error creating user")
@@ -150,29 +182,29 @@ function CreateUserForm({ apiBase, onCreated }: { apiBase: string; onCreated: ()
   }
 
   return (
-    <div>
-      <button 
-        onClick={() => setOpen(true)}
-        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-      >
-        + New User
-      </button>
+      <div>
+        <button 
+          onClick={() => setOpen(true)}
+          className="bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue text-white px-6 py-2.5 rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5"
+        >
+          + New User
+        </button>
       {open ? (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="modal-backdrop">
+          <div className="floating-card max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">Create New User</h2>
                 <button
                   onClick={() => setOpen(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
                 >
                   ×
                 </button>
               </div>
 
               {error && (
-                <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                <div className="mb-4 p-4 bg-red-500/20 backdrop-blur-sm border border-red-300/30 text-red-700 rounded-xl font-medium">
                   {error}
                 </div>
               )}
@@ -221,6 +253,7 @@ function CreateUserForm({ apiBase, onCreated }: { apiBase: string; onCreated: ()
                       <option value="administrator">Administrator</option>
                       <option value="job-controller">Job Controller</option>
                       <option value="technician">Technician</option>
+                      <option value="service-advisor">Service Advisor</option>
                     </select>
                   </div>
                 </div>
@@ -233,26 +266,27 @@ function CreateUserForm({ apiBase, onCreated }: { apiBase: string; onCreated: ()
                       value={level} 
                       onChange={(e) => setLevel(e.target.value as TechnicianLevel)}
                     >
-                      <option value="Junior">Junior</option>
-                      <option value="Senior">Senior</option>
-                      <option value="Master">Master</option>
-                      <option value="Lead">Lead</option>
+                      <option value="untrained">Untrained</option>
+                      <option value="level-0">Level 0</option>
+                      <option value="level-1">Level 1</option>
+                      <option value="level-2">Level 2</option>
+                      <option value="level-3">Level 3</option>
                     </select>
                   </div>
                 )}
 
-                <div className="flex justify-end space-x-3 pt-4 border-t">
+                <div className="flex justify-end space-x-3 pt-4 border-t border-white/30">
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md font-medium transition-colors"
+                    className="px-6 py-2.5 text-gray-700 bg-white/50 hover:bg-white/70 rounded-xl font-semibold transition-all border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-md font-medium transition-colors"
+                    className="px-6 py-2.5 bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                   >
                     {submitting ? 'Creating...' : 'Create User'}
                   </button>
@@ -320,6 +354,7 @@ function EditUserForm({ apiBase, user, onUpdated }: { apiBase: string; user: Use
                 <option value="administrator">Administrator</option>
                 <option value="job-controller">Job Controller</option>
                 <option value="technician">Technician</option>
+                <option value="service-advisor">Service Advisor</option>
               </select>
             </div>
             {error ? <div className="col-span-full text-sm text-red-600">{error}</div> : null}
@@ -402,7 +437,7 @@ function TechnicianTable({ technicians, apiBase, onUpdated }: { technicians: Use
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{technician.email}</td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <LevelBadge level={technician.level || 'Junior'} />
+                <LevelBadge level={technician.level || 'untrained'} />
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -480,10 +515,11 @@ function UserTable({ users, apiBase, onUpdated }: { users: User[]; apiBase: stri
 // Level Badge Component
 function LevelBadge({ level }: { level: TechnicianLevel }) {
   const colors = {
-    'Junior': 'bg-yellow-100 text-yellow-800',
-    'Senior': 'bg-blue-100 text-blue-800',
-    'Master': 'bg-purple-100 text-purple-800',
-    'Lead': 'bg-red-100 text-red-800'
+    'untrained': 'bg-yellow-100 text-yellow-800',
+    'level-0': 'bg-blue-100 text-blue-800',
+    'level-1': 'bg-green-100 text-green-800',
+    'level-2': 'bg-purple-100 text-purple-800',
+    'level-3': 'bg-red-100 text-red-800'
   }
 
   return (
@@ -498,7 +534,7 @@ function EditTechnicianForm({ apiBase, technician, onUpdated }: { apiBase: strin
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(technician.name)
   const [email, setEmail] = useState(technician.email)
-  const [level, setLevel] = useState<TechnicianLevel>(technician.level || 'Junior')
+  const [level, setLevel] = useState<TechnicianLevel>(technician.level || 'untrained')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -531,21 +567,21 @@ function EditTechnicianForm({ apiBase, technician, onUpdated }: { apiBase: strin
         Edit
       </button>
       {open && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div className="modal-backdrop">
+          <div className="floating-card max-w-md w-full animate-fade-in">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Edit Technician</h3>
+                <h3 className="text-xl font-bold text-gray-900">Edit Technician</h3>
                 <button
                   onClick={() => setOpen(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
                 >
                   ×
                 </button>
               </div>
 
               {error && (
-                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+                <div className="mb-4 p-3 bg-red-500/20 backdrop-blur-sm border border-red-300/30 text-red-700 rounded-xl text-sm font-medium">
                   {error}
                 </div>
               )}
@@ -577,24 +613,25 @@ function EditTechnicianForm({ apiBase, technician, onUpdated }: { apiBase: strin
                     value={level}
                     onChange={(e) => setLevel(e.target.value as TechnicianLevel)}
                   >
-                    <option value="Junior">Junior</option>
-                    <option value="Senior">Senior</option>
-                    <option value="Master">Master</option>
-                    <option value="Lead">Lead</option>
+                    <option value="untrained">Untrained</option>
+                    <option value="level-0">Level 0</option>
+                    <option value="level-1">Level 1</option>
+                    <option value="level-2">Level 2</option>
+                    <option value="level-3">Level 3</option>
                   </select>
                 </div>
-                <div className="flex justify-end space-x-3 pt-4">
+                <div className="flex justify-end space-x-3 pt-4 border-t border-white/30">
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md font-medium"
+                    className="px-6 py-2.5 text-gray-700 bg-white/50 hover:bg-white/70 rounded-xl font-semibold transition-all border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-md font-medium"
+                    className="px-6 py-2.5 bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                   >
                     {submitting ? 'Saving...' : 'Save'}
                   </button>

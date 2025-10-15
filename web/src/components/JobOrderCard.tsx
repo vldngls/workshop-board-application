@@ -29,16 +29,16 @@ const STATUS_LABELS: Record<JobStatus, string> = {
 }
 
 const STATUS_COLORS: Record<JobStatus, string> = {
-  'OG': 'bg-blue-100 text-blue-800',
-  'WP': 'bg-yellow-100 text-yellow-800',
-  'FP': 'bg-cyan-100 text-cyan-800',
-  'QI': 'bg-purple-100 text-purple-800',
-  'HC': 'bg-orange-100 text-orange-800',
-  'HW': 'bg-red-100 text-red-800',
-  'HI': 'bg-pink-100 text-pink-800',
-  'FR': 'bg-green-100 text-green-800',
-  'FU': 'bg-gray-100 text-gray-800',
-  'CP': 'bg-emerald-100 text-emerald-800'
+  'OG': 'bg-blue-500/20 text-blue-700 border border-blue-300/30',
+  'WP': 'bg-yellow-500/20 text-yellow-700 border border-yellow-300/30',
+  'FP': 'bg-cyan-500/20 text-cyan-700 border border-cyan-300/30',
+  'QI': 'bg-purple-500/20 text-purple-700 border border-purple-300/30',
+  'HC': 'bg-orange-500/20 text-orange-700 border border-orange-300/30',
+  'HW': 'bg-red-500/20 text-red-700 border border-red-300/30',
+  'HI': 'bg-pink-500/20 text-pink-700 border border-pink-300/30',
+  'FR': 'bg-green-500/20 text-green-700 border border-green-300/30',
+  'FU': 'bg-gray-500/20 text-gray-700 border border-gray-300/30',
+  'CP': 'bg-emerald-500/20 text-emerald-700 border border-emerald-300/30'
 }
 
 function JobOrderCard({ jobOrder }: JobOrderCardProps) {
@@ -172,33 +172,33 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
   }, [jobOrder._id, updateJobMutation])
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow relative">
+    <div className="floating-card p-4 relative group">
       {/* Important Star Button */}
       <button
         onClick={toggleImportant}
         disabled={toggleImportantMutation.isPending}
-        className={`absolute top-2 right-2 text-xl transition-all ${jobOrder.isImportant ? 'text-yellow-500' : 'text-gray-300'} hover:text-yellow-500 hover:scale-110`}
+        className={`absolute top-3 right-3 text-2xl transition-all ${jobOrder.isImportant ? 'text-yellow-400 drop-shadow-lg' : 'text-gray-400/60'} hover:text-yellow-400 hover:scale-125 hover:drop-shadow-xl`}
         title={jobOrder.isImportant ? 'Remove from important' : 'Mark as important'}
       >
         {jobOrder.isImportant ? '★' : '☆'}
       </button>
 
       {/* Source Type & Carried Over Badge */}
-      <div className="absolute top-2 left-2 flex gap-1">
+      <div className="absolute top-3 left-3 flex gap-1.5">
         {jobOrder.sourceType === 'appointment' && (
-          <div className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+          <div className="bg-blue-500/20 backdrop-blur-sm text-blue-700 px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 border border-blue-300/30">
             <span className="text-sm">📅</span>
             <span>Appointment</span>
           </div>
         )}
         {jobOrder.sourceType === 'carry-over' && (
-          <div className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+          <div className="bg-purple-500/20 backdrop-blur-sm text-purple-700 px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 border border-purple-300/30">
             <span className="text-sm">🔄</span>
             <span>Carry-over</span>
           </div>
         )}
         {jobOrder.carriedOver && (
-          <div className="bg-red-100 text-red-800 px-1.5 py-0.5 rounded text-xs font-medium flex items-center gap-1">
+          <div className="bg-red-500/20 backdrop-blur-sm text-red-700 px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 border border-red-300/30">
             <span className="text-sm">⚠️</span>
             <span>Carried</span>
           </div>
@@ -206,18 +206,18 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
       </div>
 
       {/* Header */}
-      <div className="flex justify-between items-start mb-3 mt-6">
+      <div className="flex justify-between items-start mb-4 mt-8">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">{jobOrder.jobNumber}</h3>
-          <p className="text-xs text-gray-600">{formatDate(jobOrder.date)}</p>
+          <h3 className="text-lg font-bold text-gray-900">{jobOrder.jobNumber}</h3>
+          <p className="text-xs text-gray-600 font-medium mt-0.5">{formatDate(jobOrder.date)}</p>
         </div>
-        <div className="flex flex-col items-end space-y-0.5 mr-6">
-          <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(jobOrder.status)}`}>
+        <div className="flex flex-col items-end space-y-1 mr-8">
+          <span className={`px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-sm ${getStatusColor(jobOrder.status)}`}>
             {STATUS_LABELS[jobOrder.status]}
           </span>
           <button
             onClick={() => setShowStatusModal(true)}
-            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+            className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-all"
           >
             Change
           </button>
@@ -225,71 +225,71 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
       </div>
 
       {/* Info Grid - Compact */}
-      <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
-        <div>
-          <span className="text-gray-600">Plate:</span>
-          <p className="font-medium text-gray-900">{jobOrder.plateNumber}</p>
+      <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
+        <div className="bg-white/40 backdrop-blur-sm rounded-xl p-2.5 border border-white/40">
+          <span className="text-gray-600 font-medium">Plate:</span>
+          <p className="font-bold text-gray-900 mt-0.5">{jobOrder.plateNumber}</p>
         </div>
-        <div>
-          <span className="text-gray-600">VIN:</span>
-          <p className="font-medium text-gray-900 font-mono truncate">{jobOrder.vin}</p>
+        <div className="bg-white/40 backdrop-blur-sm rounded-xl p-2.5 border border-white/40">
+          <span className="text-gray-600 font-medium">VIN:</span>
+          <p className="font-bold text-gray-900 font-mono truncate mt-0.5">{jobOrder.vin}</p>
         </div>
-        <div>
-          <span className="text-gray-600">Time:</span>
-          <p className="font-medium text-gray-900">{jobOrder.timeRange.start} - {jobOrder.timeRange.end}</p>
+        <div className="bg-white/40 backdrop-blur-sm rounded-xl p-2.5 border border-white/40">
+          <span className="text-gray-600 font-medium">Time:</span>
+          <p className="font-bold text-gray-900 mt-0.5">{jobOrder.timeRange.start} - {jobOrder.timeRange.end}</p>
         </div>
-        <div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Technician:</span>
+        <div className="bg-white/40 backdrop-blur-sm rounded-xl p-2.5 border border-white/40">
+          <div className="flex justify-between items-center mb-0.5">
+            <span className="text-gray-600 font-medium">Technician:</span>
             <button
               onClick={() => setShowTechnicianModal(true)}
-              className="text-xs text-blue-600 hover:text-blue-800"
+              className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline"
             >
               {jobOrder.assignedTechnician ? 'Reassign' : 'Assign'}
             </button>
           </div>
-          <p className="font-medium truncate">
+          <p className="font-bold truncate">
             {jobOrder.assignedTechnician ? (
               <span className="text-gray-900">
                 {jobOrder.assignedTechnician.name}
                 {jobOrder.assignedTechnician.level && (
-                  <span className="ml-1 text-xs text-gray-500">({jobOrder.assignedTechnician.level})</span>
+                  <span className="ml-1 text-xs text-gray-600 font-medium">({jobOrder.assignedTechnician.level})</span>
                 )}
               </span>
             ) : (
-              <span className="text-red-600 font-semibold">⚠️ Needs Assignment</span>
+              <span className="text-red-600 font-bold">⚠️ Needs Assignment</span>
             )}
           </p>
         </div>
       </div>
 
       {/* Job & Parts - Compact */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <div className="text-xs">
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-white/40 backdrop-blur-sm rounded-xl p-2.5 border border-white/40 text-xs">
           <div className="flex justify-between items-center mb-1">
-            <span className="text-gray-600 font-medium">Tasks ({jobOrder.jobList.filter(j => j.status === 'Finished').length}/{jobOrder.jobList.length})</span>
+            <span className="text-gray-600 font-semibold">Tasks ({jobOrder.jobList.filter(j => j.status === 'Finished').length}/{jobOrder.jobList.length})</span>
             <button
               onClick={() => setShowJobTasksModal(true)}
-              className="text-xs text-blue-600 hover:text-blue-800"
+              className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline"
             >
               Manage
             </button>
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-gray-700 font-medium">
             {jobOrder.jobList.length} task{jobOrder.jobList.length > 1 ? 's' : ''}
           </div>
         </div>
-        <div className="text-xs">
+        <div className="bg-white/40 backdrop-blur-sm rounded-xl p-2.5 border border-white/40 text-xs">
           <div className="flex justify-between items-center mb-1">
-            <span className="text-gray-600 font-medium">Parts ({jobOrder.parts.filter(p => p.availability === 'Available').length}/{jobOrder.parts.length})</span>
+            <span className="text-gray-600 font-semibold">Parts ({jobOrder.parts.filter(p => p.availability === 'Available').length}/{jobOrder.parts.length})</span>
             <button
               onClick={() => setShowPartsModal(true)}
-              className="text-xs text-blue-600 hover:text-blue-800"
+              className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline"
             >
               Manage
             </button>
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs font-semibold">
             {jobOrder.parts.filter(p => p.availability === 'Unavailable').length > 0 && (
               <span className="text-red-600">{jobOrder.parts.filter(p => p.availability === 'Unavailable').length} missing</span>
             )}
@@ -302,12 +302,12 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
 
       {/* Days in Workshop - Only for WP, HC, HW, HI, carry-over */}
       {(['WP', 'HC', 'HW', 'HI'].includes(jobOrder.status) || jobOrder.carriedOver) && (
-        <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
-          <span className="text-orange-800 font-medium">
+        <div className="mb-3 p-3 bg-orange-500/20 backdrop-blur-sm border border-orange-300/30 rounded-xl text-xs">
+          <span className="text-orange-700 font-semibold">
             📊 Days in Workshop: {calculateDaysInWorkshop()} day{calculateDaysInWorkshop() !== 1 ? 's' : ''}
           </span>
           {jobOrder.originalCreatedDate && (
-            <span className="text-orange-600 ml-2">
+            <span className="text-orange-600 ml-2 font-medium">
               (Created: {formatDate(jobOrder.originalCreatedDate)})
             </span>
           )}
@@ -317,33 +317,33 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
       {/* Status Change Modal */}
       {showStatusModal && (
         <div className="modal-backdrop">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div className="floating-card max-w-md w-full animate-fade-in">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Change Job Order Status</h3>
+              <div className="flex justify-between items-center mb-5">
+                <h3 className="text-xl font-bold text-gray-900">Change Job Order Status</h3>
                 <button
                   onClick={() => setShowStatusModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
                 >
                   ×
                 </button>
               </div>
               
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600">
-                  Current status: <span className="font-medium">{STATUS_LABELS[jobOrder.status]}</span>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-700 font-medium">
+                  Current status: <span className="font-bold">{STATUS_LABELS[jobOrder.status]}</span>
                 </p>
                 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   {Object.entries(STATUS_LABELS).map(([status, label]) => (
                     <button
                       key={status}
                       onClick={() => handleStatusUpdate(status as JobStatus)}
                       disabled={updateStatusMutation.isPending || status === jobOrder.status}
-                      className={`p-3 rounded-lg text-sm font-medium transition-colors ${
+                      className={`p-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                         status === jobOrder.status
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                          ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
+                          : 'bg-blue-500/20 text-blue-700 hover:bg-blue-500/30 border border-blue-300/30 hover:shadow-lg hover:-translate-y-0.5'
                       }`}
                     >
                       {label}
@@ -359,27 +359,27 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
       {/* Job Tasks Modal */}
       {showJobTasksModal && (
         <div className="modal-backdrop">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="floating-card max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Manage Job Tasks</h3>
+              <div className="flex justify-between items-center mb-5">
+                <h3 className="text-xl font-bold text-gray-900">Manage Job Tasks</h3>
                 <button
                   onClick={() => setShowJobTasksModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
                 >
                   ×
                 </button>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {jobOrder.jobList.map((job, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div key={index} className="bg-white/40 backdrop-blur-sm border border-white/40 rounded-xl p-4">
                     <div className="flex justify-between items-start mb-3">
-                      <h4 className="font-medium text-gray-900">{job.description}</h4>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      <h4 className="font-bold text-gray-900">{job.description}</h4>
+                      <span className={`px-3 py-1 rounded-lg text-xs font-semibold backdrop-blur-sm ${
                         job.status === 'Finished' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
+                          ? 'bg-green-500/20 text-green-700 border border-green-300/30' 
+                          : 'bg-gray-500/20 text-gray-700 border border-gray-300/30'
                       }`}>
                         {job.status}
                       </span>
@@ -389,10 +389,10 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
                       <button
                         onClick={() => handleJobTaskUpdate(index, 'Finished')}
                         disabled={updatingTaskIndex === index || job.status === 'Finished'}
-                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
                           job.status === 'Finished'
-                            ? 'bg-green-100 text-green-400 cursor-not-allowed'
-                            : 'bg-green-50 text-green-700 hover:bg-green-100'
+                            ? 'bg-green-500/20 text-green-400 cursor-not-allowed border border-green-300/30'
+                            : 'bg-green-500/20 text-green-700 hover:bg-green-500/30 border border-green-300/30 hover:shadow-lg hover:-translate-y-0.5'
                         }`}
                       >
                         Mark Finished
@@ -400,10 +400,10 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
                       <button
                         onClick={() => handleJobTaskUpdate(index, 'Unfinished')}
                         disabled={updatingTaskIndex === index || job.status === 'Unfinished'}
-                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
                           job.status === 'Unfinished'
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                            ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
+                            : 'bg-gray-500/20 text-gray-700 hover:bg-gray-500/30 border border-gray-300/30 hover:shadow-lg hover:-translate-y-0.5'
                         }`}
                       >
                         Mark Unfinished
@@ -420,27 +420,27 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
       {/* Parts Management Modal */}
       {showPartsModal && (
         <div className="modal-backdrop">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="floating-card max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Manage Parts Availability</h3>
+              <div className="flex justify-between items-center mb-5">
+                <h3 className="text-xl font-bold text-gray-900">Manage Parts Availability</h3>
                 <button
                   onClick={() => setShowPartsModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
                 >
                   ×
                 </button>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {jobOrder.parts.map((part, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div key={index} className="bg-white/40 backdrop-blur-sm border border-white/40 rounded-xl p-4">
                     <div className="flex justify-between items-start mb-3">
-                      <h4 className="font-medium text-gray-900">{part.name}</h4>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      <h4 className="font-bold text-gray-900">{part.name}</h4>
+                      <span className={`px-3 py-1 rounded-lg text-xs font-semibold backdrop-blur-sm ${
                         part.availability === 'Available' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-green-500/20 text-green-700 border border-green-300/30' 
+                          : 'bg-red-500/20 text-red-700 border border-red-300/30'
                       }`}>
                         {part.availability}
                       </span>
@@ -450,10 +450,10 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
                       <button
                         onClick={() => handlePartAvailabilityUpdate(index, 'Available')}
                         disabled={updatingPartIndex === index || part.availability === 'Available'}
-                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
                           part.availability === 'Available'
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-green-50 text-green-700 hover:bg-green-100'
+                            ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
+                            : 'bg-green-500/20 text-green-700 hover:bg-green-500/30 border border-green-300/30 hover:shadow-lg hover:-translate-y-0.5'
                         }`}
                       >
                         Mark Available
@@ -461,10 +461,10 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
                       <button
                         onClick={() => handlePartAvailabilityUpdate(index, 'Unavailable')}
                         disabled={updatingPartIndex === index || part.availability === 'Unavailable'}
-                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
                           part.availability === 'Unavailable'
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-red-50 text-red-700 hover:bg-red-100'
+                            ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
+                            : 'bg-red-500/20 text-red-700 hover:bg-red-500/30 border border-red-300/30 hover:shadow-lg hover:-translate-y-0.5'
                         }`}
                       >
                         Mark Unavailable
@@ -481,21 +481,21 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
       {/* Technician Reassignment Modal */}
       {showTechnicianModal && (
         <div className="modal-backdrop">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div className="floating-card max-w-md w-full animate-fade-in">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Reassign Technician</h3>
+              <div className="flex justify-between items-center mb-5">
+                <h3 className="text-xl font-bold text-gray-900">Reassign Technician</h3>
                 <button
                   onClick={() => setShowTechnicianModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
                 >
                   ×
                 </button>
               </div>
               
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600">
-                  Current: <span className="font-medium">
+              <div className="space-y-4">
+                <p className="text-sm text-gray-700 font-medium">
+                  Current: <span className="font-bold">
                     {jobOrder.assignedTechnician ? jobOrder.assignedTechnician.name : (
                       <span className="text-red-600">Not Assigned</span>
                     )}
@@ -503,26 +503,26 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
                 </p>
                 
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700">Available Technicians:</p>
+                  <p className="text-sm font-bold text-gray-800">Available Technicians:</p>
                   {availableTechnicians.length === 0 ? (
-                    <p className="text-sm text-gray-500">No available technicians for this time slot</p>
+                    <p className="text-sm text-gray-600 font-medium">No available technicians for this time slot</p>
                   ) : (
                     availableTechnicians.map((tech: any) => (
                       <button
                         key={tech._id}
                         onClick={() => handleTechnicianReassign(tech._id)}
-                        disabled={updateJobMutation.isPending || (jobOrder.assignedTechnician && tech._id === jobOrder.assignedTechnician._id)}
-                        className={`w-full p-3 rounded-lg text-sm font-medium text-left transition-colors ${
+                        disabled={updateJobMutation.isPending === true || (jobOrder.assignedTechnician?._id === tech._id)}
+                        className={`w-full p-3 rounded-xl text-sm font-semibold text-left transition-all duration-200 ${
                           jobOrder.assignedTechnician && tech._id === jobOrder.assignedTechnician._id
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                            ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
+                            : 'bg-blue-500/20 text-blue-700 hover:bg-blue-500/30 border border-blue-300/30 hover:shadow-lg hover:-translate-y-0.5'
                         }`}
                       >
                         <div className="flex justify-between items-center">
                           <div className="flex flex-col">
                             <span>{tech.name}</span>
                             {tech.level && (
-                              <span className="text-xs text-gray-500">Level: {tech.level}</span>
+                              <span className="text-xs text-gray-600 font-medium">Level: {tech.level}</span>
                             )}
                           </div>
                         </div>

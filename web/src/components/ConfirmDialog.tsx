@@ -24,29 +24,29 @@ export default function ConfirmDialog({
   if (!isOpen) return null
 
   const confirmButtonClass = confirmVariant === 'danger'
-    ? 'bg-red-500 hover:bg-red-600 text-white'
-    : 'bg-[color:var(--color-ford-blue)] hover:bg-blue-700 text-white'
+    ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white'
+    : 'bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue text-white'
 
   return (
     <div className="modal-backdrop">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full animate-in fade-in zoom-in duration-200">
+      <div className="floating-card max-w-md w-full animate-fade-in">
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+          <h3 className="text-xl font-bold text-neutral-900 mb-3">
             {title}
           </h3>
-          <p className="text-neutral-600 mb-6">
+          <p className="text-neutral-700 mb-6 font-medium">
             {message}
           </p>
           <div className="flex gap-3 justify-end">
             <button
               onClick={onCancel}
-              className="px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors font-medium text-neutral-700"
+              className="px-6 py-2.5 bg-white/50 hover:bg-white/70 rounded-xl font-semibold text-neutral-700 transition-all duration-200 border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
             >
               {cancelLabel}
             </button>
             <button
               onClick={onConfirm}
-              className={`px-4 py-2 rounded-lg transition-colors font-medium ${confirmButtonClass}`}
+              className={`px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 ${confirmButtonClass}`}
             >
               {confirmLabel}
             </button>

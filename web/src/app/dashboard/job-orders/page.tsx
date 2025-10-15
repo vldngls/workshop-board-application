@@ -146,17 +146,22 @@ export default function JobOrdersPage() {
     <div className="space-y-6">
       <Toaster position="top-right" />
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Job Orders</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Job Orders</h1>
+          <div className="text-sm text-gray-600">
+            Manage and track all job orders
+          </div>
+        </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5"
         >
           Add Job Order
         </button>
       </div>
 
       {/* Search and Filter Section */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border">
+      <div className="floating-card p-6">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Search */}
           <div className="flex-1">
@@ -285,7 +290,7 @@ export default function JobOrdersPage() {
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border">
+            <div className="flex items-center justify-between floating-card p-4">
               <div className="text-sm text-gray-600">
                 Page {pagination.currentPage} of {pagination.totalPages} 
                 ({pagination.totalItems} total items)
@@ -295,7 +300,7 @@ export default function JobOrdersPage() {
                 <button
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={!pagination.hasPrevPage}
-                  className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm bg-white/50 hover:bg-white/70 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all border border-white/50"
                 >
                   Previous
                 </button>
@@ -311,10 +316,10 @@ export default function JobOrdersPage() {
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`px-3 py-2 text-sm rounded-lg ${
+                        className={`px-3 py-2 text-sm rounded-xl font-semibold transition-all ${
                           pageNum === pagination.currentPage
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 hover:bg-gray-200'
+                            ? 'bg-gradient-to-r from-ford-blue to-ford-blue-light text-white shadow-lg'
+                            : 'bg-white/50 hover:bg-white/70 border border-white/50'
                         }`}
                       >
                         {pageNum}
@@ -326,7 +331,7 @@ export default function JobOrdersPage() {
                 <button
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
                   disabled={!pagination.hasNextPage}
-                  className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm bg-white/50 hover:bg-white/70 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all border border-white/50"
                 >
                   Next
                 </button>

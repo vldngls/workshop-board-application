@@ -2,6 +2,10 @@
 
 :root {
   --color-ford-blue: #003478;
+  --color-ford-blue-light: #0047a8;
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-soft: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
 }
 
 html,
@@ -11,18 +15,21 @@ body {
 }
 
 body {
-  @apply bg-white text-neutral-900 antialiased;
+  @apply antialiased;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
-/* Custom Scrollbar Styles */
+/* Custom Scrollbar Styles - More subtle */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(203 213 225) transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
 }
 
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 *::-webkit-scrollbar-track {
@@ -30,46 +37,188 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: rgb(203 213 225);
-  border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.2));
+  border-radius: 10px;
+  border: 1px solid transparent;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgb(148 163 184);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.3));
 }
 
-/* Dark scrollbar for dark backgrounds */
-.scrollbar-dark {
-  scrollbar-color: rgb(71 85 105) transparent;
+/* Glass Morphism Effect */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.scrollbar-dark::-webkit-scrollbar-thumb {
-  background-color: rgb(71 85 105);
+.glass-dark {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.scrollbar-dark::-webkit-scrollbar-thumb:hover {
-  background-color: rgb(100 116 139);
+/* Floating Card Effect */
+.floating-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 20px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Modal Backdrop with Blur */
+.floating-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* Modal Backdrop with Enhanced Blur */
 .modal-backdrop {
-  @apply fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4;
+  @apply fixed inset-0 flex items-center justify-center z-50 p-4;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  animation: fadeIn 0.2s ease-out;
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modern Button Styles */
 .btn {
-  @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors;
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn-primary {
-  @apply bg-[color:var(--color-ford-blue)] text-white hover:brightness-95;
+  background: linear-gradient(135deg, var(--color-ford-blue) 0%, var(--color-ford-blue-light) 100%);
+  color: white;
+  border: none;
 }
 
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--color-ford-blue-light) 0%, var(--color-ford-blue) 100%);
+}
+
+/* Enhanced Button Styles for Better Visibility */
+button {
+  @apply transition-all duration-200;
+}
+
+/* Default button styling for better visibility */
+button:not([class*="bg-"]):not([class*="text-"]) {
+  @apply bg-blue-500 text-white hover:bg-blue-600 border border-blue-600;
+}
+
+/* Appointment and action buttons */
+.appointment-button {
+  @apply bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-500 text-white font-semibold py-2 px-3 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5;
+}
+
+.no-show-button {
+  @apply bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-500 text-white font-semibold py-2 px-3 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5;
+}
+
+.create-job-button {
+  @apply bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-500 text-white font-semibold py-2 px-3 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5;
+}
+
+/* Ford Blue Gradient Utilities */
+.ford-gradient {
+  background: linear-gradient(135deg, var(--color-ford-blue) 0%, var(--color-ford-blue-light) 100%);
+}
+
+.ford-gradient:hover {
+  background: linear-gradient(135deg, var(--color-ford-blue-light) 0%, var(--color-ford-blue) 100%);
+}
+
+.ford-gradient-text {
+  background: linear-gradient(135deg, var(--color-ford-blue) 0%, var(--color-ford-blue-light) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Workshop timetable buttons */
+.workshop-button {
+  background: linear-gradient(135deg, var(--color-ford-blue) 0%, var(--color-ford-blue-light) 100%);
+  @apply text-white font-semibold py-2.5 px-4 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5;
+}
+
+.workshop-button:hover {
+  background: linear-gradient(135deg, var(--color-ford-blue-light) 0%, var(--color-ford-blue) 100%);
+}
+
+/* Sidebar Enhancements */
 .sidebar-link {
-  @apply flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-neutral-100 text-neutral-700;
+  @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 text-neutral-700;
+  background: transparent;
+}
+
+.sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.6);
+  transform: translateX(4px);
 }
 
 .sidebar-link.active {
-  @apply bg-[color:var(--color-ford-blue)] text-white;
+  background: linear-gradient(135deg, var(--color-ford-blue) 0%, var(--color-ford-blue-light) 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 52, 120, 0.3);
+}
+
+/* Input Fields - Glass Style */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="time"],
+input[type="number"],
+select,
+textarea {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="number"]:focus,
+select:focus,
+textarea:focus {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(102, 126, 234, 0.6);
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  outline: none;
 }

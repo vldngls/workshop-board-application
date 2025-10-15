@@ -7,7 +7,7 @@ interface TimeSlot {
   label: string
   isOccupied: boolean
   occupiedBy?: string
-  type?: 'appointment' | 'job-order'
+  type?: 'appointment' | 'job-order' | 'break'
 }
 
 interface TechnicianScheduleViewProps {
@@ -27,6 +27,45 @@ export default function TechnicianScheduleView({
 }: TechnicianScheduleViewProps) {
   const [schedule, setSchedule] = useState<TimeSlot[]>([])
   const [loading, setLoading] = useState(false)
+  const [breakStart, setBreakStart] = useState('12:00')
+  const [breakEnd, setBreakEnd] = useState('13:00')
+
+  // Load break settings from localStorage
+  useEffect(() => {
+    const savedBreakStart = localStorage.getItem('breakStart')
+    const savedBreakEnd = localStorage.getItem('breakEnd')
+    if (savedBreakStart) setBreakStart(savedBreakStart)
+    if (savedBreakEnd) setBreakEnd(savedBreakEnd)
+  }, [])
+
+  // Check if a specific time slot is during break time
+  const isBreakTime = (time: string): boolean => {
+    const [hour, minute] = time.split(':').map(Number)
+    const [breakStartHour, breakStartMinute] = breakStart.split(':').map(Number)
+    const [breakEndHour, breakEndMinute] = breakEnd.split(':').map(Number)
+    
+    const slotMinutes = hour * 60 + minute
+    const breakStartMinutes = breakStartHour * 60 + breakStartMinute
+    const breakEndMinutes = breakEndHour * 60 + breakEndMinute
+    
+    // Slot is during break if it's >= break start and < break end
+    return slotMinutes >= breakStartMinutes && slotMinutes < breakEndMinutes
+  }
+
+  // Check if an appointment duration would overlap with break time
+  const wouldOverlapWithBreak = (startTime: string, duration: number): boolean => {
+    const [startHour, startMinute] = startTime.split(':').map(Number)
+    const [breakStartHour, breakStartMinute] = breakStart.split(':').map(Number)
+    const [breakEndHour, breakEndMinute] = breakEnd.split(':').map(Number)
+    
+    const startMinutes = startHour * 60 + startMinute
+    const endMinutes = startMinutes + duration
+    const breakStartMinutes = breakStartHour * 60 + breakStartMinute
+    const breakEndMinutes = breakEndHour * 60 + breakEndMinute
+    
+    // Check if appointment overlaps with break time
+    return startMinutes < breakEndMinutes && endMinutes > breakStartMinutes
+  }
 
   // Generate time slots from 7:00 AM to 6:00 PM
   const generateTimeSlots = (): TimeSlot[] => {
@@ -39,7 +78,9 @@ export default function TechnicianScheduleView({
         slots.push({
           time: timeStr,
           label: `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`,
-          isOccupied: false
+          isOccupied: isBreakTime(timeStr),
+          occupiedBy: isBreakTime(timeStr) ? 'Break Time' : undefined,
+          type: isBreakTime(timeStr) ? 'break' : undefined
         })
       }
     }
@@ -52,15 +93,27 @@ export default function TechnicianScheduleView({
     const fetchSchedule = async () => {
       setLoading(true)
       try {
+        console.log('Fetching schedule for technician:', technicianId, 'date:', date)
+        
         // Fetch appointments
         const appointmentsRes = await fetch(`/api/appointments?date=${date}&technician=${technicianId}`)
+        if (!appointmentsRes.ok) {
+          console.error('Failed to fetch appointments:', appointmentsRes.status, appointmentsRes.statusText)
+          throw new Error('Failed to fetch appointments')
+        }
         const appointmentsData = await appointmentsRes.json()
         const appointments = appointmentsData.appointments || []
+        console.log('Fetched appointments:', appointments.length)
 
         // Fetch job orders
         const jobOrdersRes = await fetch(`/api/job-orders?date=${date}&technician=${technicianId}`)
+        if (!jobOrdersRes.ok) {
+          console.error('Failed to fetch job orders:', jobOrdersRes.status, jobOrdersRes.statusText)
+          throw new Error('Failed to fetch job orders')
+        }
         const jobOrdersData = await jobOrdersRes.json()
         const jobOrders = jobOrdersData.jobOrders || []
+        console.log('Fetched job orders:', jobOrders.length)
 
         // Mark occupied slots
         const slots = generateTimeSlots()
@@ -79,6 +132,9 @@ export default function TechnicianScheduleView({
         }
 
         slots.forEach(slot => {
+          // Don't override breaktime slots
+          if (slot.type === 'break') return
+          
           // Check appointments
           for (const appt of appointments) {
             if (isTimeInRange(slot.time, appt.timeRange.start, appt.timeRange.end)) {
@@ -103,8 +159,11 @@ export default function TechnicianScheduleView({
         })
 
         setSchedule(slots)
+        console.log('Schedule updated with', slots.length, 'slots')
       } catch (error) {
         console.error('Error fetching schedule:', error)
+        // Set empty schedule on error
+        setSchedule(generateTimeSlots())
       } finally {
         setLoading(false)
       }
