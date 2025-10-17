@@ -1,6 +1,6 @@
 # Workshop Board Application
 
-A comprehensive MERN workshop management system with TypeScript, featuring job order tracking, technician scheduling, quality inspection workflow, and real-time status updates.
+A comprehensive MERN workshop management system with TypeScript, featuring appointment scheduling, job order tracking, technician scheduling, quality inspection workflow, and real-time status updates.
 
 ## 🚀 Tech Stack
 
@@ -18,47 +18,61 @@ A comprehensive MERN workshop management system with TypeScript, featuring job o
 - Important jobs section with star favorites
 - Quick action cards for navigation
 
-### 2. **Job Order Management**
+### 2. **Appointment Management**
+- Create, view, update, and delete appointments
+- Schedule appointments with technicians and service advisors
+- Conflict detection for overlapping time slots
+- No-show tracking and management
+- Convert appointments to job orders
+- Bulk operations for no-show appointments
+- Flexible time slot management with break time configuration
+
+### 3. **Job Order Management**
 - Create, view, update, and delete job orders
-- Comprehensive job details (job number, plate, VIN, technician, time range)
+- Comprehensive job details (job number, plate, VIN, technician, service advisor, time range)
 - Dynamic job task lists with completion tracking
 - Parts management with availability status
 - Advanced search and filtering
 - Pagination for large datasets
 - Star/favorite important jobs
+- Create job orders from existing appointments
 
-### 3. **Workshop Timetable**
+### 4. **Workshop Timetable**
 - Interactive visual timetable (7 AM - 5 PM in 30-min intervals)
 - Drag-and-drop style grid view by technician
 - Real-time job progress indicators
 - Color-coded status badges
 - Click to view/edit job details
 - Important (★) and carried over (🔄) indicators
+- Appointment and job order visualization
 
-### 4. **Quality Inspection Workflow**
+### 5. **Quality Inspection Workflow**
 - Submit jobs for QI (only when all tasks complete)
 - Dedicated QI queue section
 - Approve → moves to "For Release"
 - Reject → returns to "On Going" for re-work
 - Side-by-side QI and For Release sections
 
-### 5. **Carry Over System**
+### 6. **Carry Over System**
 - Automatically mark unfinished jobs at end of day
 - Visual carry over indicators throughout app
 - Dedicated dashboard section for carry over jobs
 - API endpoint for bulk carry over marking
 
-### 6. **Smart Features**
+### 7. **Smart Features**
 - **Technician Scheduling**: Conflict detection and availability checking
+- **Service Advisor Integration**: Assign service advisors to appointments and job orders
+- **Break Time Management**: Configurable lunch break settings
 - **Toast Notifications**: Non-intrusive success/error feedback
 - **Debounced Search**: Optimized API calls (300ms debounce)
 - **Lazy Loading**: Modal components load on-demand
 - **Memoization**: React.memo and useCallback for performance
 
-### 7. **Role-Based Access Control**
+### 8. **Role-Based Access Control**
 - **Administrator**: Full access to all features
-- **Job Controller**: Manage jobs, QI workflow, scheduling
+- **Job Controller**: Manage jobs, QI workflow, scheduling, appointments
 - **Technician**: View schedule, update task status, submit for QI
+- **Service Advisor**: Manage appointments, customer interactions
 
 ## 📊 Job Status Types
 
@@ -72,6 +86,16 @@ A comprehensive MERN workshop management system with TypeScript, featuring job o
 | Hold Insurance | HI | Insurance claim processing |
 | For Release | FR | Ready for customer pickup |
 | Finished Unclaimed | FU | Complete but not yet claimed |
+| Complete | CP | Released to customer (FINAL) |
+
+## 👥 User Roles
+
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| **Administrator** | Full system access | All features, user management, system configuration |
+| **Job Controller** | Workshop operations manager | Job orders, appointments, QI workflow, technician scheduling |
+| **Technician** | Workshop technician | View schedule, update job status, submit for QI |
+| **Service Advisor** | Customer service representative | Manage appointments, customer interactions |
 
 ## 🎯 UI/UX Highlights
 
@@ -101,9 +125,11 @@ workshop-board-application/
 │   ├── src/
 │   │   ├── controllers/       # Route controllers
 │   │   │   ├── auth.ts
+│   │   │   ├── appointments.ts
 │   │   │   ├── jobOrders.ts
 │   │   │   └── users.ts
 │   │   ├── models/            # MongoDB models
+│   │   │   ├── Appointment.ts
 │   │   │   ├── JobOrder.ts
 │   │   │   └── User.ts
 │   │   ├── middleware/        # Auth & RBAC
@@ -121,16 +147,24 @@ workshop-board-application/
     │   │   ├── (auth)/login/  # Login page
     │   │   ├── dashboard/     # Main dashboard
     │   │   │   ├── page.tsx   # Overview dashboard
+    │   │   │   ├── appointments/ # Appointment management
     │   │   │   ├── workshop/  # Timetable view
     │   │   │   ├── job-orders/ # Job management
     │   │   │   └── account-management/ # User mgmt
     │   │   └── api/           # Next.js API routes
+    │   │       ├── appointments/ # Appointment API routes
+    │   │       ├── job-orders/ # Job order API routes
+    │   │       └── users/     # User API routes
     │   ├── components/        # React components
     │   │   ├── WorkshopTimetable.tsx
     │   │   ├── JobOrderCard.tsx
     │   │   ├── AddJobOrderModal.tsx
+    │   │   ├── CreateJobOrderFromAppointmentModal.tsx
+    │   │   ├── ReassignTimeSlotModal.tsx
+    │   │   ├── ReplotJobOrderModal.tsx
     │   │   └── Sidebar.tsx
     │   ├── types/             # TypeScript types
+    │   │   ├── appointment.ts
     │   │   ├── auth.ts
     │   │   └── jobOrder.ts
     │   └── middleware.ts      # Auth middleware
@@ -188,7 +222,7 @@ This creates:
 - 1 Administrator user
 - 1 Job Controller user
 - 5 Technician users
-- Sample job orders
+- 5 Service Advisor users
 
 ### Development
 
@@ -209,9 +243,20 @@ npm run dev
 
 ### Default Login Credentials (after seeding)
 
-- **Administrator**: `admin@workshop.com` / `admin123`
-- **Job Controller**: `controller@workshop.com` / `controller123`
-- **Technician 1**: `tech1@workshop.com` / `tech123`
+- **Administrator**: `admin` / `test123456` (admin@workshop.com)
+- **Job Controller**: `jobcontroller` / `test123456` (jobcontroller@workshop.com)
+- **Technician 1**: `technician1` / `test123456` (tech1@workshop.com)
+- **Technician 2**: `technician2` / `test123456` (tech2@workshop.com)
+- **Technician 3**: `technician3` / `test123456` (tech3@workshop.com)
+- **Technician 4**: `technician4` / `test123456` (tech4@workshop.com)
+- **Technician 5**: `technician5` / `test123456` (tech5@workshop.com)
+- **Service Advisor 1**: `serviceadvisor1` / `test123456` (sa1@workshop.com)
+- **Service Advisor 2**: `serviceadvisor2` / `test123456` (sa2@workshop.com)
+- **Service Advisor 3**: `serviceadvisor3` / `test123456` (sa3@workshop.com)
+- **Service Advisor 4**: `serviceadvisor4` / `test123456` (sa4@workshop.com)
+- **Service Advisor 5**: `serviceadvisor5` / `test123456` (sa5@workshop.com)
+
+**Note**: All seeded users use the password `test123456`. You can login using either username or email address.
 
 ## 📡 API Endpoints
 
@@ -219,6 +264,15 @@ npm run dev
 - `POST /auth/login` - User login
 - `POST /auth/logout` - User logout
 - `GET /users/me` - Get current user
+
+### Appointments
+- `GET /appointments` - List all appointments (with filtering)
+- `POST /appointments` - Create new appointment
+- `GET /appointments/:id` - Get specific appointment
+- `PUT /appointments/:id` - Update appointment
+- `DELETE /appointments/:id` - Delete appointment
+- `POST /appointments/:id/create-job-order` - Convert appointment to job order
+- `DELETE /appointments/delete-all-no-show` - Delete all no-show appointments
 
 ### Job Orders
 - `GET /job-orders` - List all job orders (with filtering)
@@ -230,6 +284,8 @@ npm run dev
 - `PATCH /job-orders/:id/submit-qi` - Submit for quality inspection
 - `PATCH /job-orders/:id/approve-qi` - Approve quality inspection
 - `PATCH /job-orders/:id/reject-qi` - Reject quality inspection
+- `PATCH /job-orders/:id/complete` - Mark job as complete
+- `PATCH /job-orders/:id/redo` - Mark job for rework
 - `POST /job-orders/mark-carry-over` - Mark unfinished jobs as carry over
 - `GET /job-orders/technicians/available` - Get available technicians
 
