@@ -3,9 +3,46 @@
 :root {
   --color-ford-blue: #003478;
   --color-ford-blue-light: #0047a8;
-  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  --gradient-soft: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+  --ford-blue: #003478;
+  --ford-blue-light: #0047a8;
+  
+  /* iOS 26 Inspired Color System */
+  --ios-primary: #007AFF;
+  --ios-primary-dark: #0056CC;
+  --ios-secondary: #5856D6;
+  --ios-success: #34C759;
+  --ios-warning: #FF9500;
+  --ios-error: #FF3B30;
+  
+  /* Neutral Grays - iOS 26 inspired */
+  --ios-gray-1: #F2F2F7;
+  --ios-gray-2: #E5E5EA;
+  --ios-gray-3: #D1D1D6;
+  --ios-gray-4: #C7C7CC;
+  --ios-gray-5: #AEAEB2;
+  --ios-gray-6: #8E8E93;
+  --ios-gray-7: #636366;
+  --ios-gray-8: #48484A;
+  --ios-gray-9: #3A3A3C;
+  --ios-gray-10: #1C1C1E;
+  
+  /* Background System */
+  --ios-bg-primary: #FFFFFF;
+  --ios-bg-secondary: #F2F2F7;
+  --ios-bg-tertiary: #FFFFFF;
+  --ios-bg-grouped: #F2F2F7;
+  
+  /* Text Colors */
+  --ios-text-primary: #000000;
+  --ios-text-secondary: #3A3A3C;
+  --ios-text-tertiary: #8E8E93;
+  --ios-text-quaternary: #C7C7CC;
+  
+  /* Shadows - iOS 26 inspired */
+  --ios-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --ios-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --ios-shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.15);
+  --ios-shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.2);
 }
 
 html,
@@ -16,9 +53,12 @@ body {
 
 body {
   @apply antialiased;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: var(--ios-bg-secondary);
   background-attachment: fixed;
   min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ios-text-primary);
+  line-height: 1.5;
 }
 
 /* Custom Scrollbar Styles - More subtle */
@@ -61,26 +101,45 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Floating Card Effect */
-.floating-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+/* iOS 26 Inspired Card System */
+.ios-card {
+  background: var(--ios-bg-primary);
+  border-radius: 16px;
+  box-shadow: var(--ios-shadow-md);
+  border: 1px solid var(--ios-gray-2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ios-card:hover {
+  box-shadow: var(--ios-shadow-lg);
+  transform: translateY(-1px);
+}
+
+.ios-card-elevated {
+  background: var(--ios-bg-primary);
   border-radius: 20px;
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: var(--ios-shadow-xl);
+  border: 1px solid var(--ios-gray-2);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.ios-card-elevated:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+/* Legacy floating-card for backward compatibility */
+.floating-card {
+  background: var(--ios-bg-primary);
+  border-radius: 16px;
+  box-shadow: var(--ios-shadow-md);
+  border: 1px solid var(--ios-gray-2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .floating-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 
-    0 16px 48px rgba(0, 0, 0, 0.12),
-    0 4px 16px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  box-shadow: var(--ios-shadow-lg);
+  transform: translateY(-1px);
 }
 
 /* Modal Backdrop with Enhanced Blur */
@@ -101,30 +160,93 @@ body {
   }
 }
 
-/* Modern Button Styles */
+/* iOS 26 Inspired Button System */
+.ios-button {
+  @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-base font-semibold transition-all duration-200;
+  background: var(--ios-primary);
+  color: white;
+  border: none;
+  box-shadow: var(--ios-shadow-sm);
+  min-height: 44px; /* iOS minimum touch target */
+}
+
+.ios-button:hover {
+  background: var(--ios-primary-dark);
+  box-shadow: var(--ios-shadow-md);
+  transform: translateY(-1px);
+}
+
+.ios-button:active {
+  transform: translateY(0);
+  box-shadow: var(--ios-shadow-sm);
+}
+
+.ios-button:disabled {
+  background: var(--ios-gray-4);
+  color: var(--ios-gray-6);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.ios-button-secondary {
+  background: var(--ios-bg-primary);
+  color: var(--ios-primary);
+  border: 1px solid var(--ios-gray-3);
+}
+
+.ios-button-secondary:hover {
+  background: var(--ios-gray-1);
+  border-color: var(--ios-gray-4);
+}
+
+.ios-button-destructive {
+  background: var(--ios-error);
+}
+
+.ios-button-destructive:hover {
+  background: #D70015;
+}
+
+/* Legacy button styles for backward compatibility */
 .btn {
-  @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-base font-semibold transition-all duration-200;
+  background: linear-gradient(135deg, var(--ford-blue) 0%, var(--ford-blue-light) 100%);
+  color: white;
+  border: none;
+  box-shadow: var(--ios-shadow-sm);
+  min-height: 44px; /* iOS minimum touch target */
 }
 
 .btn:hover {
+  background: linear-gradient(135deg, var(--ford-blue-light) 0%, var(--ford-blue) 100%);
+  box-shadow: var(--ios-shadow-md);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .btn:active {
   transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--ios-shadow-sm);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-ford-blue) 0%, var(--color-ford-blue-light) 100%);
+  @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-base font-semibold transition-all duration-200;
+  background: linear-gradient(135deg, var(--ford-blue) 0%, var(--ford-blue-light) 100%);
   color: white;
   border: none;
+  box-shadow: var(--ios-shadow-sm);
+  min-height: 44px; /* iOS minimum touch target */
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, var(--color-ford-blue-light) 0%, var(--color-ford-blue) 100%);
+  background: linear-gradient(135deg, var(--ford-blue-light) 0%, var(--ford-blue) 100%);
+  box-shadow: var(--ios-shadow-md);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: var(--ios-shadow-sm);
 }
 
 /* Enhanced Button Styles for Better Visibility */
@@ -134,7 +256,20 @@ button {
 
 /* Default button styling for better visibility */
 button:not([class*="bg-"]):not([class*="text-"]) {
-  @apply bg-blue-500 text-white hover:bg-blue-600 border border-blue-600;
+  background: linear-gradient(135deg, var(--ford-blue) 0%, var(--ford-blue-light) 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: var(--ios-shadow-sm);
+}
+
+button:not([class*="bg-"]):not([class*="text-"]):hover {
+  background: linear-gradient(135deg, var(--ford-blue-light) 0%, var(--ford-blue) 100%);
+  box-shadow: var(--ios-shadow-md);
+  transform: translateY(-1px);
 }
 
 /* Appointment and action buttons */
@@ -152,15 +287,15 @@ button:not([class*="bg-"]):not([class*="text-"]) {
 
 /* Ford Blue Gradient Utilities */
 .ford-gradient {
-  background: linear-gradient(135deg, var(--color-ford-blue) 0%, var(--color-ford-blue-light) 100%);
+  background: linear-gradient(135deg, var(--ford-blue) 0%, var(--ford-blue-light) 100%);
 }
 
 .ford-gradient:hover {
-  background: linear-gradient(135deg, var(--color-ford-blue-light) 0%, var(--color-ford-blue) 100%);
+  background: linear-gradient(135deg, var(--ford-blue-light) 0%, var(--ford-blue) 100%);
 }
 
 .ford-gradient-text {
-  background: linear-gradient(135deg, var(--color-ford-blue) 0%, var(--color-ford-blue-light) 100%);
+  background: linear-gradient(135deg, var(--ford-blue) 0%, var(--ford-blue-light) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -168,12 +303,12 @@ button:not([class*="bg-"]):not([class*="text-"]) {
 
 /* Workshop timetable buttons */
 .workshop-button {
-  background: linear-gradient(135deg, var(--color-ford-blue) 0%, var(--color-ford-blue-light) 100%);
+  background: linear-gradient(135deg, var(--ford-blue) 0%, var(--ford-blue-light) 100%);
   @apply text-white font-semibold py-2.5 px-4 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5;
 }
 
 .workshop-button:hover {
-  background: linear-gradient(135deg, var(--color-ford-blue-light) 0%, var(--color-ford-blue) 100%);
+  background: linear-gradient(135deg, var(--ford-blue-light) 0%, var(--ford-blue) 100%);
 }
 
 /* Sidebar Enhancements */
@@ -188,12 +323,12 @@ button:not([class*="bg-"]):not([class*="text-"]) {
 }
 
 .sidebar-link.active {
-  background: linear-gradient(135deg, var(--color-ford-blue) 0%, var(--color-ford-blue-light) 100%);
+  background: linear-gradient(135deg, var(--ford-blue) 0%, var(--ford-blue-light) 100%);
   color: white;
   box-shadow: 0 4px 12px rgba(0, 52, 120, 0.3);
 }
 
-/* Input Fields - Glass Style */
+/* iOS 26 Inspired Input Fields */
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -202,11 +337,14 @@ input[type="time"],
 input[type="number"],
 select,
 textarea {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: var(--ios-bg-primary);
+  border: 1px solid var(--ios-gray-3);
   border-radius: 12px;
-  transition: all 0.2s ease;
+  padding: 12px 16px;
+  font-size: 16px;
+  color: var(--ios-text-primary);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 44px; /* iOS minimum touch target */
 }
 
 input[type="text"]:focus,
@@ -217,8 +355,126 @@ input[type="time"]:focus,
 input[type="number"]:focus,
 select:focus,
 textarea:focus {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(102, 126, 234, 0.6);
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  background: var(--ios-bg-primary);
+  border-color: var(--ios-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
   outline: none;
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+input[type="date"]::placeholder,
+input[type="time"]::placeholder,
+input[type="number"]::placeholder,
+textarea::placeholder {
+  color: var(--ios-text-tertiary);
+}
+
+/* iOS 26 Form Labels */
+.ios-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ios-text-secondary);
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+
+/* Enhanced Page Transitions */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: all 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-transition-exit {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.95);
+  transition: all 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Additional Custom Animations */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bounceGentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Smooth transitions for form elements */
+.form-group {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form-group:hover {
+  transform: translateY(-2px);
+}
+
+/* Enhanced loading states */
+.loading-shimmer {
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0) 0%, 
+    rgba(255, 255, 255, 0.2) 20%, 
+    rgba(255, 255, 255, 0.5) 60%, 
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Improved focus states */
+.focus-ring {
+  transition: all 0.2s ease;
+}
+
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(0, 52, 120, 0.1);
+  transform: scale(1.02);
 }

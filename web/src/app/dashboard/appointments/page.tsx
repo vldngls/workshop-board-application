@@ -453,7 +453,7 @@ export default function AppointmentsPage() {
                     const today = new Date().toISOString().split('T')[0]
                     setSelectedDate(today)
                   }}
-                  className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 border border-blue-400/30"
+                  className="px-4 py-2.5 ford-gradient text-white text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
                   title="Set to today"
                 >
                   Today
@@ -583,8 +583,8 @@ export default function AppointmentsPage() {
             </button>
           </form>
 
-          <div className="mt-4 p-3 bg-blue-500/20 backdrop-blur-sm border border-blue-300/30 rounded-xl">
-            <p className="text-xs text-blue-800 font-medium">
+          <div className="mt-4 p-3 bg-ford-blue/20 backdrop-blur-sm border border-ford-blue/30 rounded-xl">
+            <p className="text-xs text-ford-blue font-medium">
               <strong>Workflow:</strong> 1) Select work duration, 2) Select technician to see their schedule, 
               3) Click an available time slot to set start time, 4) Enter plate number, 5) Click &quot;Add Appointment&quot;. 
               The form stays open for quick successive entries!
@@ -600,7 +600,7 @@ export default function AppointmentsPage() {
               <div className="bg-white/60 backdrop-blur-sm border border-white/40 rounded-xl p-3 flex items-center gap-2 min-w-0 flex-shrink-0">
                 <button
                   onClick={() => navigateDate('prev')}
-                  className="p-2 hover:bg-blue-500/20 rounded-lg transition-all duration-200 hover:scale-105"
+                  className="p-2 hover:bg-ford-blue/20 rounded-lg transition-all duration-200 hover:scale-105"
                   title="Previous day"
                 >
                   <FiChevronLeft size={16} color="currentColor" />
@@ -623,7 +623,7 @@ export default function AppointmentsPage() {
                 
                 <button
                   onClick={() => navigateDate('next')}
-                  className="p-2 hover:bg-blue-500/20 rounded-lg transition-all duration-200 hover:scale-105"
+                  className="p-2 hover:bg-ford-blue/20 rounded-lg transition-all duration-200 hover:scale-105"
                   title="Next day"
                 >
                   <FiChevronRight size={16} color="currentColor" />
@@ -635,7 +635,7 @@ export default function AppointmentsPage() {
                   const today = new Date().toISOString().split('T')[0]
                   setSelectedDate(today)
                 }}
-                className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 border border-blue-400/30 flex-shrink-0"
+                className="px-4 py-2 text-sm font-medium ford-gradient text-white rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 flex-shrink-0"
                 title="Go to today"
               >
                 Today
@@ -675,7 +675,7 @@ export default function AppointmentsPage() {
                       <div className="text-xs text-neutral-600">
                         {appointment.assignedTechnician?.name || 'No technician assigned'}
                         {appointment.assignedTechnician?.level && (
-                          <span className="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                          <span className="ml-1 text-xs bg-ford-blue/10 text-ford-blue px-1.5 py-0.5 rounded">
                             {appointment.assignedTechnician.level}
                           </span>
                         )}
@@ -747,7 +747,7 @@ export default function AppointmentsPage() {
                       <div className="text-xs text-neutral-600">
                         {appointment.assignedTechnician?.name || 'No technician assigned'}
                         {appointment.assignedTechnician?.level && (
-                          <span className="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                          <span className="ml-1 text-xs bg-ford-blue/10 text-ford-blue px-1.5 py-0.5 rounded">
                             {appointment.assignedTechnician.level}
                           </span>
                         )}
@@ -764,7 +764,7 @@ export default function AppointmentsPage() {
                   <div className="flex gap-1.5 mt-2">
                     <button
                       onClick={() => handleReappoint(appointment)}
-                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs py-1.5 px-2 rounded transition-colors"
+                      className="flex-1 ford-gradient text-white text-xs py-1.5 px-2 rounded transition-colors"
                     >
                       <FiCalendar size={14} />
                       Reappoint
@@ -837,7 +837,7 @@ export default function AppointmentsPage() {
               </div>
               
               <div className="space-y-4">
-                <div className="bg-blue-500/20 backdrop-blur-sm border border-blue-300/30 rounded-lg p-3">
+                <div className="bg-ford-blue/20 backdrop-blur-sm border border-ford-blue/30 rounded-lg p-3">
                   <p className="text-sm text-gray-700 font-medium">
                     <strong>Plate:</strong> {appointmentToReappoint.plateNumber}
                   </p>

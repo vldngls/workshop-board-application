@@ -373,132 +373,131 @@ export default function MainDashboard() {
     <div className="space-y-6">
       <Toaster position="top-right" />
       
-      {/* Professional Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 to-slate-700 p-8 text-white">
-        <div className="absolute inset-0 bg-black/5"></div>
-        <div className="relative z-10">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2 text-white">Workshop Dashboard</h1>
-              <p className="text-slate-300 text-base font-medium">
-                Real-time overview of job orders and workshop operations
-              </p>
-              <div className="flex items-center gap-6 mt-4">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <FiCalendar size={18} />
-                  <span className="font-medium text-sm">{currentTime.toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-300">
-                  <FiClock size={18} />
-                  <span className="font-medium text-sm">{currentTime.toLocaleTimeString('en-US', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}</span>
-                </div>
+      {/* iOS 26 Inspired Header */}
+      <div className="ios-card p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2" style={{color: 'var(--ios-text-primary)', fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif'}}>
+              Workshop Dashboard
+            </h1>
+            <p className="text-base font-medium mb-4" style={{color: 'var(--ios-text-secondary)'}}>
+              Real-time overview of job orders and workshop operations
+            </p>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2" style={{color: 'var(--ios-text-tertiary)'}}>
+                <FiCalendar size={18} />
+                <span className="font-medium text-sm">{currentTime.toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}</span>
+              </div>
+              <div className="flex items-center gap-2" style={{color: 'var(--ios-text-tertiary)'}}>
+                <FiClock size={18} />
+                <span className="font-medium text-sm">{currentTime.toLocaleTimeString('en-US', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}</span>
               </div>
             </div>
-            <div className="text-right">
-              <div className="w-16 h-16 bg-slate-600/50 rounded-md flex items-center justify-center mb-2">
-                <FiWrench size={32} color="white" />
-              </div>
-              <div className="text-slate-300 font-medium text-sm">Workshop Management</div>
+          </div>
+          <div className="text-right">
+            <div className="w-16 h-16 ford-gradient rounded-2xl shadow-lg flex items-center justify-center mb-2">
+              <FiWrench size={32} color="white" />
             </div>
+            <div className="text-sm font-medium" style={{color: 'var(--ios-text-tertiary)'}}>Workshop Management</div>
           </div>
         </div>
       </div>
 
-      {/* Professional Statistics Grid */}
+      {/* iOS 26 Inspired Statistics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
         {/* Total Jobs */}
-        <Link href="/dashboard/job-orders" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+        <Link href="/dashboard/job-orders" className="group ios-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <div className="w-10 h-10 bg-gray-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-gray-200 transition-colors duration-200">
-              <FiClipboard size={18} color="#475569" />
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-gray-200 transition-colors duration-200">
+              <FiClipboard size={20} color="#6b7280" />
             </div>
-            <p className="text-xs text-slate-600 mb-1 font-medium">Total</p>
-            <p className="text-lg font-bold text-slate-900">{stats.total}</p>
+            <p className="text-xs font-semibold mb-1" style={{color: 'var(--ios-text-tertiary)'}}>Total</p>
+            <p className="text-xl font-bold" style={{color: 'var(--ios-text-primary)'}}>{stats.total}</p>
           </div>
         </Link>
 
         {/* On Going */}
-        <Link href="/dashboard/job-orders?filter=OG" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+        <Link href="/dashboard/job-orders?filter=OG" className="group ios-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <div className="w-10 h-10 bg-blue-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-blue-100 transition-colors duration-200">
-              <FiTool size={18} color="#2563eb" />
+            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-blue-200 transition-colors duration-200">
+              <FiTool size={20} color="#2563eb" />
             </div>
-            <p className="text-xs text-slate-600 mb-1 font-medium">On Going</p>
-            <p className="text-lg font-bold text-slate-900">{stats.onGoing}</p>
+            <p className="text-xs font-semibold mb-1" style={{color: 'var(--ios-text-tertiary)'}}>On Going</p>
+            <p className="text-xl font-bold" style={{color: 'var(--ios-text-primary)'}}>{stats.onGoing}</p>
           </div>
         </Link>
 
         {/* For Release */}
-        <Link href="/dashboard/job-orders?filter=FR" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+        <Link href="/dashboard/job-orders?filter=FR" className="group ios-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <div className="w-10 h-10 bg-green-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-green-100 transition-colors duration-200">
-              <FiCheckCircle size={18} color="#16a34a" />
+            <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-green-200 transition-colors duration-200">
+              <FiCheckCircle size={20} color="#16a34a" />
             </div>
-            <p className="text-xs text-slate-600 mb-1 font-medium">For Release</p>
-            <p className="text-lg font-bold text-slate-900">{stats.forRelease}</p>
+            <p className="text-xs font-semibold mb-1" style={{color: 'var(--ios-text-tertiary)'}}>For Release</p>
+            <p className="text-xl font-bold" style={{color: 'var(--ios-text-primary)'}}>{stats.forRelease}</p>
           </div>
         </Link>
 
         {/* On Hold */}
-        <Link href="/dashboard/job-orders?filter=hold" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+        <Link href="/dashboard/job-orders?filter=hold" className="group ios-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <div className="w-10 h-10 bg-red-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-red-100 transition-colors duration-200">
-              <FiPause size={18} color="#dc2626" />
+            <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-red-200 transition-colors duration-200">
+              <FiPause size={20} color="#dc2626" />
             </div>
-            <p className="text-xs text-slate-600 mb-1 font-medium">On Hold</p>
-            <p className="text-lg font-bold text-slate-900">{stats.onHold}</p>
+            <p className="text-xs font-semibold mb-1" style={{color: 'var(--ios-text-tertiary)'}}>On Hold</p>
+            <p className="text-xl font-bold" style={{color: 'var(--ios-text-primary)'}}>{stats.onHold}</p>
           </div>
         </Link>
 
         {/* Carried Over */}
-        <Link href="/dashboard/job-orders?filter=carried" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+        <Link href="/dashboard/job-orders?filter=carried" className="group ios-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <div className="w-10 h-10 bg-orange-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-orange-100 transition-colors duration-200">
-              <FiRefreshCw size={18} color="#ea580c" />
+            <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-orange-200 transition-colors duration-200">
+              <FiRefreshCw size={20} color="#ea580c" />
             </div>
-            <p className="text-xs text-slate-600 mb-1 font-medium">Carried Over</p>
-            <p className="text-lg font-bold text-slate-900">{stats.carriedOver}</p>
+            <p className="text-xs font-semibold mb-1" style={{color: 'var(--ios-text-tertiary)'}}>Carried Over</p>
+            <p className="text-xl font-bold" style={{color: 'var(--ios-text-primary)'}}>{stats.carriedOver}</p>
           </div>
         </Link>
 
         {/* Important */}
-        <Link href="/dashboard/job-orders?filter=important" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+        <Link href="/dashboard/job-orders?filter=important" className="group ios-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <div className="w-10 h-10 bg-yellow-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-yellow-100 transition-colors duration-200">
-              <FiStar size={18} color="#ca8a04" />
+            <div className="w-12 h-12 bg-yellow-100 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-yellow-200 transition-colors duration-200">
+              <FiStar size={20} color="#ca8a04" />
             </div>
-            <p className="text-xs text-slate-600 mb-1 font-medium">Important</p>
-            <p className="text-lg font-bold text-slate-900">{stats.important}</p>
+            <p className="text-xs font-semibold mb-1" style={{color: 'var(--ios-text-tertiary)'}}>Important</p>
+            <p className="text-xl font-bold" style={{color: 'var(--ios-text-primary)'}}>{stats.important}</p>
           </div>
         </Link>
 
         {/* Quality Inspection */}
-        <Link href="/dashboard/job-orders?filter=QI" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+        <Link href="/dashboard/job-orders?filter=QI" className="group ios-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <div className="w-10 h-10 bg-purple-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-purple-100 transition-colors duration-200">
-              <FiSearch size={18} color="#9333ea" />
+            <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-purple-200 transition-colors duration-200">
+              <FiSearch size={20} color="#9333ea" />
             </div>
-            <p className="text-xs text-slate-600 mb-1 font-medium">Quality Check</p>
-            <p className="text-lg font-bold text-slate-900">{stats.qualityInspection}</p>
+            <p className="text-xs font-semibold mb-1" style={{color: 'var(--ios-text-tertiary)'}}>Quality Check</p>
+            <p className="text-xl font-bold" style={{color: 'var(--ios-text-primary)'}}>{stats.qualityInspection}</p>
           </div>
         </Link>
 
         {/* Finished Unclaimed */}
-        <Link href="/dashboard/job-orders?filter=unclaimed" className="group relative overflow-hidden rounded-xl bg-white p-4 cursor-pointer border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+        <Link href="/dashboard/job-orders?filter=unclaimed" className="group ios-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex flex-col items-center text-center">
-            <div className="w-10 h-10 bg-gray-50 rounded-md flex items-center justify-center mb-2 group-hover:bg-gray-100 transition-colors duration-200">
-              <FiPackage size={18} color="#6b7280" />
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-gray-200 transition-colors duration-200">
+              <FiPackage size={20} color="#6b7280" />
             </div>
-            <p className="text-xs text-slate-600 mb-1 font-medium">Unclaimed</p>
-            <p className="text-lg font-bold text-slate-900">{stats.finishedUnclaimed}</p>
+            <p className="text-xs font-semibold mb-1" style={{color: 'var(--ios-text-tertiary)'}}>Unclaimed</p>
+            <p className="text-xl font-bold" style={{color: 'var(--ios-text-primary)'}}>{stats.finishedUnclaimed}</p>
           </div>
         </Link>
       </div>
@@ -688,7 +687,7 @@ export default function MainDashboard() {
                       setSelectedJobForDetails(job)
                       setShowJobDetailsModal(true)
                     }}
-                    className="block w-full text-center bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-600 text-white font-semibold py-1.5 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5 text-xs"
+                    className="block w-full text-center ford-gradient text-white font-semibold py-1.5 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5 text-xs"
                   >
                     View Details
                   </button>
@@ -742,7 +741,7 @@ export default function MainDashboard() {
                       setSelectedJobForReassign(job)
                       setShowReassignModal(true)
                     }}
-                    className="block w-full text-center bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-600 text-white font-semibold py-1.5 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5 text-xs"
+                    className="block w-full text-center ford-gradient text-white font-semibold py-1.5 rounded-xl transition-all hover:shadow-lg hover:-translate-y-0.5 text-xs"
                   >
                     {job.assignedTechnician ? 'Reassign' : 'Assign Now'}
                   </button>
@@ -801,9 +800,9 @@ export default function MainDashboard() {
 
       {/* Professional Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Link href="/dashboard/job-orders" className="group relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+        <Link href="/dashboard/job-orders" className="group ios-card p-6 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gray-50 rounded-md flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
               <FiClipboard size={20} color="#475569" />
             </div>
             <div className="flex-1">
@@ -813,9 +812,9 @@ export default function MainDashboard() {
           </div>
         </Link>
 
-        <Link href="/dashboard/workshop" className="group relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+        <Link href="/dashboard/workshop" className="group ios-card p-6 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gray-50 rounded-md flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
               <FiTool size={20} color="#475569" />
             </div>
             <div className="flex-1">
@@ -825,9 +824,9 @@ export default function MainDashboard() {
           </div>
         </Link>
 
-        <Link href="/dashboard/account-management" className="group relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+        <Link href="/dashboard/account-management" className="group ios-card p-6 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gray-50 rounded-md flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
               <FiUsers size={20} color="#475569" />
             </div>
             <div className="flex-1">
@@ -837,9 +836,9 @@ export default function MainDashboard() {
           </div>
         </Link>
 
-        <button onClick={() => setShowBreakSettings(true)} className="group relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 text-left">
+        <button onClick={() => setShowBreakSettings(true)} className="group ios-card p-6 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200 text-left">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gray-50 rounded-md flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
               <FiSettings size={20} color="#475569" />
             </div>
             <div className="flex-1">
@@ -853,9 +852,9 @@ export default function MainDashboard() {
       {/* Professional Dashboard Widgets */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Performance Metrics Widget */}
-        <div className="lg:col-span-2 relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200">
+        <div className="lg:col-span-2 ios-card p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-gray-50 rounded-md flex items-center justify-center">
+            <div className="w-10 h-10 bg-gray-100 rounded-2xl flex items-center justify-center">
               <FiBarChart size={18} color="#475569" />
             </div>
             <div>
@@ -865,7 +864,7 @@ export default function MainDashboard() {
           </div>
           
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white rounded-md p-4 border border-slate-100">
+            <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-slate-700">Completion Rate</span>
                 <FiCheckCircle size={18} color="#16a34a" />
@@ -878,7 +877,7 @@ export default function MainDashboard() {
               </div>
             </div>
             
-            <div className="bg-white rounded-md p-4 border border-slate-100">
+            <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-slate-700">Active Jobs</span>
                 <FiTool size={18} color="#2563eb" />
@@ -889,7 +888,7 @@ export default function MainDashboard() {
               </div>
             </div>
             
-            <div className="bg-white rounded-md p-4 border border-slate-100">
+            <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-slate-700">Pending QI</span>
                 <FiSearch size={18} color="#9333ea" />
@@ -900,7 +899,7 @@ export default function MainDashboard() {
               </div>
             </div>
             
-            <div className="bg-white rounded-md p-4 border border-slate-100">
+            <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-slate-700">On Hold</span>
                 <FiPause size={18} color="#dc2626" />
@@ -914,9 +913,9 @@ export default function MainDashboard() {
         </div>
 
         {/* Quick Alerts Widget */}
-        <div className="relative overflow-hidden rounded-xl bg-white p-6 border border-slate-200">
+        <div className="ios-card p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-gray-50 rounded-md flex items-center justify-center">
+            <div className="w-10 h-10 bg-gray-100 rounded-2xl flex items-center justify-center">
               <FiAlertTriangle size={18} color="#475569" />
             </div>
             <div>
@@ -1077,7 +1076,7 @@ export default function MainDashboard() {
                       setShowBreakSettings(false)
                       toast.success('Break time settings saved!')
                     }}
-                    className="flex-1 px-6 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5"
+                    className="flex-1 px-6 py-2.5 ford-gradient text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5"
                   >
                     Save
                   </button>
@@ -1338,7 +1337,7 @@ function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose,
             </button>
             <button
               onClick={onSuccess}
-              className="flex-1 px-6 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-600 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5"
+              className="flex-1 px-6 py-2.5 ford-gradient text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5"
             >
               Save & Refresh
             </button>
@@ -1653,7 +1652,7 @@ function ReassignmentModal({ job, breakStart, breakEnd, calculateEndTime, onClos
                 <button
                   onClick={handleSubmit}
                   disabled={submitting || !selectedTechnician || hasConflict()}
-                  className="flex-1 px-6 py-2.5 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-600 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                  className="flex-1 px-6 py-2.5 ford-gradient disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                 >
                   {submitting ? 'Assigning...' : 'Assign'}
                 </button>

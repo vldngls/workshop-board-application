@@ -51,7 +51,7 @@ const TimetableHeader = memo(({
           <h2 className="text-lg font-bold whitespace-nowrap">{formatDate(date)}</h2>
           <button
             onClick={() => onDateChange(new Date())}
-            className="px-3 py-1.5 text-sm bg-blue-500/20 hover:bg-blue-500/30 text-blue-800 rounded-lg font-semibold transition-all border border-blue-300/30"
+            className="px-3 py-1.5 text-sm bg-ford-blue/20 hover:bg-ford-blue/30 text-ford-blue rounded-lg font-semibold transition-all border border-ford-blue/30"
           >
             Today
           </button>
@@ -69,11 +69,11 @@ const TimetableHeader = memo(({
         <h3 className="text-sm font-bold mb-1">Daily Summary</h3>
         <div className="grid grid-cols-4 gap-2 text-xs">
           <div className="text-center">
-            <div className="text-base font-bold text-blue-600">{jobOrders.length}</div>
+            <div className="text-base font-bold text-ford-blue">{jobOrders.length}</div>
             <div className="text-gray-600">Total</div>
           </div>
           <div className="text-center">
-            <div className="text-base font-bold text-blue-600">
+            <div className="text-base font-bold text-ford-blue">
               {jobOrders.filter(job => job.status === 'OG').length}
             </div>
             <div className="text-gray-600">On Going</div>
@@ -98,7 +98,7 @@ const TimetableHeader = memo(({
         <h3 className="text-sm font-bold mb-1">Status Legend</h3>
         <div className="grid grid-cols-6 gap-1 text-xs">
           <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 bg-blue-100 border border-blue-300 rounded flex-shrink-0"></div>
+            <div className="w-2 h-2 bg-ford-blue/20 border border-ford-blue/30 rounded flex-shrink-0"></div>
             <span>OG</span>
           </div>
           <div className="flex items-center space-x-1">

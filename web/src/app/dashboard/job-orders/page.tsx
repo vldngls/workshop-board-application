@@ -156,7 +156,7 @@ export default function JobOrdersPage() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5"
+          className="ford-gradient text-white px-6 py-2.5 rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5"
         >
           Add Job Order
         </button>
@@ -176,11 +176,11 @@ export default function JobOrdersPage() {
                 placeholder="Search by job number, plate number, VIN, or technician name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ford-blue focus:border-transparent"
               />
               <button
                 type="submit"
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="px-6 py-2 ford-gradient text-white rounded-lg transition-colors font-medium"
               >
                 Search
               </button>
@@ -217,11 +217,11 @@ export default function JobOrdersPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-gray-600">Active filters:</span>
               {searchTerm && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-ford-blue/10 text-ford-blue">
                   Search: "{searchTerm}"
                   <button
                     onClick={() => setSearchTerm('')}
-                    className="ml-2 text-blue-600 hover:text-blue-800"
+                    className="ml-2 text-ford-blue hover:text-ford-blue-light"
                   >
                     ×
                   </button>
@@ -272,7 +272,7 @@ export default function JobOrdersPage() {
                   setSearchTerm('')
                   handleFilterChange('all')
                 }}
-                className="text-blue-600 hover:text-blue-800 font-medium"
+                className="text-ford-blue hover:text-ford-blue-light font-medium"
               >
                 Clear all filters
               </button>
