@@ -393,7 +393,7 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" suppressHydrationWarning>
         {/* Quick Entry Form */}
         <div className="floating-card p-6">
           <h2 className="text-lg font-bold text-neutral-900 mb-4">Quick Entry</h2>

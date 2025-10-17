@@ -168,7 +168,7 @@ export default function JobOrdersPage() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Search Job Orders
             </label>
-            <form onSubmit={handleSearch} className="flex gap-2">
+            <form onSubmit={handleSearch} className="flex gap-2" suppressHydrationWarning>
               <input
                 type="text"
                 placeholder="Search by job number, plate number, VIN, or technician name..."

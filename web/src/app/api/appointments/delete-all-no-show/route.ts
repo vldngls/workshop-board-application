@@ -10,9 +10,9 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001'
+    const serverUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
     
-    const response = await fetch(`${serverUrl}/api/appointments/delete-all-no-show`, {
+    const response = await fetch(`${serverUrl}/appointments/delete-all-no-show`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -21,8 +21,17 @@ export async function DELETE(request: NextRequest) {
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
-      return NextResponse.json({ error: errorData.message || 'Failed to delete all no-show appointments' }, { status: response.status })
+      const responseText = await response.text()
+      console.log('Backend response status:', response.status)
+      console.log('Backend response text:', responseText)
+      
+      try {
+        const errorData = JSON.parse(responseText)
+        return NextResponse.json({ error: errorData.message || 'Failed to delete all no-show appointments' }, { status: response.status })
+      } catch (parseError) {
+        console.error('Failed to parse backend response:', parseError)
+        return NextResponse.json({ error: 'Invalid response from backend server' }, { status: response.status })
+      }
     }
 
     const data = await response.json()

@@ -357,6 +357,23 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
   }
 })
 
+// Delete all no-show appointments
+router.delete('/delete-all-no-show', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const result = await Appointment.deleteMany({ noShow: true })
+    
+    res.json({ 
+      message: `Deleted ${result.deletedCount} no-show appointments successfully`,
+      deletedCount: result.deletedCount
+    })
+  } catch (error) {
+    console.error('Error deleting all no-show appointments:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // Delete appointment (no show)
 router.delete('/:id', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
   try {
