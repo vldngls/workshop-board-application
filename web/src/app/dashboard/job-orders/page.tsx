@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast'
 import type { JobOrder, JobStatus } from "@/types/jobOrder"
 import JobOrderCard from "@/components/JobOrderCard"
 import { useJobOrders } from '@/hooks/useJobOrders'
+import RoleGuard from "@/components/RoleGuard"
 
 // Lazy load the modal for better initial load performance
 const AddJobOrderModal = lazy(() => import("@/components/AddJobOrderModal"))
@@ -143,8 +144,9 @@ export default function JobOrdersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Toaster position="top-right" />
+    <RoleGuard allowedRoles={['administrator', 'job-controller']}>
+      <div className="space-y-6">
+        <Toaster position="top-right" />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Job Orders</h1>
@@ -350,6 +352,7 @@ export default function JobOrdersPage() {
           />
         </Suspense>
       )}
-    </div>
+      </div>
+    </RoleGuard>
   )
 }

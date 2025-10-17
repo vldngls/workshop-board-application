@@ -41,7 +41,7 @@ export default function LoginPage() {
       
       if (data.ok && data.role) {
         // Force a page refresh to ensure cookies are set
-        window.location.href = "/dashboard/workshop"
+        window.location.href = "/dashboard"
       } else {
         setError("Login failed - no role received")
       }

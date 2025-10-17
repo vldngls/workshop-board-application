@@ -8,6 +8,7 @@ import type { Appointment, CreateAppointmentRequest } from "@/types/appointment"
 import CreateJobOrderFromAppointmentModal from '@/components/CreateJobOrderFromAppointmentModal'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import TechnicianScheduleView from '@/components/TechnicianScheduleView'
+import RoleGuard from "@/components/RoleGuard"
 
 interface Technician {
   _id: string
@@ -396,8 +397,9 @@ export default function AppointmentsPage() {
   }, [])
 
   return (
-    <div className="space-y-6">
-      <Toaster position="top-right" />
+    <RoleGuard allowedRoles={['administrator', 'job-controller']}>
+      <div className="space-y-6">
+        <Toaster position="top-right" />
       
       {/* Header */}
       <div>
@@ -601,7 +603,7 @@ export default function AppointmentsPage() {
                   className="p-2 hover:bg-blue-500/20 rounded-lg transition-all duration-200 hover:scale-105"
                   title="Previous day"
                 >
-                  <FiChevronLeft className="w-4 h-4 text-neutral-700 hover:text-blue-600" />
+                  <FiChevronLeft size={16} color="currentColor" />
                 </button>
                 
                 <div className="flex flex-col items-center min-w-0 px-2">
@@ -624,7 +626,7 @@ export default function AppointmentsPage() {
                   className="p-2 hover:bg-blue-500/20 rounded-lg transition-all duration-200 hover:scale-105"
                   title="Next day"
                 >
-                  <FiChevronRight className="w-4 h-4 text-neutral-700 hover:text-blue-600" />
+                  <FiChevronRight size={16} color="currentColor" />
                 </button>
               </div>
               
@@ -720,7 +722,7 @@ export default function AppointmentsPage() {
                 disabled={deleteAllNoShowMutation.isPending}
                 className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-50"
               >
-                <FiTrash2 size={14} className="inline mr-1" />
+                <FiTrash2 size={14} />
                 Delete All
               </button>
             )}
@@ -764,7 +766,7 @@ export default function AppointmentsPage() {
                       onClick={() => handleReappoint(appointment)}
                       className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs py-1.5 px-2 rounded transition-colors"
                     >
-                      <FiCalendar size={14} className="inline mr-1" />
+                      <FiCalendar size={14} />
                       Reappoint
                     </button>
                     <button
@@ -772,7 +774,7 @@ export default function AppointmentsPage() {
                       disabled={deleteNoShowMutation.isPending}
                       className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs py-1.5 px-2 rounded transition-colors disabled:opacity-50"
                     >
-                      <FiTrash2 size={14} className="inline mr-1" />
+                      <FiTrash2 size={14} />
                       Delete
                     </button>
                   </div>
@@ -954,7 +956,8 @@ export default function AppointmentsPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </RoleGuard>
   )
 }
 

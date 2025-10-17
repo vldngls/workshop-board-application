@@ -16,17 +16,30 @@ export default function RoleGuard({ children, allowedRoles, fallbackPath = "/log
   const router = useRouter()
 
   useEffect(() => {
-    // Get role from cookies (client-side)
-    const getCookie = (name: string) => {
-      const value = `; ${document.cookie}`
-      const parts = value.split(`; ${name}=`)
-      if (parts.length === 2) return parts.pop()?.split(';').shift()
-      return null
+    const fetchUserRole = async () => {
+      try {
+        const response = await fetch('/api/auth/me', { 
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setUserRole(data.user.role as Role)
+        } else {
+          setUserRole(null)
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error)
+        setUserRole(null)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    const role = getCookie("role") as Role | null
-    setUserRole(role)
-    setLoading(false)
+    fetchUserRole()
   }, [])
 
   useEffect(() => {

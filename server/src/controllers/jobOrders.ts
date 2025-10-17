@@ -12,11 +12,15 @@ router.get('/', verifyToken, async (req, res) => {
   try {
     await connectToMongo()
     
-    const { status, technician, date, search, page = '1', limit = '10' } = req.query
+    const { status, technician, date, search, assignedToMe, page = '1', limit = '10' } = req.query
     
     const filter: any = {}
     if (status) filter.status = status
     if (technician) filter.assignedTechnician = technician
+    if (assignedToMe === 'true') {
+      // Filter to only show job orders assigned to the current user
+      filter.assignedTechnician = req.user?.userId
+    }
     if (date) {
       const startDate = new Date(date as string)
       const endDate = new Date(startDate)

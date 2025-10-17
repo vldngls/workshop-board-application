@@ -10,13 +10,13 @@ interface JobDetailsModalProps {
   breakStart: string
   breakEnd: string
   onClose: () => void
-  onToggleImportant: (jobId: string) => void
-  onUpdateJobStatus: (jobId: string, status: string) => void
-  onUpdateTaskStatus: (jobId: string, taskIndex: number, status: 'Finished' | 'Unfinished') => void
-  onUpdatePartAvailability: (jobId: string, partIndex: number, availability: 'Available' | 'Unavailable') => void
-  onReassignTechnician: () => void
-  onReplotJob: () => void
-  onSubmitForQI: (jobId: string) => void
+  onToggleImportant?: (jobId: string) => void
+  onUpdateJobStatus?: (jobId: string, status: string) => void
+  onUpdateTaskStatus?: (jobId: string, taskIndex: number, status: 'Finished' | 'Unfinished') => void
+  onUpdatePartAvailability?: (jobId: string, partIndex: number, availability: 'Available' | 'Unavailable') => void
+  onReassignTechnician?: () => void
+  onReplotJob?: () => void
+  onSubmitForQI?: (jobId: string) => void
 }
 
 const JobDetailsModal = memo(({
@@ -36,6 +36,22 @@ const JobDetailsModal = memo(({
 }: JobDetailsModalProps) => {
   if (!isOpen || !job) return null
 
+  const getStatusLabel = (status: string) => {
+    const statusLabels: { [key: string]: string } = {
+      'OG': 'On Going',
+      'WP': 'Waiting Parts',
+      'FP': 'For Plotting',
+      'QI': 'Quality Inspection',
+      'HC': 'Hold Customer',
+      'HW': 'Hold Warranty',
+      'HI': 'Hold Insurance',
+      'FR': 'For Release',
+      'FU': 'Finished Unclaimed',
+      'CP': 'Complete'
+    }
+    return statusLabels[status] || status
+  }
+
   return (
     <div className="modal-backdrop">
       <div className="floating-card max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-fade-in">
@@ -43,14 +59,16 @@ const JobDetailsModal = memo(({
           <div className="flex justify-between items-start mb-5">
             <div className="flex items-center gap-3">
               <h3 className="text-xl font-bold text-gray-900">Job Order Details</h3>
-              <button
-                onClick={() => onToggleImportant(job._id)}
-                disabled={updating}
-                className={`text-2xl transition-all ${job.isImportant ? 'text-yellow-400 drop-shadow-lg' : 'text-gray-400/60'} hover:scale-125 hover:text-yellow-400`}
-                title={job.isImportant ? 'Remove from important' : 'Mark as important'}
-              >
-                {job.isImportant ? '★' : '☆'}
-              </button>
+              {onToggleImportant && (
+                <button
+                  onClick={() => onToggleImportant(job._id)}
+                  disabled={updating}
+                  className={`text-2xl transition-all ${job.isImportant ? 'text-yellow-400 drop-shadow-lg' : 'text-gray-400/60'} hover:scale-125 hover:text-yellow-400`}
+                  title={job.isImportant ? 'Remove from important' : 'Mark as important'}
+                >
+                  {job.isImportant ? '★' : '☆'}
+                </button>
+              )}
             </div>
             <button
               onClick={onClose}
@@ -68,12 +86,13 @@ const JobDetailsModal = memo(({
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 mb-1 block">Status</label>
-                <select
-                  value={job.status}
-                  onChange={(e) => onUpdateJobStatus(job._id, e.target.value)}
-                  disabled={updating}
-                  className="px-3 py-1 rounded-xl text-sm font-medium border-2 border-gray-300 focus:outline-none focus:border-blue-500"
-                >
+                {onUpdateJobStatus ? (
+                  <select
+                    value={job.status}
+                    onChange={(e) => onUpdateJobStatus(job._id, e.target.value)}
+                    disabled={updating}
+                    className="px-3 py-1 rounded-xl text-sm font-medium border-2 border-gray-300 focus:outline-none focus:border-blue-500"
+                  >
                   <option value="OG">OG - On Going</option>
                   <option value="WP">WP - Waiting Parts</option>
                   <option value="FP">FP - For Plotting</option>
@@ -85,6 +104,11 @@ const JobDetailsModal = memo(({
                   <option value="FU">FU - Finished Unclaimed</option>
                   <option value="CP">CP - Complete</option>
                 </select>
+                ) : (
+                  <div className="px-3 py-1 rounded-xl text-sm font-medium border-2 border-gray-200 bg-gray-50 text-gray-600">
+                    {job.status} - {getStatusLabel(job.status)}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -103,13 +127,15 @@ const JobDetailsModal = memo(({
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="text-sm font-medium text-gray-600">Assigned Technician</label>
-                  <button
-                    onClick={onReassignTechnician}
-                    disabled={updating}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    Reassign
-                  </button>
+                  {onReassignTechnician && (
+                    <button
+                      onClick={onReassignTechnician}
+                      disabled={updating}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      Reassign
+                    </button>
+                  )}
                 </div>
                 <p className="text-lg">{job.assignedTechnician ? job.assignedTechnician.name : (
                   <span className="text-red-600 font-semibold flex items-center gap-1">
@@ -143,19 +169,29 @@ const JobDetailsModal = memo(({
                 {job.jobList.map((task, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-white rounded-xl border">
                     <span className="text-sm flex-1">{task.description}</span>
-                    <select
-                      value={task.status}
-                      onChange={(e) => onUpdateTaskStatus(job._id, index, e.target.value as 'Finished' | 'Unfinished')}
-                      disabled={updating}
-                      className={`ml-3 px-3 py-1 rounded text-xs font-medium border-2 focus:outline-none ${
+                    {onUpdateTaskStatus ? (
+                      <select
+                        value={task.status}
+                        onChange={(e) => onUpdateTaskStatus(job._id, index, e.target.value as 'Finished' | 'Unfinished')}
+                        disabled={updating}
+                        className={`ml-3 px-3 py-1 rounded text-xs font-medium border-2 focus:outline-none ${
+                          task.status === 'Finished' 
+                            ? 'bg-green-100 text-green-800 border-green-300' 
+                            : 'bg-gray-100 text-gray-800 border-gray-300'
+                        }`}
+                      >
+                        <option value="Unfinished">Unfinished</option>
+                        <option value="Finished">Finished</option>
+                      </select>
+                    ) : (
+                      <div className={`ml-3 px-3 py-1 rounded text-xs font-medium border-2 ${
                         task.status === 'Finished' 
                           ? 'bg-green-100 text-green-800 border-green-300' 
                           : 'bg-gray-100 text-gray-800 border-gray-300'
-                      }`}
-                    >
-                      <option value="Unfinished">Unfinished</option>
-                      <option value="Finished">Finished</option>
-                    </select>
+                      }`}>
+                        {task.status}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -167,26 +203,36 @@ const JobDetailsModal = memo(({
                 {job.parts.map((part, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-white rounded-xl border">
                     <span className="text-sm flex-1">{part.name}</span>
-                    <select
-                      value={part.availability}
-                      onChange={(e) => onUpdatePartAvailability(job._id, index, e.target.value as 'Available' | 'Unavailable')}
-                      disabled={updating}
-                      className={`ml-3 px-3 py-1 rounded text-xs font-medium border-2 focus:outline-none ${
+                    {onUpdatePartAvailability ? (
+                      <select
+                        value={part.availability}
+                        onChange={(e) => onUpdatePartAvailability(job._id, index, e.target.value as 'Available' | 'Unavailable')}
+                        disabled={updating}
+                        className={`ml-3 px-3 py-1 rounded text-xs font-medium border-2 focus:outline-none ${
+                          part.availability === 'Available' 
+                            ? 'bg-green-100 text-green-800 border-green-300' 
+                            : 'bg-red-100 text-red-800 border-red-300'
+                        }`}
+                      >
+                        <option value="Available">Available</option>
+                        <option value="Unavailable">Unavailable</option>
+                      </select>
+                    ) : (
+                      <div className={`ml-3 px-3 py-1 rounded text-xs font-medium border-2 ${
                         part.availability === 'Available' 
                           ? 'bg-green-100 text-green-800 border-green-300' 
                           : 'bg-red-100 text-red-800 border-red-300'
-                      }`}
-                    >
-                      <option value="Available">Available</option>
-                      <option value="Unavailable">Unavailable</option>
-                    </select>
+                      }`}>
+                        {part.availability}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Replot Button for FP Status */}
-            {job.status === 'FP' && (
+            {job.status === 'FP' && onReplotJob && (
               <div className="pt-4 border-t border-white/30">
                 <button
                   onClick={onReplotJob}
@@ -200,7 +246,7 @@ const JobDetailsModal = memo(({
             )}
 
             {/* Submit for QI Button */}
-            {job.status !== 'FP' && job.status !== 'QI' && job.status !== 'FR' && job.status !== 'FU' && job.status !== 'CP' && (
+            {job.status !== 'FP' && job.status !== 'QI' && job.status !== 'FR' && job.status !== 'FU' && job.status !== 'CP' && onSubmitForQI && (
               <div className="pt-4 border-t border-white/30">
                 <button
                   onClick={() => onSubmitForQI(job._id)}

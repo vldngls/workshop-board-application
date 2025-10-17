@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, memo } from 'react'
 import toast, { Toaster } from 'react-hot-toast'
 import type { JobOrder } from '@/types/jobOrder'
 import type { Appointment } from '@/types/appointment'
+import type { Role } from '@/types/auth'
 import { useWorkshopData } from '@/hooks/useWorkshopData'
 import { useJobActions } from '@/hooks/useJobActions'
 import TimetableHeader from './timetable/TimetableHeader'
@@ -22,6 +23,29 @@ interface WorkshopTimetableProps {
 }
 
 function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimetableProps) {
+  const [userRole, setUserRole] = useState<Role | null>(null)
+  
+  // Get user role
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const response = await fetch('/api/auth/me', { 
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setUserRole(data.user.role as Role)
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error)
+      }
+    }
+
+    fetchUserRole()
+  }, [])
+
   // Use custom hooks for data and actions
   const {
     jobOrders,
@@ -266,7 +290,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         breakEnd={breakEnd}
         onJobClick={handleCellClick}
         onAppointmentClick={handleAppointmentClick}
-        onDeleteAppointment={handleDeleteAppointment}
+        onDeleteAppointment={userRole === 'technician' ? undefined : handleDeleteAppointment}
       />
 
       {/* Job Status Sections */}
@@ -282,10 +306,10 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         finishedUnclaimedJobs={finishedUnclaimedJobs}
         updating={updating}
         onJobClick={handleCellClick}
-        onApproveQI={approveQI}
-        onRejectQI={rejectQI}
-        onCompleteJob={completeJob}
-        onRedoJob={redoJob}
+        onApproveQI={userRole === 'technician' ? undefined : approveQI}
+        onRejectQI={userRole === 'technician' ? undefined : rejectQI}
+        onCompleteJob={userRole === 'technician' ? undefined : completeJob}
+        onRedoJob={userRole === 'technician' ? undefined : redoJob}
       />
 
       {/* Job Details Modal */}
@@ -296,20 +320,20 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         breakStart={breakStart}
         breakEnd={breakEnd}
         onClose={() => setShowModal(false)}
-        onToggleImportant={toggleImportant}
-        onUpdateJobStatus={updateJobStatus}
-        onUpdateTaskStatus={updateTaskStatus}
-        onUpdatePartAvailability={updatePartAvailability}
-        onReassignTechnician={() => setShowTechnicianModal(true)}
-        onReplotJob={() => {
+        onToggleImportant={userRole === 'technician' ? undefined : toggleImportant}
+        onUpdateJobStatus={userRole === 'technician' ? undefined : updateJobStatus}
+        onUpdateTaskStatus={userRole === 'technician' ? undefined : updateTaskStatus}
+        onUpdatePartAvailability={userRole === 'technician' ? undefined : updatePartAvailability}
+        onReassignTechnician={userRole === 'technician' ? undefined : () => setShowTechnicianModal(true)}
+        onReplotJob={userRole === 'technician' ? undefined : () => {
                         setShowModal(false)
                         setShowReplotModal(true)
                       }}
-        onSubmitForQI={submitForQI}
+        onSubmitForQI={userRole === 'technician' ? undefined : submitForQI}
       />
 
       {/* Technician Reassignment Modal */}
-      {showTechnicianModal && selectedJob && (
+      {showTechnicianModal && selectedJob && userRole !== 'technician' && (
         <div className="modal-backdrop">
           <div className="floating-card max-w-md w-full mx-4 animate-fade-in">
             <div className="p-6">
@@ -385,7 +409,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
       )}
 
       {/* Replot Job Order Modal */}
-      {showReplotModal && selectedJob && (
+      {showReplotModal && selectedJob && userRole !== 'technician' && (
         <ReplotJobOrderModal
           onClose={() => setShowReplotModal(false)}
           jobId={selectedJob._id}
@@ -398,7 +422,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
       )}
 
       {/* Create Job Order from Appointment Modal */}
-      {showCreateJobOrderModal && selectedAppointment && (
+      {showCreateJobOrderModal && selectedAppointment && userRole !== 'technician' && (
         <CreateJobOrderFromAppointmentModal
           appointment={selectedAppointment}
           onClose={() => {

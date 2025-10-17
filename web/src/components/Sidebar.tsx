@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { Role } from "@/types/auth"
 
 type NavItem = { href: string; label: string }
@@ -34,8 +34,8 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
       return {
         title: "Technician",
         items: [
-          { href: "/dashboard", label: "Dashboard" },
-          { href: "/dashboard/workshop", label: "Workshop" }
+          { href: "/dashboard/technician", label: "My Dashboard" },
+          { href: "/dashboard/workshop", label: "Workshop Board" }
         ],
       }
     default:
@@ -44,9 +44,33 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
 }
 
 export default function Sidebar({ role, name }: { role: Role | null; name?: string | null }) {
-  const { title, items } = getNavForRole(role)
+  const [userInfo, setUserInfo] = useState<{ role: Role | null; name: string | null }>({ role, name })
+  const { title, items } = getNavForRole(userInfo.role)
   const pathname = usePathname()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  // Get user info from server
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await fetch('/api/auth/me', { 
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setUserInfo({ role: data.user.role as Role, name: data.user.name })
+        }
+      } catch (error) {
+        console.error('Error fetching user info:', error)
+      }
+    }
+
+    fetchUserInfo()
+  }, [])
 
   const handleLogout = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,7 +106,7 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
         <div className="mb-8">
           <div className="text-xl font-bold text-ford-blue">{title}</div>
           <div className="text-sm text-neutral-600 font-medium">Workshop Board</div>
-          {name ? <div className="mt-3 px-3 py-2 bg-white/50 rounded-xl text-sm text-neutral-700 font-medium backdrop-blur-sm">Hi, {name}</div> : null}
+          {userInfo.name ? <div className="mt-3 px-3 py-2 bg-white/50 rounded-xl text-sm text-neutral-700 font-medium backdrop-blur-sm">Hi, {userInfo.name}</div> : null}
         </div>
         <nav className="space-y-2">
           {items.map((item) => (

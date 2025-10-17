@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const technician = searchParams.get('technician')
     const date = searchParams.get('date')
     const search = searchParams.get('search')
+    const assignedToMe = searchParams.get('assignedToMe')
     const page = searchParams.get('page') || '1'
     const limit = searchParams.get('limit') || '10'
     
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
     if (technician) queryParams.append('technician', technician)
     if (date) queryParams.append('date', date)
     if (search) queryParams.append('search', search)
+    if (assignedToMe) queryParams.append('assignedToMe', assignedToMe)
     queryParams.append('page', page)
     queryParams.append('limit', limit)
     

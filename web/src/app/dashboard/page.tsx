@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import toast, { Toaster } from 'react-hot-toast'
 import { 
   FiCalendar, 
@@ -47,6 +48,8 @@ interface JobOrderWithTechnician extends JobOrder {
 }
 
 export default function MainDashboard() {
+  const router = useRouter()
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [stats, setStats] = useState<DashboardStats>({
     total: 0,
     onGoing: 0,
@@ -81,9 +84,50 @@ export default function MainDashboard() {
     if (savedBreakEnd) setBreakEnd(savedBreakEnd)
   }, [])
 
+  // Check user role and redirect technicians
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    const fetchUserInfo = async () => {
+      try {
+        const response = await fetch('/api/auth/me', { 
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          const role = data.user.role
+          console.log('Detected role from server:', role) // Debug log
+          
+          setUserRole(role)
+          
+          // Redirect technicians to their specific dashboard
+          if (role === 'technician') {
+            router.push('/dashboard/technician')
+            return
+          }
+        } else {
+          console.log('No valid token, redirecting to login')
+          router.push('/login')
+          return
+        }
+      } catch (error) {
+        console.error('Error fetching user info:', error)
+        router.push('/login')
+        return
+      }
+    }
+
+    fetchUserInfo()
+  }, [router])
+
+  useEffect(() => {
+    // Only fetch dashboard data for non-technicians
+    if (userRole && userRole !== 'technician') {
+      fetchDashboardData()
+    }
+  }, [userRole])
 
   // Update current time every minute
   useEffect(() => {
@@ -190,6 +234,36 @@ export default function MainDashboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Show loading while checking role
+  if (!userRole) {
+    return (
+      <div className="space-y-6">
+        <Toaster position="top-right" />
+        
+        {/* Loading Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 to-slate-700 p-8 text-white">
+          <div className="absolute inset-0 bg-black/5"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold mb-2 text-white">Loading Dashboard...</h1>
+                <p className="text-slate-300 text-base font-medium">
+                  Checking user permissions and loading data
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="w-16 h-16 bg-slate-600/50 rounded-md flex items-center justify-center mb-2 animate-spin">
+                  <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full"></div>
+                </div>
+                <div className="text-slate-300 font-medium text-sm">Please wait...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {

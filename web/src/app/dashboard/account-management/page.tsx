@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { Role, TechnicianLevel, User } from "@/types/auth"
+import RoleGuard from "@/components/RoleGuard"
 
 export default function AccountManagementPage() {
   const [users, setUsers] = useState<User[]>([])
@@ -35,17 +36,18 @@ export default function AccountManagementPage() {
   const otherUsers = users.filter(user => user.role !== 'technician' && user.role !== 'service-advisor')
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Account Management</h1>
-          <div className="text-sm text-gray-600">
-            Manage users and technician levels
+    <RoleGuard allowedRoles={['administrator']}>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Account Management</h1>
+            <div className="text-sm text-gray-600">
+              Manage users and technician levels
+            </div>
           </div>
+          <CreateUserForm apiBase={apiBase} onCreated={fetchUsers} />
         </div>
-        <CreateUserForm apiBase={apiBase} onCreated={fetchUsers} />
-      </div>
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
@@ -142,7 +144,8 @@ export default function AccountManagementPage() {
           )}
         </>
       )}
-    </div>
+      </div>
+    </RoleGuard>
   )
 }
 

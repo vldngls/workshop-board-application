@@ -15,11 +15,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const date = searchParams.get('date')
     const technician = searchParams.get('technician')
+    const assignedToMe = searchParams.get('assignedToMe')
 
     let url = `${API_BASE_URL}/appointments`
     const params = new URLSearchParams()
     if (date) params.append('date', date)
     if (technician) params.append('technician', technician)
+    if (assignedToMe) params.append('assignedToMe', assignedToMe)
     if (params.toString()) url += `?${params.toString()}`
 
     const response = await fetch(url, {
