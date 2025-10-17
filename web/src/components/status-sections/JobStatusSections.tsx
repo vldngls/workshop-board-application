@@ -20,6 +20,7 @@ interface JobStatusSectionsProps {
   onRejectQI: (jobId: string) => void
   onCompleteJob: (jobId: string) => void
   onRedoJob: (jobId: string) => void
+  onMarkComplete: (jobId: string) => void
 }
 
 const JobStatusSections = memo(({
@@ -37,12 +38,13 @@ const JobStatusSections = memo(({
   onApproveQI,
   onRejectQI,
   onCompleteJob,
-  onRedoJob
+  onRedoJob,
+  onMarkComplete
 }: JobStatusSectionsProps) => {
   const { containerRef, handleMouseDown } = useDragScroll()
   return (
-    <div className="floating-card p-5">
-      <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+    <div className="floating-card p-8">
+      <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
         <span className="text-xl">📊</span>
         Job Status Queues
       </h2>
@@ -52,7 +54,7 @@ const JobStatusSections = memo(({
         onMouseDown={handleMouseDown}
         style={{ scrollbarWidth: 'thin' }}
       >
-        <div className="flex gap-4 min-w-max">
+        <div className="flex gap-3 min-w-max">
           {/* Quality Inspection Section */}
           <JobStatusSection
             title="Quality Inspection"
@@ -131,17 +133,44 @@ const JobStatusSections = memo(({
             }
           />
 
-          {/* Waiting Parts Section */}
+          {/* Finished Unclaimed Section */}
           <JobStatusSection
-            title="Waiting Parts"
-            icon="⏳"
-            jobs={waitingPartsJobs}
-            bgColor="bg-orange-500/20 backdrop-blur-sm border-2 border-orange-400/30"
-            borderColor="border-orange-400/30"
-            textColor="text-orange-900"
-            badgeColor="bg-orange-500/30 text-orange-900"
-            emptyIcon={<FiPackage />}
-            emptyText="No jobs waiting parts"
+            title="Finished Unclaimed"
+            icon={<FiClipboard />}
+            jobs={finishedUnclaimedJobs}
+            bgColor="bg-gray-500/20 backdrop-blur-sm border-2 border-gray-400/30"
+            borderColor="border-gray-400/30"
+            textColor="text-gray-900"
+            badgeColor="bg-gray-500/30 text-gray-900"
+            emptyIcon={<FiCheckCircle />}
+            emptyText="No unclaimed jobs"
+            onJobClick={onJobClick}
+            actions={
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onMarkComplete(finishedUnclaimedJobs[0]._id)
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                disabled={updating} 
+                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold px-2 py-1 rounded-lg transition-all hover:shadow-md text-xs w-full"
+              >
+                ✓ Complete
+              </button>
+            }
+          />
+
+          {/* Carry Over Section */}
+          <JobStatusSection
+            title="Carried Over"
+            icon={<FiRefreshCw />}
+            jobs={carriedOverJobs}
+            bgColor="bg-red-500/20 backdrop-blur-sm border-2 border-red-400/30"
+            borderColor="border-red-400/30"
+            textColor="text-red-900"
+            badgeColor="bg-red-500/30 text-red-900"
+            emptyIcon="✨"
+            emptyText="No carried over jobs"
             onJobClick={onJobClick}
           />
 
@@ -159,17 +188,17 @@ const JobStatusSections = memo(({
             onJobClick={onJobClick}
           />
 
-          {/* Carry Over Section */}
+          {/* Waiting Parts Section */}
           <JobStatusSection
-            title="Carried Over"
-            icon={<FiRefreshCw />}
-            jobs={carriedOverJobs}
-            bgColor="bg-red-500/20 backdrop-blur-sm border-2 border-red-400/30"
-            borderColor="border-red-400/30"
-            textColor="text-red-900"
-            badgeColor="bg-red-500/30 text-red-900"
-            emptyIcon="✨"
-            emptyText="No carried over jobs"
+            title="Waiting Parts"
+            icon="⏳"
+            jobs={waitingPartsJobs}
+            bgColor="bg-orange-500/20 backdrop-blur-sm border-2 border-orange-400/30"
+            borderColor="border-orange-400/30"
+            textColor="text-orange-900"
+            badgeColor="bg-orange-500/30 text-orange-900"
+            emptyIcon={<FiPackage />}
+            emptyText="No jobs waiting parts"
             onJobClick={onJobClick}
           />
 
@@ -212,20 +241,6 @@ const JobStatusSections = memo(({
             badgeColor="bg-indigo-500/30 text-indigo-900"
             emptyIcon={<FiCheckCircle />}
             emptyText="No jobs on hold"
-            onJobClick={onJobClick}
-          />
-
-          {/* Finished Unclaimed Section */}
-          <JobStatusSection
-            title="Finished Unclaimed"
-            icon={<FiClipboard />}
-            jobs={finishedUnclaimedJobs}
-            bgColor="bg-gray-500/20 backdrop-blur-sm border-2 border-gray-400/30"
-            borderColor="border-gray-400/30"
-            textColor="text-gray-900"
-            badgeColor="bg-gray-500/30 text-gray-900"
-            emptyIcon={<FiCheckCircle />}
-            emptyText="No unclaimed jobs"
             onJobClick={onJobClick}
           />
         </div>

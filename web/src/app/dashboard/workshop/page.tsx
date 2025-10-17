@@ -18,7 +18,7 @@ export default function WorkshopPage() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-4">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Workshop Board</h1>
         <div className="text-sm text-gray-600">

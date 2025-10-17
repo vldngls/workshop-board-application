@@ -33,13 +33,13 @@ const JobStatusSection = memo(({
   const hasJobs = jobs.length > 0
 
   return (
-    <div className={`${hasJobs ? bgColor : 'bg-gray-100/50 backdrop-blur-sm border-2 border-gray-300/30'} rounded-xl p-4 w-72 flex-shrink-0`}>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className={`text-base font-bold flex items-center gap-2 ${hasJobs ? textColor : 'text-gray-600'}`}>
-          <span className="text-lg">{icon}</span>
+    <div className={`${hasJobs ? bgColor : 'bg-gray-100/50 backdrop-blur-sm border-2 border-gray-300/30'} rounded-xl p-3 w-60 flex-shrink-0`}>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className={`text-sm font-bold flex items-center gap-1.5 ${hasJobs ? textColor : 'text-gray-600'}`}>
+          <span className="text-base">{icon}</span>
           {title}
         </h3>
-        <span className={`${hasJobs ? badgeColor : 'bg-gray-300/50 text-gray-600'} px-2.5 py-1 rounded-md text-xs font-bold`}>
+        <span className={`${hasJobs ? badgeColor : 'bg-gray-300/50 text-gray-600'} px-2 py-0.5 rounded-md text-xs font-bold`}>
           {jobs.length}
         </span>
       </div>
@@ -50,24 +50,24 @@ const JobStatusSection = memo(({
           <p className="text-xs">{emptyText}</p>
         </div>
       ) : (
-        <div className={`space-y-2 max-h-[${maxHeight}] overflow-y-auto`}>
+        <div className={`space-y-1.5 max-h-[${maxHeight}] overflow-y-auto`}>
           {jobs.map((job) => (
             <div 
               key={job._id} 
-              className={`bg-white/50 backdrop-blur-sm border border-white/60 rounded-xl p-3 hover:bg-white/60 transition-all hover:-translate-y-0.5 ${onJobClick ? 'cursor-pointer' : ''}`}
+              className={`bg-white/50 backdrop-blur-sm border border-white/60 rounded-lg p-2 hover:bg-white/60 transition-all hover:-translate-y-0.5 ${onJobClick ? 'cursor-pointer' : ''}`}
               onClick={onJobClick ? () => onJobClick(job) : undefined}
               onMouseDown={(e) => e.stopPropagation()}
             >
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <div className="flex items-center gap-1 min-w-0">
-                  {job.isImportant && <span className="text-yellow-500 text-sm">★</span>}
+                  {job.isImportant && <span className="text-yellow-500 text-xs">★</span>}
                   <div className="min-w-0 flex-1">
-                    <h4 className={`font-bold text-sm ${hasJobs ? textColor : 'text-gray-900'} truncate`}>
+                    <h4 className={`font-bold text-xs ${hasJobs ? textColor : 'text-gray-900'} truncate`}>
                       {job.jobNumber}
                     </h4>
                     <p className="text-xs text-gray-700 truncate">{job.plateNumber}</p>
                     {job.parts && (
-                      <p className="text-xs text-red-600 mt-1 font-medium">
+                      <p className="text-xs text-red-600 mt-0.5 font-medium">
                         {job.parts.filter(p => p.availability === 'Unavailable').length} parts missing
                       </p>
                     )}

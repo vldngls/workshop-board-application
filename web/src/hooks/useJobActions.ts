@@ -289,7 +289,7 @@ export function useJobActions({
       })
       if (!response.ok) throw new Error('Failed to reject QI')
       await fetchData()
-      toast.error('Job order rejected and marked for re-assessment')
+      toast.error('Job order rejected and sent to For Plotting')
     } catch (error) {
       console.error('Error rejecting QI:', error)
       toast.error('Failed to reject QI')
@@ -310,7 +310,7 @@ export function useJobActions({
       updateForReleaseJobs(prev => prev.filter(job => job._id !== jobId))
       
       await fetchData()
-      toast.success('Job marked as Complete and released to customer')
+      toast.success('Job marked as Finished Unclaimed')
     } catch (error) {
       console.error('Error completing job:', error)
       toast.error('Failed to complete job')
@@ -327,7 +327,7 @@ export function useJobActions({
       })
       if (!response.ok) throw new Error('Failed to redo job')
       await fetchData()
-      toast.success('Job sent back for rework')
+      toast.success('Job sent back to Quality Inspection')
     } catch (error) {
       console.error('Error redoing job:', error)
       toast.error('Failed to redo job')
@@ -335,6 +335,27 @@ export function useJobActions({
       setUpdating(false)
     }
   }, [fetchData, setUpdating])
+
+  const markComplete = useCallback(async (jobId: string) => {
+    try {
+      setUpdating(true)
+      const response = await fetch(`/api/job-orders/${jobId}/mark-complete`, {
+        method: 'PATCH'
+      })
+      if (!response.ok) throw new Error('Failed to mark job as complete')
+      
+      // Remove from Finished Unclaimed list immediately
+      updateFinishedUnclaimedJobs(prev => prev.filter(job => job._id !== jobId))
+      
+      await fetchData()
+      toast.success('Job marked as Complete and released to customer')
+    } catch (error) {
+      console.error('Error marking job as complete:', error)
+      toast.error('Failed to mark job as complete')
+    } finally {
+      setUpdating(false)
+    }
+  }, [fetchData, updateFinishedUnclaimedJobs, setUpdating])
 
   return {
     toggleImportant,
@@ -346,6 +367,7 @@ export function useJobActions({
     rejectQI,
     completeJob,
     redoJob,
+    markComplete,
     getCurrentTime
   }
 }

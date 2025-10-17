@@ -116,6 +116,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
     rejectQI,
     completeJob,
     redoJob,
+    markComplete,
     getCurrentTime
   } = useJobActions({
     jobOrders,
@@ -265,7 +266,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Toaster position="top-right" />
       
       {/* Header */}
@@ -310,6 +311,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         onRejectQI={userRole === 'technician' ? undefined : rejectQI}
         onCompleteJob={userRole === 'technician' ? undefined : completeJob}
         onRedoJob={userRole === 'technician' ? undefined : redoJob}
+        onMarkComplete={userRole === 'technician' ? undefined : markComplete}
       />
 
       {/* Job Details Modal */}

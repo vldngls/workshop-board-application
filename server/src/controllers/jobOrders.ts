@@ -347,11 +347,11 @@ const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   'OG': ['WP', 'FP', 'QI', 'HC', 'HW', 'HI', 'OG'], // Can stay OG or move to other statuses
   'WP': ['FP', 'OG', 'HC', 'HW', 'HI', 'WP'], // Waiting parts can go to for plotting or other statuses
   'FP': ['OG', 'WP', 'FP'], // For plotting can be plotted to ongoing or back to WP
-  'QI': ['FR', 'OG', 'QI'], // QI can approve to release or reject back to ongoing
+  'QI': ['FR', 'FP', 'QI'], // QI can approve to release or reject to for plotting
   'HC': ['OG', 'WP', 'FP', 'HC'], // Hold customer can resume
   'HW': ['OG', 'WP', 'FP', 'HW'], // Hold warranty can resume
   'HI': ['OG', 'WP', 'FP', 'HI'], // Hold insurance can resume
-  'FR': ['FU', 'CP', 'OG', 'FR'], // For release can complete, finish unclaimed, or redo
+  'FR': ['FU', 'CP', 'QI', 'FR'], // For release can complete, finish unclaimed, or redo back to QI
   'FU': ['CP', 'FU'], // Finished unclaimed can be marked complete
   'CP': ['CP'] // Complete is final state
 }
@@ -633,7 +633,7 @@ router.patch('/:id/reject-qi', verifyToken, requireRole(['administrator', 'job-c
       return res.status(400).json({ error: 'Job order is not pending QI' })
     }
     
-    jobOrder.status = 'OG'
+    jobOrder.status = 'FP'
     jobOrder.qiStatus = 'rejected'
     await jobOrder.save()
     
@@ -650,7 +650,7 @@ router.patch('/:id/reject-qi', verifyToken, requireRole(['administrator', 'job-c
   }
 })
 
-// Complete a job (remove from For Release)
+// Complete a job (move from For Release to Finished Unclaimed)
 router.patch('/:id/complete', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
   try {
     await connectToMongo()
@@ -664,7 +664,7 @@ router.patch('/:id/complete', verifyToken, requireRole(['administrator', 'job-co
       return res.status(400).json({ error: 'Job order is not marked for release' })
     }
     
-    jobOrder.status = 'CP'  // Complete - job has been released to customer
+    jobOrder.status = 'FU'  // Finished Unclaimed - automatically marked when approved from For Release
     await jobOrder.save()
     
     const updatedJobOrder = await JobOrder.findById(jobOrder._id)
@@ -676,6 +676,36 @@ router.patch('/:id/complete', verifyToken, requireRole(['administrator', 'job-co
     res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error completing job:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Mark job as Complete (final status - released to customer)
+router.patch('/:id/mark-complete', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const jobOrder = await JobOrder.findById(req.params.id)
+    if (!jobOrder) {
+      return res.status(404).json({ error: 'Job order not found' })
+    }
+    
+    if (jobOrder.status !== 'FU') {
+      return res.status(400).json({ error: 'Job order must be in Finished Unclaimed status' })
+    }
+    
+    jobOrder.status = 'CP'  // Complete - final status when released to customer
+    await jobOrder.save()
+    
+    const updatedJobOrder = await JobOrder.findById(jobOrder._id)
+      .populate('createdBy', 'name email')
+      .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
+      .lean()
+    
+    res.json({ jobOrder: updatedJobOrder })
+  } catch (error) {
+    console.error('Error marking job as complete:', error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
@@ -694,8 +724,8 @@ router.patch('/:id/redo', verifyToken, requireRole(['administrator', 'job-contro
       return res.status(400).json({ error: 'Job order is not marked for release' })
     }
     
-    jobOrder.status = 'OG'  // Back to On Going for rework
-    jobOrder.qiStatus = null  // Reset QI status
+    jobOrder.status = 'QI'  // Back to Quality Inspection for rework
+    jobOrder.qiStatus = 'pending'  // Reset QI status to pending
     await jobOrder.save()
     
     const updatedJobOrder = await JobOrder.findById(jobOrder._id)
