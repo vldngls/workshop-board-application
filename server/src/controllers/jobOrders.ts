@@ -52,6 +52,7 @@ router.get('/', verifyToken, async (req, res) => {
     const jobOrders = await JobOrder.find(filter)
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
@@ -152,6 +153,7 @@ router.get('/available-for-slot', verifyToken, async (req, res) => {
     })
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
       .sort({ isImportant: -1, carriedOver: -1, createdAt: -1 })
       .lean()
     
@@ -195,12 +197,14 @@ router.get('/:id', verifyToken, async (req, res) => {
       jobOrder = await JobOrder.findById(req.params.id)
         .populate('createdBy', 'name email')
         .populate('assignedTechnician', 'name email')
+        .populate('serviceAdvisor', 'name email')
         .lean()
     } else {
       // Search by job number
       jobOrder = await JobOrder.findOne({ jobNumber: req.params.id })
         .populate('createdBy', 'name email')
         .populate('assignedTechnician', 'name email')
+        .populate('serviceAdvisor', 'name email')
         .lean()
     }
     
@@ -219,6 +223,7 @@ router.get('/:id', verifyToken, async (req, res) => {
 const createJobOrderSchema = z.object({
   jobNumber: z.string().min(1),
   assignedTechnician: z.string().min(1),
+  serviceAdvisor: z.string().min(1),
   plateNumber: z.string().min(1),
   vin: z.string().min(1),
   timeRange: z.object({
@@ -232,7 +237,7 @@ const createJobOrderSchema = z.object({
   parts: z.array(z.object({
     name: z.string().min(1),
     availability: z.enum(['Available', 'Unavailable'])
-  })),
+  })).optional(),
   date: z.string().optional(),
   status: z.enum(['OG', 'WP', 'FP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU', 'CP']).optional()
 })
@@ -246,7 +251,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
       return res.status(400).json({ error: 'Invalid payload', details: parsed.error.errors })
     }
     
-    const { jobNumber, assignedTechnician, plateNumber, vin, timeRange, jobList, parts, date, status } = parsed.data
+    const { jobNumber, assignedTechnician, serviceAdvisor, plateNumber, vin, timeRange, jobList, parts, date, status } = parsed.data
     
     // Check if job number already exists
     const existingJob = await JobOrder.findOne({ jobNumber: jobNumber.toUpperCase() })
@@ -258,6 +263,12 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     const technician = await User.findById(assignedTechnician)
     if (!technician || technician.role !== 'technician') {
       return res.status(400).json({ error: 'Invalid technician assigned' })
+    }
+    
+    // Verify service advisor exists and has service-advisor role
+    const advisor = await User.findById(serviceAdvisor)
+    if (!advisor || advisor.role !== 'service-advisor') {
+      return res.status(400).json({ error: 'Invalid service advisor assigned' })
     }
     
     // Check technician availability for the specified time range and date
@@ -292,23 +303,24 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     // Determine initial status
     // If status is provided in request, use it; otherwise auto-set based on parts availability
     let initialStatus = status || 'OG'
-    if (!status) {
+    if (!status && parts && parts.length > 0) {
       const hasUnavailableParts = parts.some(part => part.availability === 'Unavailable')
       // If parts are unavailable but not all, can still be OG
       initialStatus = hasUnavailableParts ? 'WP' : 'OG'
     }
     
-    const allPartsUnavailable = parts.every(part => part.availability === 'Unavailable')
+    const allPartsUnavailable = parts && parts.length > 0 ? parts.every(part => part.availability === 'Unavailable') : false
     
     const jobOrder = await JobOrder.create({
       jobNumber: jobNumber.toUpperCase(),
       createdBy: userId,
       assignedTechnician: allPartsUnavailable ? null : assignedTechnician, // Don't assign if all parts missing
+      serviceAdvisor: serviceAdvisor,
       plateNumber: plateNumber.toUpperCase(),
       vin: vin.toUpperCase(),
       timeRange,
       jobList,
-      parts,
+      parts: parts || [],
       status: initialStatus,
       date: jobDate
     })
@@ -316,6 +328,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     const populatedJobOrder = await JobOrder.findById(jobOrder._id)
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
       .lean()
     
     res.status(201).json({ jobOrder: populatedJobOrder })
@@ -342,6 +355,7 @@ const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
 // Update job order
 const updateJobOrderSchema = z.object({
   assignedTechnician: z.string().nullable().optional(),
+  serviceAdvisor: z.string().min(1).optional(),
   plateNumber: z.string().optional(),
   vin: z.string().optional(),
   timeRange: z.object({
@@ -405,23 +419,30 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
     }
     
     // Auto-set status based on parts availability
-    if (updateData.parts) {
-      const hasUnavailableParts = updateData.parts.some(part => part.availability === 'Unavailable')
-      const allPartsAvailable = updateData.parts.every(part => part.availability === 'Available')
-      
-      // If parts become unavailable, change to WP and clear technician and time assignments
-      // This forces the job to be fully re-plotted when parts become available again
-      if (hasUnavailableParts && (!updateData.status || updateData.status === 'OG')) {
-        updateData.status = 'WP'
-        // Clear technician and time range so job needs to be fully re-plotted
-        updateData.assignedTechnician = null
-        // Reset time range to default placeholder values
-        updateData.timeRange = { start: '00:00', end: '00:00' }
-      }
-      
-      // If all parts become available and job is in WP status, change to FP (For Plotting)
-      if (allPartsAvailable && jobOrder.status === 'WP' && !updateData.status) {
-        updateData.status = 'FP'
+    if (updateData.parts !== undefined) {
+      if (updateData.parts.length > 0) {
+        const hasUnavailableParts = updateData.parts.some(part => part.availability === 'Unavailable')
+        const allPartsAvailable = updateData.parts.every(part => part.availability === 'Available')
+        
+        // If parts become unavailable, change to WP and clear technician and time assignments
+        // This forces the job to be fully re-plotted when parts become available again
+        if (hasUnavailableParts && (!updateData.status || updateData.status === 'OG')) {
+          updateData.status = 'WP'
+          // Clear technician and time range so job needs to be fully re-plotted
+          updateData.assignedTechnician = null
+          // Reset time range to default placeholder values
+          updateData.timeRange = { start: '00:00', end: '00:00' }
+        }
+        
+        // If all parts become available and job is in WP status, change to FP (For Plotting)
+        if (allPartsAvailable && jobOrder.status === 'WP' && !updateData.status) {
+          updateData.status = 'FP'
+        }
+      } else {
+        // If parts array is empty, ensure job can proceed (no parts dependency)
+        if (jobOrder.status === 'WP' && !updateData.status) {
+          updateData.status = 'FP'
+        }
       }
     }
     
@@ -431,8 +452,18 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
       if (!technician || technician.role !== 'technician') {
         return res.status(400).json({ error: 'Invalid technician assigned' })
       }
-      
-      // Check for conflicts with other job orders
+    }
+    
+    // If updating service advisor, verify they exist and have service-advisor role
+    if (updateData.serviceAdvisor !== undefined) {
+      const advisor = await User.findById(updateData.serviceAdvisor)
+      if (!advisor || advisor.role !== 'service-advisor') {
+        return res.status(400).json({ error: 'Invalid service advisor assigned' })
+      }
+    }
+    
+    // Check for conflicts with other job orders if technician is being updated
+    if (updateData.assignedTechnician !== undefined && updateData.assignedTechnician !== null) {
       const timeRange = updateData.timeRange || jobOrder.timeRange
       const conflictingJob = await JobOrder.findOne({
         _id: { $ne: jobOrder._id },
@@ -461,6 +492,7 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
     )
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
       .lean()
     
     res.json({ jobOrder: updatedJobOrder })
@@ -503,6 +535,7 @@ router.patch('/:id/toggle-important', verifyToken, requireRole(['administrator',
     const updatedJobOrder = await JobOrder.findById(jobOrder._id)
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
       .lean()
     
     res.json({ jobOrder: updatedJobOrder })
@@ -541,6 +574,7 @@ router.patch('/:id/submit-qi', verifyToken, requireRole(['administrator', 'job-c
     const updatedJobOrder = await JobOrder.findById(jobOrder._id)
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
       .lean()
     
     res.json({ jobOrder: updatedJobOrder })
@@ -571,6 +605,7 @@ router.patch('/:id/approve-qi', verifyToken, requireRole(['administrator', 'job-
     const updatedJobOrder = await JobOrder.findById(jobOrder._id)
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
       .lean()
     
     res.json({ jobOrder: updatedJobOrder })
@@ -601,6 +636,7 @@ router.patch('/:id/reject-qi', verifyToken, requireRole(['administrator', 'job-c
     const updatedJobOrder = await JobOrder.findById(jobOrder._id)
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
       .lean()
     
     res.json({ jobOrder: updatedJobOrder })
@@ -630,6 +666,7 @@ router.patch('/:id/complete', verifyToken, requireRole(['administrator', 'job-co
     const updatedJobOrder = await JobOrder.findById(jobOrder._id)
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
       .lean()
     
     res.json({ jobOrder: updatedJobOrder })
@@ -660,6 +697,7 @@ router.patch('/:id/redo', verifyToken, requireRole(['administrator', 'job-contro
     const updatedJobOrder = await JobOrder.findById(jobOrder._id)
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
       .lean()
     
     res.json({ jobOrder: updatedJobOrder })

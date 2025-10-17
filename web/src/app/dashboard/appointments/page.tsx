@@ -28,6 +28,7 @@ export default function AppointmentsPage() {
   
   const [formData, setFormData] = useState({
     technician: '',
+    serviceAdvisor: '',
     plateNumber: '',
     startTime: '07:00',
     duration: 300 // Duration in minutes (default 5 hours)
@@ -87,6 +88,18 @@ export default function AppointmentsPage() {
       })
       if (!res.ok) throw new Error('Failed to fetch technicians')
       return res.json() as Promise<{ users: Technician[] }>
+    }
+  })
+
+  // Fetch service advisors
+  const { data: serviceAdvisorsData } = useQuery({
+    queryKey: ['service-advisors', 'role=service-advisor'],
+    queryFn: async () => {
+      const res = await fetch(`/api/users?role=service-advisor`, {
+        credentials: 'include'
+      })
+      if (!res.ok) throw new Error('Failed to fetch service advisors')
+      return res.json() as Promise<{ users: any[] }>
     }
   })
 
@@ -251,7 +264,7 @@ export default function AppointmentsPage() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     
-    if (!formData.technician || !formData.plateNumber) {
+    if (!formData.technician || !formData.plateNumber || !formData.serviceAdvisor) {
       toast.error('Please fill in all required fields')
       return
     }
@@ -264,6 +277,7 @@ export default function AppointmentsPage() {
 
     createMutation.mutate({
       assignedTechnician: formData.technician,
+      serviceAdvisor: formData.serviceAdvisor,
       plateNumber: formData.plateNumber,
       timeRange: {
         start: formData.startTime,
@@ -493,6 +507,26 @@ export default function AppointmentsPage() {
               </select>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Service Advisor *
+              </label>
+              <select
+                value={formData.serviceAdvisor}
+                onChange={(e) => setFormData({ ...formData, serviceAdvisor: e.target.value })}
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/80 backdrop-blur-sm"
+                required
+                suppressHydrationWarning
+              >
+                <option value="">Select service advisor...</option>
+                {serviceAdvisorsData?.users?.map((advisor: any) => (
+                  <option key={advisor._id} value={advisor._id}>
+                    {advisor.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Visual Schedule Selector */}
             {formData.technician && (
               <div className="border-t border-neutral-200 pt-4">
@@ -643,6 +677,9 @@ export default function AppointmentsPage() {
                             {appointment.assignedTechnician.level}
                           </span>
                         )}
+                      </div>
+                      <div className="text-xs text-neutral-500 mt-1">
+                        Service Advisor: {appointment.serviceAdvisor ? appointment.serviceAdvisor.name : 'Not assigned'}
                       </div>
                     </div>
                     <div className="text-xs text-neutral-600">

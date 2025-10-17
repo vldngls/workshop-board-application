@@ -18,7 +18,7 @@ export default function CreateJobOrderFromAppointmentModal({
   const [jobNumber, setJobNumber] = useState('')
   const [vin, setVin] = useState('')
   const [jobList, setJobList] = useState<JobItem[]>([{ description: '', status: 'Unfinished' }])
-  const [parts, setParts] = useState<Part[]>([{ name: '', availability: 'Available' }])
+  const [parts, setParts] = useState<Part[]>([])
   const [setActualTime, setSetActualTime] = useState(false)
   const [actualEndTime, setActualEndTime] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -41,11 +41,6 @@ export default function CreateJobOrderFromAppointmentModal({
       setError('At least one job description is required')
       return
     }
-    
-    if (validParts.length === 0) {
-      setError('At least one part is required')
-      return
-    }
 
     setSubmitting(true)
     
@@ -54,7 +49,7 @@ export default function CreateJobOrderFromAppointmentModal({
         jobNumber: jobNumber.trim(),
         vin: vin.trim(),
         jobList: validJobs,
-        parts: validParts
+        parts: validParts.length > 0 ? validParts : undefined
       }
       
       // Add actual end time if checkbox is checked
@@ -250,7 +245,7 @@ export default function CreateJobOrderFromAppointmentModal({
           {/* Parts */}
           <div>
             <div className="flex justify-between items-center mb-3">
-              <label className="block text-sm font-semibold text-gray-700">Parts *</label>
+              <label className="block text-sm font-semibold text-gray-700">Parts</label>
               <button
                 type="button"
                 onClick={addPart}
@@ -260,35 +255,39 @@ export default function CreateJobOrderFromAppointmentModal({
               </button>
             </div>
             <div className="space-y-3">
-              {parts.map((part, index) => (
-                <div key={index} className="flex gap-3 items-center">
-                  <input
-                    type="text"
-                    value={part.name}
-                    onChange={(e) => updatePart(index, 'name', e.target.value)}
-                    placeholder="Part name"
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <select
-                    value={part.availability}
-                    onChange={(e) => updatePart(index, 'availability', e.target.value)}
-                    className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px]"
-                  >
-                    <option value="Available">Available</option>
-                    <option value="Unavailable">Unavailable</option>
-                  </select>
-                  {parts.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removePart(index)}
-                      className="px-3 py-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors"
-                      title="Remove part"
+              {parts.length > 0 ? (
+                parts.map((part, index) => (
+                  <div key={index} className="flex gap-3 items-center">
+                    <input
+                      type="text"
+                      value={part.name}
+                      onChange={(e) => updatePart(index, 'name', e.target.value)}
+                      placeholder="Part name"
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <select
+                      value={part.availability}
+                      onChange={(e) => updatePart(index, 'availability', e.target.value)}
+                      className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[140px]"
                     >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
+                      <option value="Available">Available</option>
+                      <option value="Unavailable">Unavailable</option>
+                    </select>
+                    {parts.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removePart(index)}
+                        className="px-3 py-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors"
+                        title="Remove part"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 italic">No parts added (optional)</p>
+              )}
             </div>
           </div>
 

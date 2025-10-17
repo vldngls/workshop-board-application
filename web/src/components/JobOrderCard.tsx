@@ -265,6 +265,19 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
             )}
           </p>
         </div>
+        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
+          <span className="text-gray-600 font-medium">Service Advisor:</span>
+          <p className="font-bold text-gray-900 mt-0.5 truncate">
+            {jobOrder.serviceAdvisor ? (
+              <span className="text-gray-900">{jobOrder.serviceAdvisor.name}</span>
+            ) : (
+              <span className="text-red-600 font-bold flex items-center gap-1">
+                <FiAlertTriangle size={14} />
+                Required
+              </span>
+            )}
+          </p>
+        </div>
       </div>
 
       {/* Job & Parts - Compact */}

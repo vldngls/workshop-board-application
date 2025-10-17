@@ -28,7 +28,7 @@ const AppointmentBlock = memo(({ appointment, onClick, onDelete }: AppointmentBl
         isolation: 'isolate',
         height: '100%'
       }}
-      title={`Appointment: ${appointment.plateNumber} - ${formatTime(appointment.timeRange.start)} to ${formatTime(appointment.timeRange.end)}`}
+      title={`Appointment: ${appointment.plateNumber} - ${formatTime(appointment.timeRange.start)} to ${formatTime(appointment.timeRange.end)}${appointment.serviceAdvisor ? `\nService Advisor: ${appointment.serviceAdvisor.name}` : ''}`}
     >
       <div className="p-1 h-full flex flex-col justify-between">
         <div>

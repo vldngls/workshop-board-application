@@ -51,17 +51,19 @@ export interface JobOrder {
 export interface CreateJobOrderRequest {
   jobNumber: string
   assignedTechnician: string
+  serviceAdvisor: string
   plateNumber: string
   vin: string
   timeRange: TimeRange
   jobList: JobItem[]
-  parts: Part[]
+  parts?: Part[]
   date?: string
   status?: JobStatus
 }
 
 export interface UpdateJobOrderRequest {
   assignedTechnician?: string
+  serviceAdvisor?: string
   plateNumber?: string
   vin?: string
   timeRange?: TimeRange

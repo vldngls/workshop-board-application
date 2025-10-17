@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import type { CreateJobOrderRequest, Technician, JobItem, Part } from '@/types/jobOrder'
-import { useCreateJobOrder, useAvailableTechnicians } from '@/hooks/useJobOrders'
+import { useCreateJobOrder, useAvailableTechnicians, useUsers } from '@/hooks/useJobOrders'
 import TechnicianScheduleView from './TechnicianScheduleView'
 
 interface AddJobOrderModalProps {
@@ -14,11 +14,12 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
   const [formData, setFormData] = useState<CreateJobOrderRequest>({
     jobNumber: '',
     assignedTechnician: '',
+    serviceAdvisor: '',
     plateNumber: '',
     vin: '',
     timeRange: { start: '', end: '' },
     jobList: [{ description: '', status: 'Unfinished' }],
-    parts: [{ name: '', availability: 'Available' }],
+    parts: [],
     date: new Date().toISOString().split('T')[0],
     status: 'OG'
   })
@@ -38,6 +39,10 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
     formData.timeRange.start,
     formData.timeRange.end
   )
+  
+  // Fetch service advisors
+  const { data: serviceAdvisorsData, isLoading: loadingServiceAdvisors } = useUsers({ role: 'service-advisor' })
+  const serviceAdvisors = serviceAdvisorsData?.users || []
 
   // Load break settings
   useEffect(() => {
@@ -312,6 +317,28 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
               )}
             </div>
 
+            {/* Service Advisor */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Service Advisor *
+              </label>
+              <select
+                value={formData.serviceAdvisor}
+                onChange={(e) => handleInputChange('serviceAdvisor', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">
+                  {loadingServiceAdvisors ? 'Loading service advisors...' : 'Select Service Advisor'}
+                </option>
+                {serviceAdvisors.map((advisor: any) => (
+                  <option key={advisor._id} value={advisor._id}>
+                    {advisor.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Visual Schedule Selector */}
             {formData.assignedTechnician && durationHours > 0 && (
               <div className="border-t border-gray-200 pt-4">
@@ -376,7 +403,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-gray-700">
-                  Parts *
+                  Parts
                 </label>
                 <button
                   type="button"
@@ -387,35 +414,39 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
                 </button>
               </div>
               <div className="space-y-2">
-                {formData.parts.map((part, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <select
-                      value={part.availability}
-                      onChange={(e) => handlePartChange(index, 'availability', e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="Available">Available</option>
-                      <option value="Unavailable">Unavailable</option>
-                    </select>
-                    <input
-                      type="text"
-                      value={part.name}
-                      onChange={(e) => handlePartChange(index, 'name', e.target.value)}
-                      placeholder="Part name"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                    {formData.parts.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removePart(index)}
-                        className="text-red-600 hover:text-red-800"
+                {formData.parts && formData.parts.length > 0 ? (
+                  formData.parts.map((part, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <select
+                        value={part.availability}
+                        onChange={(e) => handlePartChange(index, 'availability', e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                ))}
+                        <option value="Available">Available</option>
+                        <option value="Unavailable">Unavailable</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={part.name}
+                        onChange={(e) => handlePartChange(index, 'name', e.target.value)}
+                        placeholder="Part name"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                      {formData.parts.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removePart(index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 italic">No parts added (optional)</p>
+                )}
               </div>
             </div>
 

@@ -26,6 +26,7 @@ router.get('/', verifyToken, async (req, res) => {
     const appointments = await Appointment.find(filter)
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email level')
+      .populate('serviceAdvisor', 'name email')
       .sort({ date: 1, 'timeRange.start': 1 })
       .lean()
     
@@ -44,6 +45,7 @@ router.get('/:id', verifyToken, async (req, res) => {
     const appointment = await Appointment.findById(req.params.id)
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email level')
+      .populate('serviceAdvisor', 'name email')
       .lean()
     
     if (!appointment) {
@@ -60,6 +62,7 @@ router.get('/:id', verifyToken, async (req, res) => {
 // Create new appointment
 const createAppointmentSchema = z.object({
   assignedTechnician: z.string().min(1),
+  serviceAdvisor: z.string().min(1),
   plateNumber: z.string().min(1),
   timeRange: z.object({
     start: z.string(),
@@ -77,12 +80,18 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
       return res.status(400).json({ error: 'Invalid payload', details: parsed.error.errors })
     }
     
-    const { assignedTechnician, plateNumber, timeRange, date } = parsed.data
+    const { assignedTechnician, serviceAdvisor, plateNumber, timeRange, date } = parsed.data
     
     // Verify technician exists and has technician role
     const technician = await User.findById(assignedTechnician)
     if (!technician || technician.role !== 'technician') {
       return res.status(400).json({ error: 'Invalid technician assigned' })
+    }
+    
+    // Verify service advisor exists and has service-advisor role
+    const advisor = await User.findById(serviceAdvisor)
+    if (!advisor || advisor.role !== 'service-advisor') {
+      return res.status(400).json({ error: 'Invalid service advisor assigned' })
     }
     
     // Get user ID from JWT token
@@ -142,6 +151,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     
     const appointment = await Appointment.create({
       assignedTechnician,
+      serviceAdvisor: serviceAdvisor,
       plateNumber: plateNumber.toUpperCase(),
       timeRange,
       date: appointmentDate,
@@ -151,6 +161,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     const populatedAppointment = await Appointment.findById(appointment._id)
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email level')
+      .populate('serviceAdvisor', 'name email')
       .lean()
     
     res.status(201).json({ appointment: populatedAppointment })
@@ -163,6 +174,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
 // Update appointment
 const updateAppointmentSchema = z.object({
   assignedTechnician: z.string().optional(),
+  serviceAdvisor: z.string().min(1).optional(),
   plateNumber: z.string().optional(),
   timeRange: z.object({
     start: z.string(),
@@ -193,6 +205,14 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
       const technician = await User.findById(updateData.assignedTechnician)
       if (!technician || technician.role !== 'technician') {
         return res.status(400).json({ error: 'Invalid technician assigned' })
+      }
+    }
+    
+    // If updating service advisor, verify they exist and have service-advisor role
+    if (updateData.serviceAdvisor !== undefined) {
+      const advisor = await User.findById(updateData.serviceAdvisor)
+      if (!advisor || advisor.role !== 'service-advisor') {
+        return res.status(400).json({ error: 'Invalid service advisor assigned' })
       }
     }
     
@@ -263,6 +283,7 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
     )
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email level')
+      .populate('serviceAdvisor', 'name email')
       .lean()
     
     res.json({ appointment: updatedAppointment })
@@ -283,7 +304,7 @@ const createJobOrderFromAppointmentSchema = z.object({
   parts: z.array(z.object({
     name: z.string().min(1),
     availability: z.enum(['Available', 'Unavailable'])
-  }))
+  })).optional()
 })
 
 router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
@@ -318,8 +339,8 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
     }
     
     // Determine initial status based on parts availability
-    const hasUnavailableParts = parts.some(part => part.availability === 'Unavailable')
-    const allPartsUnavailable = parts.every(part => part.availability === 'Unavailable')
+    const hasUnavailableParts = parts && parts.length > 0 ? parts.some(part => part.availability === 'Unavailable') : false
+    const allPartsUnavailable = parts && parts.length > 0 ? parts.every(part => part.availability === 'Unavailable') : false
     const initialStatus = hasUnavailableParts ? 'WP' : 'OG'
     
     // Get current time for actualEndTime if provided
@@ -330,12 +351,13 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
       jobNumber: jobNumber.toUpperCase(),
       createdBy: userId,
       assignedTechnician: allPartsUnavailable ? null : appointment.assignedTechnician,
+      serviceAdvisor: appointment.serviceAdvisor,
       plateNumber: appointment.plateNumber,
       vin: vin.toUpperCase(),
       timeRange: appointment.timeRange,
       actualEndTime: actualEndTime || undefined,
       jobList,
-      parts,
+      parts: parts || [],
       status: initialStatus,
       date: appointment.date,
       originalCreatedDate: new Date(),
@@ -348,6 +370,7 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
     const populatedJobOrder = await JobOrder.findById(jobOrder._id)
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
       .lean()
     
     res.status(201).json({ jobOrder: populatedJobOrder })

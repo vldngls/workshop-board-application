@@ -25,6 +25,7 @@ export interface Appointment {
 
 export interface CreateAppointmentRequest {
   assignedTechnician: string
+  serviceAdvisor: string
   plateNumber: string
   timeRange: TimeRange
   date?: string
@@ -32,6 +33,7 @@ export interface CreateAppointmentRequest {
 
 export interface UpdateAppointmentRequest {
   assignedTechnician?: string
+  serviceAdvisor?: string
   plateNumber?: string
   timeRange?: TimeRange
   date?: string
