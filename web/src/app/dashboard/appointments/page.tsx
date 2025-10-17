@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast, { Toaster } from 'react-hot-toast'
-import { FiTrash2, FiCalendar } from 'react-icons/fi'
+import { FiTrash2, FiCalendar, FiChevronLeft, FiChevronRight } from 'react-icons/fi'
 import type { Appointment, CreateAppointmentRequest } from "@/types/appointment"
 import CreateJobOrderFromAppointmentModal from '@/components/CreateJobOrderFromAppointmentModal'
 import ConfirmDialog from '@/components/ConfirmDialog'
@@ -138,6 +138,7 @@ export default function AppointmentsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
       toast.success('Appointment added!')
       // Clear only plate number for quick re-entry
       setFormData(prev => ({ ...prev, plateNumber: '' }))
@@ -164,6 +165,7 @@ export default function AppointmentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
       queryClient.invalidateQueries({ queryKey: ['no-show-appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
       toast.success('Appointment marked as no show')
     },
     onError: (error: Error) => {
@@ -184,6 +186,7 @@ export default function AppointmentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
       queryClient.invalidateQueries({ queryKey: ['no-show-appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
       toast.success('All no-show appointments deleted')
     },
     onError: (error: Error) => {
@@ -204,6 +207,7 @@ export default function AppointmentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
       queryClient.invalidateQueries({ queryKey: ['no-show-appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
       toast.success('Appointment deleted')
     },
     onError: (error: Error) => {
@@ -236,6 +240,7 @@ export default function AppointmentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
       queryClient.invalidateQueries({ queryKey: ['no-show-appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
       toast.success('Appointment rescheduled')
     },
     onError: (error: Error) => {
@@ -322,6 +327,7 @@ export default function AppointmentsPage() {
     setShowCreateJobOrderModal(false)
     setSelectedAppointment(null)
     queryClient.invalidateQueries({ queryKey: ['appointments'] })
+    queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
     toast.success('Job order created from appointment!')
   }
 
@@ -331,6 +337,20 @@ export default function AppointmentsPage() {
       ...prev,
       startTime
     }))
+  }
+
+  // Date navigation functions
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const currentDate = new Date(selectedDate)
+    const newDate = new Date(currentDate)
+    
+    if (direction === 'prev') {
+      newDate.setDate(currentDate.getDate() - 1)
+    } else {
+      newDate.setDate(currentDate.getDate() + 1)
+    }
+    
+    setSelectedDate(newDate.toISOString().split('T')[0])
   }
 
   const technicians = techniciansData?.users || []
@@ -400,15 +420,15 @@ export default function AppointmentsPage() {
           
           <form onSubmit={handleSubmit} className="space-y-4" suppressHydrationWarning>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Date
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Appointment Date
               </label>
               <div className="flex gap-2">
                 <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/80 backdrop-blur-sm"
                   suppressHydrationWarning
                 />
                 <button
@@ -417,7 +437,7 @@ export default function AppointmentsPage() {
                     const today = new Date().toISOString().split('T')[0]
                     setSelectedDate(today)
                   }}
-                  className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-md transition-colors"
+                  className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 border border-blue-400/30"
                   title="Set to today"
                 >
                   Today
@@ -432,7 +452,7 @@ export default function AppointmentsPage() {
               <select
                 value={formData.duration}
                 onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/80 backdrop-blur-sm"
                 required
                 suppressHydrationWarning
               >
@@ -460,7 +480,7 @@ export default function AppointmentsPage() {
               <select
                 value={formData.technician}
                 onChange={(e) => setFormData({ ...formData, technician: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/80 backdrop-blur-sm"
                 required
                 suppressHydrationWarning
               >
@@ -494,7 +514,7 @@ export default function AppointmentsPage() {
                 type="time"
                 value={formData.startTime}
                 onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/80 backdrop-blur-sm"
                 suppressHydrationWarning
               />
               <div className="text-xs text-neutral-500 mt-1">
@@ -512,7 +532,7 @@ export default function AppointmentsPage() {
                 value={formData.plateNumber}
                 onChange={(e) => setFormData({ ...formData, plateNumber: e.target.value.toUpperCase() })}
                 placeholder="ABC1234"
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/80 backdrop-blur-sm uppercase"
                 required
                 suppressHydrationWarning
               />
@@ -538,22 +558,62 @@ export default function AppointmentsPage() {
 
         {/* Appointments List */}
         <div className="floating-card p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-neutral-900">
-              Appointments for {new Date(selectedDate).toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </h2>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-4">
+            {/* Date Navigation Section */}
+            <div className="flex items-center justify-center lg:justify-start flex-wrap gap-2">
+              <div className="bg-white/60 backdrop-blur-sm border border-white/40 rounded-xl p-3 flex items-center gap-2 min-w-0 flex-shrink-0">
+                <button
+                  onClick={() => navigateDate('prev')}
+                  className="p-2 hover:bg-blue-500/20 rounded-lg transition-all duration-200 hover:scale-105"
+                  title="Previous day"
+                >
+                  <FiChevronLeft className="w-4 h-4 text-neutral-700 hover:text-blue-600" />
+                </button>
+                
+                <div className="flex flex-col items-center min-w-0 px-2">
+                  <h2 className="text-sm font-semibold text-neutral-600 uppercase tracking-wide">
+                    {new Date(selectedDate).toLocaleDateString('en-US', { 
+                      weekday: 'long'
+                    })}
+                  </h2>
+                  <h3 className="text-lg font-bold text-neutral-900 whitespace-nowrap">
+                    {new Date(selectedDate).toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </h3>
+                </div>
+                
+                <button
+                  onClick={() => navigateDate('next')}
+                  className="p-2 hover:bg-blue-500/20 rounded-lg transition-all duration-200 hover:scale-105"
+                  title="Next day"
+                >
+                  <FiChevronRight className="w-4 h-4 text-neutral-700 hover:text-blue-600" />
+                </button>
+              </div>
+              
+              <button
+                onClick={() => {
+                  const today = new Date().toISOString().split('T')[0]
+                  setSelectedDate(today)
+                }}
+                className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 border border-blue-400/30 flex-shrink-0"
+                title="Go to today"
+              >
+                Today
+              </button>
+            </div>
+
+            {/* Search Section */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <input
                 type="text"
                 placeholder="Search appointments..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-3 py-1.5 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full sm:w-64 px-4 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/80 backdrop-blur-sm"
               />
             </div>
           </div>

@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
 interface TimeSlot {
   time: string
@@ -25,8 +26,6 @@ export default function TechnicianScheduleView({
   onTimeSlotSelect,
   selectedStart
 }: TechnicianScheduleViewProps) {
-  const [schedule, setSchedule] = useState<TimeSlot[]>([])
-  const [loading, setLoading] = useState(false)
   const [breakStart, setBreakStart] = useState('12:00')
   const [breakEnd, setBreakEnd] = useState('13:00')
 
@@ -87,90 +86,94 @@ export default function TechnicianScheduleView({
     return slots
   }
 
-  useEffect(() => {
-    if (!technicianId || !date) return
-
-    const fetchSchedule = async () => {
-      setLoading(true)
-      try {
-        console.log('Fetching schedule for technician:', technicianId, 'date:', date)
-        
-        // Fetch appointments
-        const appointmentsRes = await fetch(`/api/appointments?date=${date}&technician=${technicianId}`)
-        if (!appointmentsRes.ok) {
-          console.error('Failed to fetch appointments:', appointmentsRes.status, appointmentsRes.statusText)
-          throw new Error('Failed to fetch appointments')
-        }
-        const appointmentsData = await appointmentsRes.json()
-        const appointments = appointmentsData.appointments || []
-        console.log('Fetched appointments:', appointments.length)
-
-        // Fetch job orders
-        const jobOrdersRes = await fetch(`/api/job-orders?date=${date}&technician=${technicianId}`)
-        if (!jobOrdersRes.ok) {
-          console.error('Failed to fetch job orders:', jobOrdersRes.status, jobOrdersRes.statusText)
-          throw new Error('Failed to fetch job orders')
-        }
-        const jobOrdersData = await jobOrdersRes.json()
-        const jobOrders = jobOrdersData.jobOrders || []
-        console.log('Fetched job orders:', jobOrders.length)
-
-        // Mark occupied slots
-        const slots = generateTimeSlots()
-        
-        // Helper function to check if a time is within a range
-        const isTimeInRange = (time: string, start: string, end: string): boolean => {
-          const [tHour, tMin] = time.split(':').map(Number)
-          const [sHour, sMin] = start.split(':').map(Number)
-          const [eHour, eMin] = end.split(':').map(Number)
-          
-          const tMinutes = tHour * 60 + tMin
-          const sMinutes = sHour * 60 + sMin
-          const eMinutes = eHour * 60 + eMin
-          
-          return tMinutes >= sMinutes && tMinutes < eMinutes
-        }
-
-        slots.forEach(slot => {
-          // Don't override breaktime slots
-          if (slot.type === 'break') return
-          
-          // Check appointments
-          for (const appt of appointments) {
-            if (isTimeInRange(slot.time, appt.timeRange.start, appt.timeRange.end)) {
-              slot.isOccupied = true
-              slot.occupiedBy = `Appointment: ${appt.plateNumber}`
-              slot.type = 'appointment'
-              break
-            }
-          }
-          
-          // Check job orders (if not already occupied)
-          if (!slot.isOccupied) {
-            for (const job of jobOrders) {
-              if (isTimeInRange(slot.time, job.timeRange.start, job.timeRange.end)) {
-                slot.isOccupied = true
-                slot.occupiedBy = `Job Order: ${job.jobNumber}`
-                slot.type = 'job-order'
-                break
-              }
-            }
-          }
-        })
-
-        setSchedule(slots)
-        console.log('Schedule updated with', slots.length, 'slots')
-      } catch (error) {
-        console.error('Error fetching schedule:', error)
-        // Set empty schedule on error
-        setSchedule(generateTimeSlots())
-      } finally {
-        setLoading(false)
+  // Fetch schedule data using React Query for automatic updates
+  const { data: scheduleData, isLoading } = useQuery({
+    queryKey: ['technician-schedule', technicianId, date],
+    queryFn: async () => {
+      if (!technicianId || !date) return { appointments: [], jobOrders: [] }
+      
+      console.log('Fetching schedule for technician:', technicianId, 'date:', date)
+      
+      // Fetch appointments
+      const appointmentsRes = await fetch(`/api/appointments?date=${date}&technician=${technicianId}`, {
+        credentials: 'include'
+      })
+      if (!appointmentsRes.ok) {
+        console.error('Failed to fetch appointments:', appointmentsRes.status, appointmentsRes.statusText)
+        throw new Error('Failed to fetch appointments')
       }
+      const appointmentsData = await appointmentsRes.json()
+      const appointments = appointmentsData.appointments || []
+      console.log('Fetched appointments:', appointments.length)
+
+      // Fetch job orders
+      const jobOrdersRes = await fetch(`/api/job-orders?date=${date}&technician=${technicianId}`, {
+        credentials: 'include'
+      })
+      if (!jobOrdersRes.ok) {
+        console.error('Failed to fetch job orders:', jobOrdersRes.status, jobOrdersRes.statusText)
+        throw new Error('Failed to fetch job orders')
+      }
+      const jobOrdersData = await jobOrdersRes.json()
+      const jobOrders = jobOrdersData.jobOrders || []
+      console.log('Fetched job orders:', jobOrders.length)
+
+      return { appointments, jobOrders }
+    },
+    enabled: !!(technicianId && date),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+
+  // Generate schedule from fetched data
+  const schedule = React.useMemo(() => {
+    if (!scheduleData) return generateTimeSlots()
+    
+    const { appointments, jobOrders } = scheduleData
+    const slots = generateTimeSlots()
+    
+    // Helper function to check if a time is within a range
+    const isTimeInRange = (time: string, start: string, end: string): boolean => {
+      const [tHour, tMin] = time.split(':').map(Number)
+      const [sHour, sMin] = start.split(':').map(Number)
+      const [eHour, eMin] = end.split(':').map(Number)
+      
+      const tMinutes = tHour * 60 + tMin
+      const sMinutes = sHour * 60 + sMin
+      const eMinutes = eHour * 60 + eMin
+      
+      return tMinutes >= sMinutes && tMinutes < eMinutes
     }
 
-    fetchSchedule()
-  }, [technicianId, date])
+    slots.forEach(slot => {
+      // Don't override breaktime slots
+      if (slot.type === 'break') return
+      
+      // Check appointments
+      for (const appt of appointments) {
+        if (isTimeInRange(slot.time, appt.timeRange.start, appt.timeRange.end)) {
+          slot.isOccupied = true
+          slot.occupiedBy = `Appointment: ${appt.plateNumber}`
+          slot.type = 'appointment'
+          break
+        }
+      }
+      
+      // Check job orders (if not already occupied)
+      if (!slot.isOccupied) {
+        for (const job of jobOrders) {
+          if (isTimeInRange(slot.time, job.timeRange.start, job.timeRange.end)) {
+            slot.isOccupied = true
+            slot.occupiedBy = `Job Order: ${job.jobNumber}`
+            slot.type = 'job-order'
+            break
+          }
+        }
+      }
+    })
+
+    console.log('Schedule updated with', slots.length, 'slots')
+    return slots
+  }, [scheduleData, breakStart, breakEnd])
 
   const handleSlotClick = (slot: TimeSlot) => {
     if (slot.isOccupied) return
@@ -225,7 +228,7 @@ export default function TechnicianScheduleView({
     )
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="text-center py-8 text-neutral-500 text-sm">
         Loading schedule...
@@ -277,6 +280,7 @@ export default function TechnicianScheduleView({
             return (
               <button
                 key={slot.time}
+                type="button"
                 onClick={() => handleSlotClick(slot)}
                 disabled={slot.isOccupied}
                 className={`border rounded px-2 py-1.5 text-xs font-medium transition-colors ${bgClass}`}
