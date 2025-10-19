@@ -15,6 +15,7 @@ import ReassignTimeSlotModal from './ReassignTimeSlotModal'
 import ReplotJobOrderModal from './ReplotJobOrderModal'
 import CreateJobOrderFromAppointmentModal from './CreateJobOrderFromAppointmentModal'
 import ConfirmDialog from './ConfirmDialog'
+import ReassignmentModal from './ReassignmentModal'
 
 interface WorkshopTimetableProps {
   date: Date
@@ -92,6 +93,8 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
     endTime: string
   } | null>(null)
   const [showReplotModal, setShowReplotModal] = useState(false)
+  const [showCarryOverReassignModal, setShowCarryOverReassignModal] = useState(false)
+  const [selectedCarryOverJob, setSelectedCarryOverJob] = useState<JobOrderWithDetails | null>(null)
   
   // Break time settings
   const [breakStart, setBreakStart] = useState('12:00')
@@ -103,6 +106,49 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
     const savedBreakEnd = localStorage.getItem('breakEnd')
     if (savedBreakStart) setBreakStart(savedBreakStart)
     if (savedBreakEnd) setBreakEnd(savedBreakEnd)
+  }, [])
+
+  // Calculate end time from start time and duration, accounting for lunch break
+  const calculateEndTime = (startTime: string, durationMinutes: number): string => {
+    const [startHour, startMinute] = startTime.split(':').map(Number)
+    const startDate = new Date()
+    startDate.setHours(startHour, startMinute, 0, 0)
+    
+    const [breakStartHour, breakStartMinute] = breakStart.split(':').map(Number)
+    const [breakEndHour, breakEndMinute] = breakEnd.split(':').map(Number)
+    
+    const breakStartDate = new Date()
+    breakStartDate.setHours(breakStartHour, breakStartMinute, 0, 0)
+    
+    const breakEndDate = new Date()
+    breakEndDate.setHours(breakEndHour, breakEndMinute, 0, 0)
+    
+    const breakDuration = (breakEndDate.getTime() - breakStartDate.getTime()) / (1000 * 60)
+    
+    // Calculate initial end time without break
+    const initialEndDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
+    
+    // Check if work period overlaps with break
+    // Work overlaps if: start < breakEnd AND initialEnd > breakStart
+    if (startDate < breakEndDate && initialEndDate > breakStartDate) {
+      // The break falls within the work period - add break duration to skip it
+      const endDate = new Date(initialEndDate.getTime() + breakDuration * 60 * 1000)
+      
+      const endHour = String(endDate.getHours()).padStart(2, '0')
+      const endMinute = String(endDate.getMinutes()).padStart(2, '0')
+      return `${endHour}:${endMinute}`
+    }
+    
+    // No overlap with break, return initial calculation
+    const endHour = String(initialEndDate.getHours()).padStart(2, '0')
+    const endMinute = String(initialEndDate.getMinutes()).padStart(2, '0')
+    return `${endHour}:${endMinute}`
+  }
+
+  // Handle carry-over job reassignment
+  const handleCarryOverReassign = useCallback((job: JobOrderWithDetails) => {
+    setSelectedCarryOverJob(job)
+    setShowCarryOverReassignModal(true)
   }, [])
 
   // Use job actions hook
@@ -312,6 +358,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         onCompleteJob={userRole === 'technician' ? undefined : completeJob}
         onRedoJob={userRole === 'technician' ? undefined : redoJob}
         onMarkComplete={userRole === 'technician' ? undefined : markComplete}
+        onReassignCarryOver={userRole === 'technician' ? undefined : handleCarryOverReassign}
       />
 
       {/* Job Details Modal */}
@@ -446,6 +493,25 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         onConfirm={confirmDeleteAppointment}
         onCancel={cancelDeleteAppointment}
       />
+
+      {/* Carry-Over Reassignment Modal */}
+      {showCarryOverReassignModal && selectedCarryOverJob && (
+        <ReassignmentModal
+          job={selectedCarryOverJob}
+          breakStart={breakStart}
+          breakEnd={breakEnd}
+          calculateEndTime={calculateEndTime}
+          onClose={() => {
+            setShowCarryOverReassignModal(false)
+            setSelectedCarryOverJob(null)
+          }}
+          onSuccess={() => {
+            setShowCarryOverReassignModal(false)
+            setSelectedCarryOverJob(null)
+            fetchData()
+          }}
+        />
+      )}
     </div>
   )
 }

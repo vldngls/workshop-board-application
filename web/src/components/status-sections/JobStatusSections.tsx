@@ -21,6 +21,7 @@ interface JobStatusSectionsProps {
   onCompleteJob: (jobId: string) => void
   onRedoJob: (jobId: string) => void
   onMarkComplete: (jobId: string) => void
+  onReassignCarryOver?: (job: JobOrderWithDetails) => void
 }
 
 const JobStatusSections = memo(({
@@ -39,7 +40,8 @@ const JobStatusSections = memo(({
   onRejectQI,
   onCompleteJob,
   onRedoJob,
-  onMarkComplete
+  onMarkComplete,
+  onReassignCarryOver
 }: JobStatusSectionsProps) => {
   const { containerRef, handleMouseDown } = useDragScroll()
   return (
@@ -172,6 +174,21 @@ const JobStatusSections = memo(({
             emptyIcon="✨"
             emptyText="No carried over jobs"
             onJobClick={onJobClick}
+            actions={
+              onReassignCarryOver && carriedOverJobs.length > 0 ? (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onReassignCarryOver(carriedOverJobs[0])
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  disabled={updating} 
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold px-2 py-1 rounded-lg transition-all hover:shadow-md text-xs w-full"
+                >
+                  🔄 Reassign
+                </button>
+              ) : undefined
+            }
           />
 
           {/* For Plotting Section */}

@@ -73,7 +73,7 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
         hwResponse,
         hiResponse,
         fuResponse,
-        allJobsResponse,
+        carriedOverResponse,
         appointmentsResponse
       ] = await Promise.all([
         fetch(`/api/job-orders?date=${dateStr}`),
@@ -86,7 +86,7 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
         fetch('/api/job-orders?status=HW'),
         fetch('/api/job-orders?status=HI'),
         fetch('/api/job-orders?status=FU'),
-        fetch('/api/job-orders'),
+        fetch('/api/job-orders'), // Fetch all carry-over jobs regardless of date
         fetch(`/api/appointments?date=${dateStr}`).catch(() => ({ ok: false }))
       ])
 
@@ -101,7 +101,7 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
       const hwData = await hwResponse.json()
       const hiData = await hiResponse.json()
       const fuData = await fuResponse.json()
-      const allJobsData = await allJobsResponse.json()
+      const carriedOverData = await carriedOverResponse.json()
 
       // Filter and sort data
       const pendingQI = (qiData.jobOrders || []).filter((job: JobOrderWithDetails) => job.qiStatus === 'pending')
@@ -112,7 +112,9 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
       const holdWarranty = hwData.jobOrders || []
       const holdInsurance = hiData.jobOrders || []
       const finishedUnclaimed = fuData.jobOrders || []
-      const carriedOver = (allJobsData.jobOrders || []).filter((job: JobOrderWithDetails) => job.carriedOver === true)
+      const carriedOver = (carriedOverData.jobOrders || []).filter((job: JobOrderWithDetails) => 
+        job.carriedOver && job.status !== 'FR' && job.status !== 'FU' && job.status !== 'CP'
+      )
 
       // Filter timetable jobs (exclude statuses that should only appear in sections below)
       const timetableJobs = (jobOrdersData.jobOrders || []).filter((job: JobOrderWithDetails) => 
