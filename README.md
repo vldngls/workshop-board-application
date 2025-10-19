@@ -177,8 +177,38 @@ workshop-board-application/
 - Node.js 18+
 - MongoDB (local or cloud)
 - npm or yarn
+- Docker (optional, for easy MongoDB setup)
 
-### Installation
+### Quick Start (Automated Setup)
+
+**For Unix/Linux/macOS:**
+```bash
+# Clone and setup
+git clone https://github.com/vldngls/workshop-board-application.git
+cd workshop-board-application
+
+# Run automated setup script
+chmod +x scripts/dev-setup.sh
+./scripts/dev-setup.sh
+
+# Start development servers
+npm run dev
+```
+
+**For Windows (PowerShell):**
+```powershell
+# Clone and setup
+git clone https://github.com/vldngls/workshop-board-application.git
+cd workshop-board-application
+
+# Run automated setup script
+.\scripts\dev-setup.ps1
+
+# Start development servers
+npm run dev
+```
+
+### Manual Installation
 
 1. **Clone the repository**
 ```bash
@@ -188,34 +218,59 @@ cd workshop-board-application
 
 2. **Install dependencies**
 ```bash
-# Install server dependencies
-npm install --prefix server
+# Install all dependencies (root, server, and web)
+npm run install:all
 
-# Install web dependencies
-npm install --prefix web
+# Or install individually:
+npm install
+npm --prefix server install
+npm --prefix web install
 ```
 
-3. **Configure environment variables**
+3. **Setup MongoDB**
+
+**Option A: Using Docker (Recommended)**
+```bash
+# Start MongoDB with Docker Compose
+docker-compose -f docker-compose.dev.yml up -d mongodb
+
+# Optional: Start MongoDB Express for database management
+docker-compose -f docker-compose.dev.yml up -d mongo-express
+# Access at: http://localhost:8081 (admin/admin)
+```
+
+**Option B: Local MongoDB Installation**
+- Install MongoDB locally on your system
+- Start MongoDB service
+- Default connection: `mongodb://localhost:27017/workshop_board`
+
+4. **Configure environment variables**
 
 Create `server/.env`:
 ```env
 PORT=4000
 MONGODB_URI=mongodb://localhost:27017/workshop_board
-JWT_SECRET=your_super_secret_jwt_key_change_this
-API_KEY=your_api_key_here
+JWT_SECRET=workshopjwtsecrettigerlily
+API_KEY=workshopapikeytigerlily
 ```
 
 Create `web/.env.local`:
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
-JWT_SECRET=your_super_secret_jwt_key_change_this
-API_KEY=your_api_key_here
+JWT_SECRET=workshopjwtsecrettigerlily
+API_KEY=workshopapikeytigerlily
 ```
 
-4. **Seed the database (optional)**
+5. **Seed the database (optional)**
 ```bash
-cd server
+# Seed with basic data
 npm run seed
+
+# Seed with enhanced data
+npm run seed:enhanced
+
+# Seed with comprehensive data
+npm run seed:comprehensive
 ```
 
 This creates:
@@ -226,20 +281,48 @@ This creates:
 
 ### Development
 
-Run both servers simultaneously using two terminals:
-
+**Option 1: Single Command (Recommended)**
 ```bash
-# Terminal 1: Backend (Express)
-cd server
-npm run dev
-
-# Terminal 2: Frontend (Next.js)
-cd web
+# Start both frontend and backend simultaneously
 npm run dev
 ```
 
+**Option 2: Separate Terminals**
+```bash
+# Terminal 1: Backend (Express)
+npm run server:dev
+
+# Terminal 2: Frontend (Next.js)
+npm run web:dev
+```
+
+**Option 3: Using Start Scripts**
+```bash
+# Unix/Linux/macOS
+./scripts/start-dev.sh
+
+# Windows PowerShell
+.\scripts\start-dev.ps1
+```
+
+### Access Points
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:4000
+- **MongoDB Express** (if using Docker): http://localhost:8081 (admin/admin)
+
+### Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start both frontend and backend in development mode |
+| `npm run build` | Build both applications for production |
+| `npm run start` | Start both applications in production mode |
+| `npm run server:dev` | Start only the backend server |
+| `npm run web:dev` | Start only the frontend server |
+| `npm run seed` | Seed database with sample data |
+| `npm run seed:enhanced` | Seed with enhanced sample data |
+| `npm run seed:comprehensive` | Seed with comprehensive sample data |
+| `npm run install:all` | Install all dependencies |
 
 ### Default Login Credentials (after seeding)
 
