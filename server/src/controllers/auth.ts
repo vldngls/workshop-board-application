@@ -61,7 +61,11 @@ router.post('/login', async (req, res) => {
       },
     })
   } catch (err) {
-    return res.status(500).json({ error: 'Internal error' })
+    console.error('Login error:', err)
+    return res.status(500).json({ 
+      error: 'Internal error',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    })
   }
 })
 
