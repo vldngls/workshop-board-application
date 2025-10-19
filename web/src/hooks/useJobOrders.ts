@@ -101,9 +101,9 @@ export function useUsers(filters?: { role?: string }) {
       
       const data = await response.json()
       
-      if (filters?.role === 'technician') {
+      if (filters?.role) {
         return {
-          users: data.users?.filter((user: any) => user.role === 'technician') || []
+          users: data.users?.filter((user: any) => user.role === filters.role) || []
         }
       }
       
