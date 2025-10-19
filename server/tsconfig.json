@@ -40,6 +40,8 @@
     "noUncheckedSideEffectImports": false,
     "moduleDetection": "force",
     "skipLibCheck": true,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
 
     "esModuleInterop": true,
     "resolveJsonModule": true,
