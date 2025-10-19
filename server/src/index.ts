@@ -8,7 +8,10 @@ import usersRouter from './controllers/users.js';
 import jobOrdersRouter from './controllers/jobOrders.js';
 import appointmentsRouter from './controllers/appointments.js';
 
-dotenv.config();
+// Only load .env file in development
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const app = express();
 app.use(express.json());
