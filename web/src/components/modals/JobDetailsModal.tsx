@@ -241,7 +241,7 @@ const JobDetailsModal = memo(({
                 >
                   Replot Job Order
                 </button>
-                <p className="text-xs text-gray-700 mt-2 text-center font-medium">Assign technician and time slot to add this job to the workshop board</p>
+                <p className="text-xs text-gray-700 mt-2 text-center font-medium">Assign technician and time slot to add this job to the job control board</p>
               </div>
             )}
 

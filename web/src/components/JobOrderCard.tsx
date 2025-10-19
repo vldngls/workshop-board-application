@@ -149,12 +149,12 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
         onSuccess: () => {
           // If all parts are now available and job was in WP status, show guidance message
           if (allPartsAvailable && wasWaitingParts) {
-            toast.success('All parts are now available! Please replot this job by assigning a technician and setting the time range to add it back to the workshop board.', { duration: 7000 })
+            toast.success('All parts are now available! Please replot this job by assigning a technician and setting the time range to add it back to the job control board.', { duration: 7000 })
           }
           
           // If parts became unavailable, notify user about re-plotting requirement
           if (hasUnavailableParts && newAvailability === 'Unavailable' && !wasWaitingParts) {
-            toast.error('Part marked unavailable. Job removed from workshop board and will need to be re-plotted once parts are available.', { duration: 6000 })
+            toast.error('Part marked unavailable. Job removed from job control board and will need to be re-plotted once parts are available.', { duration: 6000 })
           }
         }
       }

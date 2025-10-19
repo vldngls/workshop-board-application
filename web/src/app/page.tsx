@@ -83,7 +83,7 @@ export default function Home() {
         <div className="text-center space-y-8">
           <div className="space-y-3">
             <h1 className="text-4xl font-bold text-black animate-fade-in" style={{fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif'}}>
-              Workshop Board
+              Job Control Board
             </h1>
             <p className="text-lg font-medium animate-fade-in" style={{animationDelay: '0.2s', color: 'var(--ios-text-secondary)'}}>
               {isCheckingAuth ? "Verifying your access..." : "Welcome back!"}

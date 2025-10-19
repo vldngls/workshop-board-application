@@ -66,7 +66,7 @@ const JobBlock = memo(({ job, highlightedJobId, breakStart, breakEnd, onClick }:
         position: 'absolute',
         left: `${offset * 64 / 100}px`,
         top: '0px',
-        zIndex: isHighlighted ? 1000 : 500,
+        zIndex: isHighlighted ? 100 : 10,
         pointerEvents: 'auto',
         maxWidth: 'none',
         overflow: 'visible',

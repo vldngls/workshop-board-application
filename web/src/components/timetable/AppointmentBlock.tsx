@@ -21,7 +21,7 @@ const AppointmentBlock = memo(({ appointment, onClick, onDelete }: AppointmentBl
         position: 'absolute',
         left: '0px',
         top: '0px',
-        zIndex: 500,
+        zIndex: 10,
         pointerEvents: 'auto',
         maxWidth: 'none',
         overflow: 'visible',

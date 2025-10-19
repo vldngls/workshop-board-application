@@ -78,7 +78,7 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold mb-2" style={{fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif', color: 'var(--ios-text-primary)'}}>
-            Workshop Board
+            Job Control Board
           </h1>
           <p className="text-base font-medium" style={{color: 'var(--ios-text-secondary)'}}>
             Sign in to your account

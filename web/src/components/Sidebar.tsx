@@ -35,7 +35,7 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
         title: "Technician",
         items: [
           { href: "/dashboard/technician", label: "My Dashboard" },
-          { href: "/dashboard/workshop", label: "Workshop Board" }
+          { href: "/dashboard/workshop", label: "Job Control Board" }
         ],
       }
     default:
@@ -121,7 +121,7 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
             </div>
             <div>
               <div className="text-lg font-bold" style={{color: 'var(--ios-text-primary)'}}>{title}</div>
-              <div className="text-xs font-medium" style={{color: 'var(--ios-text-tertiary)'}}>Workshop Board</div>
+              <div className="text-xs font-medium" style={{color: 'var(--ios-text-tertiary)'}}>Job Control Board</div>
             </div>
           </div>
           {userInfo.name ? (

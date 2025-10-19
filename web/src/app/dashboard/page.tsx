@@ -818,7 +818,7 @@ export default function MainDashboard() {
               <FiTool size={20} color="#475569" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-lg text-slate-900 mb-1">Workshop Board</h3>
+              <h3 className="font-bold text-lg text-slate-900 mb-1">Job Control Board</h3>
               <p className="text-sm text-slate-600 font-medium">View timetable & schedule</p>
             </div>
           </div>
