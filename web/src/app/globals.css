@@ -147,11 +147,16 @@ body {
 /* Modal Backdrop with Enhanced Blur */
 .modal-backdrop {
   @apply fixed inset-0 flex items-center justify-center p-4;
-  z-index: 9999;
+  z-index: 99999;
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
   animation: fadeIn 0.2s ease-out;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
 }
 
 @keyframes fadeIn {
