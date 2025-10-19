@@ -12,7 +12,7 @@ export interface User {
 
 export interface Appointment {
   _id: string
-  assignedTechnician: User
+  assignedTechnician?: User
   serviceAdvisor?: User | null
   plateNumber: string
   timeRange: TimeRange

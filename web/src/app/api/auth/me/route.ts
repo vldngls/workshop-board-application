@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { jwtVerify } from 'jose'
+import { jwtVerify, JWTPayload as JoseJWTPayload } from 'jose'
 
-interface JWTPayload {
+interface CustomJWTPayload extends JoseJWTPayload {
   userId: string
   email: string
   username?: string
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const secret = new TextEncoder().encode(jwtSecret)
     const { payload } = await jwtVerify(token, secret)
     
-    const userInfo = payload as JWTPayload
+    const userInfo = payload as CustomJWTPayload
 
     return NextResponse.json({
       user: {

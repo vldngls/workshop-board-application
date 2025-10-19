@@ -44,7 +44,7 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
 }
 
 export default function Sidebar({ role, name }: { role: Role | null; name?: string | null }) {
-  const [userInfo, setUserInfo] = useState<{ role: Role | null; name: string | null }>({ role, name })
+  const [userInfo, setUserInfo] = useState<{ role: Role | null; name: string | null }>({ role, name: name || null })
   const { title, items } = getNavForRole(userInfo.role)
   const pathname = usePathname()
   const [isLoggingOut, setIsLoggingOut] = useState(false)

@@ -1,12 +1,12 @@
 import { memo } from 'react'
 import { FiCalendar } from 'react-icons/fi'
 import { getAppointmentSpan, formatTime } from '@/utils/timetableUtils'
-import type { Appointment } from '@/utils/timetableUtils'
+import type { Appointment } from '@/types/appointment'
 
 interface AppointmentBlockProps {
   appointment: Appointment
   onClick: (appointment: Appointment) => void
-  onDelete: (appointmentId: string) => void
+  onDelete?: (appointmentId: string) => void
 }
 
 const AppointmentBlock = memo(({ appointment, onClick, onDelete }: AppointmentBlockProps) => {
@@ -54,7 +54,7 @@ const AppointmentBlock = memo(({ appointment, onClick, onDelete }: AppointmentBl
           <button
             onClick={(e) => {
               e.stopPropagation()
-              onDelete(appointment._id)
+              onDelete?.(appointment._id)
             }}
             className="no-show-button text-[10px] py-0.5 px-1"
             title="No Show - Delete"

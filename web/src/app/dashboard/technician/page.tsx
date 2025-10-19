@@ -359,18 +359,7 @@ export default function TechnicianDashboard() {
                     {appointment.timeRange.start} - {appointment.timeRange.end}
                   </span>
                 </div>
-                <p className="text-xs text-gray-700 mb-2">{appointment.vin}</p>
-                <p className="text-xs text-gray-600">
-                  Customer: {appointment.customerName}
-                </p>
-                <p className="text-xs text-gray-600">
-                  Phone: {appointment.customerPhone}
-                </p>
-                {appointment.notes && (
-                  <p className="text-xs text-gray-600 mt-2 italic">
-                    Notes: {appointment.notes}
-                  </p>
-                )}
+                <p className="text-xs text-gray-700 mb-2">Plate: {appointment.plateNumber}</p>
               </div>
             ))}
           </div>

@@ -16,11 +16,11 @@ interface JobStatusSectionsProps {
   finishedUnclaimedJobs: JobOrderWithDetails[]
   updating: boolean
   onJobClick: (job: JobOrderWithDetails) => void
-  onApproveQI: (jobId: string) => void
-  onRejectQI: (jobId: string) => void
-  onCompleteJob: (jobId: string) => void
-  onRedoJob: (jobId: string) => void
-  onMarkComplete: (jobId: string) => void
+  onApproveQI?: (jobId: string) => void
+  onRejectQI?: (jobId: string) => void
+  onCompleteJob?: (jobId: string) => void
+  onRedoJob?: (jobId: string) => void
+  onMarkComplete?: (jobId: string) => void
   onReassignCarryOver?: (job: JobOrderWithDetails) => void
 }
 
@@ -73,7 +73,7 @@ const JobStatusSections = memo(({
                 <button 
                   onClick={(e) => {
                     e.stopPropagation()
-                    onApproveQI(qiJobs[0]._id)
+                    onApproveQI?.(qiJobs[0]._id)
                   }}
                   onMouseDown={(e) => e.stopPropagation()}
                   disabled={updating} 
@@ -84,7 +84,7 @@ const JobStatusSections = memo(({
                 <button 
                   onClick={(e) => {
                     e.stopPropagation()
-                    onRejectQI(qiJobs[0]._id)
+                    onRejectQI?.(qiJobs[0]._id)
                   }}
                   onMouseDown={(e) => e.stopPropagation()}
                   disabled={updating} 
@@ -112,7 +112,7 @@ const JobStatusSections = memo(({
                 <button 
                   onClick={(e) => {
                     e.stopPropagation()
-                    onCompleteJob(forReleaseJobs[0]._id)
+                    onCompleteJob?.(forReleaseJobs[0]._id)
                   }}
                   onMouseDown={(e) => e.stopPropagation()}
                   disabled={updating} 
@@ -123,7 +123,7 @@ const JobStatusSections = memo(({
                 <button 
                   onClick={(e) => {
                     e.stopPropagation()
-                    onRedoJob(forReleaseJobs[0]._id)
+                    onRedoJob?.(forReleaseJobs[0]._id)
                   }}
                   onMouseDown={(e) => e.stopPropagation()}
                   disabled={updating} 
@@ -151,7 +151,7 @@ const JobStatusSections = memo(({
               <button 
                 onClick={(e) => {
                   e.stopPropagation()
-                  onMarkComplete(finishedUnclaimedJobs[0]._id)
+                  onMarkComplete?.(finishedUnclaimedJobs[0]._id)
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
                 disabled={updating} 

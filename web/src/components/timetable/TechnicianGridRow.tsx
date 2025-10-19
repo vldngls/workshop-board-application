@@ -1,7 +1,8 @@
 import { memo } from 'react'
 import TimeSlotGridCell from './TimeSlotGridCell'
 import { TIME_SLOTS } from '@/utils/timetableUtils'
-import type { JobOrderWithDetails, Appointment, Technician } from '@/utils/timetableUtils'
+import type { JobOrderWithDetails, Technician } from '@/utils/timetableUtils'
+import type { Appointment } from '@/types/appointment'
 
 interface TechnicianGridRowProps {
   technician: Technician
@@ -13,7 +14,7 @@ interface TechnicianGridRowProps {
   breakEnd: string
   onJobClick: (job: JobOrderWithDetails) => void
   onAppointmentClick: (appointment: Appointment) => void
-  onDeleteAppointment: (appointmentId: string) => void
+  onDeleteAppointment?: (appointmentId: string) => void
 }
 
 const TechnicianGridRow = memo(({

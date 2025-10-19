@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react'
 
 interface UseDragScrollReturn {
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: React.RefObject<HTMLDivElement | null>
   handleMouseDown: (e: React.MouseEvent) => void
 }
 

@@ -107,7 +107,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
   }
 
   const handlePartChange = (index: number, field: keyof Part, value: any) => {
-    const newParts = [...formData.parts]
+    const newParts = [...(formData.parts || [])]
     newParts[index] = { ...newParts[index], [field]: value }
     setFormData(prev => ({ ...prev, parts: newParts }))
   }
@@ -129,14 +129,14 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
   const addPart = () => {
     setFormData(prev => ({
       ...prev,
-      parts: [...prev.parts, { name: '', availability: 'Available' }]
+      parts: [...(prev.parts || []), { name: '', availability: 'Available' }]
     }))
   }
 
   const removePart = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      parts: prev.parts.filter((_, i) => i !== index)
+      parts: (prev.parts || []).filter((_, i) => i !== index)
     }))
   }
 
@@ -433,7 +433,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
                       />
-                      {formData.parts.length > 1 && (
+                      {(formData.parts || []).length > 1 && (
                         <button
                           type="button"
                           onClick={() => removePart(index)}

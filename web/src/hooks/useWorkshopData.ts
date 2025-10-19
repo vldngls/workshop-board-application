@@ -145,7 +145,7 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
 
       // Handle appointments separately since it might fail
       if (appointmentsResponse.ok) {
-        const appointmentsData = await appointmentsResponse.json()
+        const appointmentsData = await (appointmentsResponse as Response).json()
         setAppointments(appointmentsData.appointments || [])
       } else {
         setAppointments([])
