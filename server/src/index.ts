@@ -67,13 +67,20 @@ app.get('/admin-only', requireRole(['administrator']), (_req, res) => {
 
 // Start server
 const port = process.env.PORT ? Number(process.env.PORT) : 4000;
-connectToMongo()
-  .then(() => {
-    app.listen(port, () => {
-      console.log(`API listening on http://localhost:${port}`);
+
+// For Vercel deployment
+export default app;
+
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  connectToMongo()
+    .then(() => {
+      app.listen(port, () => {
+        console.log(`API listening on http://localhost:${port}`);
+      });
+    })
+    .catch((err) => {
+      console.error('Failed to connect to MongoDB:', err);
+      process.exit(1);
     });
-  })
-  .catch((err) => {
-    console.error('Failed to connect to MongoDB:', err);
-    process.exit(1);
-  });
+}
