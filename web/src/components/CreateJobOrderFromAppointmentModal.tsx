@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import type { Appointment } from '@/types/appointment'
 import type { JobItem, Part } from '@/types/jobOrder'
 
@@ -106,7 +107,7 @@ export default function CreateJobOrderFromAppointmentModal({
     setParts(updated)
   }
 
-  return (
+  return createPortal(
     <div className="modal-backdrop">
       <div className="floating-card max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
         {/* Header */}
@@ -311,7 +312,8 @@ export default function CreateJobOrderFromAppointmentModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

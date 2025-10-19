@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { createPortal } from 'react-dom'
 import { FiAlertTriangle, FiRefreshCw } from 'react-icons/fi'
 import { calculateWorkDuration, formatTime } from '@/utils/timetableUtils'
 import type { JobOrderWithDetails } from '@/utils/timetableUtils'
@@ -52,7 +53,7 @@ const JobDetailsModal = memo(({
     return statusLabels[status] || status
   }
 
-  return (
+  return createPortal(
     <div className="modal-backdrop">
       <div className="floating-card max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-fade-in">
         <div className="p-6">
@@ -270,7 +271,8 @@ const JobDetailsModal = memo(({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 })
 

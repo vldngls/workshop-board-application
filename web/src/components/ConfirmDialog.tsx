@@ -1,5 +1,7 @@
 'use client'
 
+import { createPortal } from 'react-dom'
+
 interface ConfirmDialogProps {
   isOpen: boolean
   title: string
@@ -27,7 +29,7 @@ export default function ConfirmDialog({
     ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white'
     : 'bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue text-white'
 
-  return (
+  return createPortal(
     <div className="modal-backdrop">
       <div className="floating-card max-w-md w-full animate-fade-in">
         <div className="p-6">
@@ -53,7 +55,8 @@ export default function ConfirmDialog({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

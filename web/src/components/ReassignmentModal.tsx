@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import type { JobOrderWithDetails } from '@/utils/timetableUtils'
 
@@ -200,7 +201,7 @@ export default function ReassignmentModal({
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-backdrop">
       <div className="floating-card max-w-6xl w-full max-h-[95vh] overflow-y-auto animate-fade-in">
         <div className="p-6">
@@ -410,6 +411,7 @@ export default function ReassignmentModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

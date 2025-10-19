@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import { FiRefreshCw, FiStar } from 'react-icons/fi'
 import type { JobOrder, Technician } from '@/types/jobOrder'
@@ -126,7 +127,7 @@ export default function ReassignTimeSlotModal({
     return `${displayHour}:${minutes} ${ampm}`
   }
 
-  return (
+  return createPortal(
     <div className="modal-backdrop">
       <div className="floating-card max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
         <div className="p-6">
@@ -302,7 +303,8 @@ export default function ReassignTimeSlotModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import type { Technician } from '@/types/jobOrder'
 
@@ -142,7 +143,7 @@ export default function ReplotJobOrderModal({
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-backdrop">
       <div className="floating-card max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
         <div className="p-6">
@@ -257,7 +258,8 @@ export default function ReplotJobOrderModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { CreateJobOrderRequest, Technician, JobItem, Part } from '@/types/jobOrder'
 import { useCreateJobOrder, useAvailableTechnicians, useUsers } from '@/hooks/useJobOrders'
 import TechnicianScheduleView from './TechnicianScheduleView'
@@ -150,7 +151,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
     })
   }
 
-  return (
+  return createPortal(
     <div className="modal-backdrop">
       <div className="floating-card max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
         <div className="p-6">
@@ -470,6 +471,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
