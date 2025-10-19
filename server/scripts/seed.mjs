@@ -134,6 +134,7 @@ async function main() {
   console.log(`Created ${technicians.length} technicians`)
   console.log(`Created ${serviceAdvisors.length} service advisors`)
   console.log('Seed data completed successfully!')
+  console.log('Total users created:', users.length + technicians.length + serviceAdvisors.length)
 
   await mongoose.disconnect()
 }
