@@ -16,7 +16,8 @@ import {
   FiChevronDown,
   FiChevronUp,
   FiPlus,
-  FiTrash2
+  FiTrash2,
+  FiInfo
 } from 'react-icons/fi'
 import type { JobOrder, JobStatus, JobItemStatus } from '@/types/jobOrder'
 import { 
@@ -623,9 +624,6 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
                   <div key={index} className="p-3 bg-white/50 rounded-lg border border-white/30">
                     <div className="mb-2">
                       <span className="font-medium text-gray-800 text-sm">{part.name}</span>
-                      {part.description && (
-                        <p className="text-xs text-gray-600 mt-1">{part.description}</p>
-                      )}
                     </div>
                     <div className="flex gap-2">
                       <button

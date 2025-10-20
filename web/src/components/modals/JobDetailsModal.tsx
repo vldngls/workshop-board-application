@@ -43,7 +43,27 @@ const JobDetailsModal = memo(({
   onUpdateJob,
   onViewIn
 }: JobDetailsModalProps) => {
-  if (!isOpen || !job) return null
+  const [isEditing, setIsEditing] = useState(false)
+  const [editPlate, setEditPlate] = useState(job?.plateNumber || '')
+  const [editVin, setEditVin] = useState(job?.vin || '')
+  const [editStart, setEditStart] = useState(job?.timeRange.start || '')
+  const [editEnd, setEditEnd] = useState(job?.timeRange.end || '')
+
+  const timeIsValid = useMemo(() => {
+    const regex = /^([0-1]\d|2[0-3]):[0-5]\d$/
+    return regex.test(editStart) && regex.test(editEnd)
+  }, [editStart, editEnd])
+
+  const handleSaveEdits = useCallback(() => {
+    if (!onUpdateJob || !job) return
+    if (!timeIsValid) return
+    onUpdateJob(job._id, {
+      plateNumber: editPlate,
+      vin: editVin,
+      timeRange: { start: editStart, end: editEnd }
+    })
+    setIsEditing(false)
+  }, [onUpdateJob, job, editPlate, editVin, editStart, editEnd, timeIsValid])
 
   const getStatusLabel = (status: string) => {
     const statusLabels: { [key: string]: string } = {
@@ -61,27 +81,7 @@ const JobDetailsModal = memo(({
     return statusLabels[status] || status
   }
 
-  const [isEditing, setIsEditing] = useState(false)
-  const [editPlate, setEditPlate] = useState(job.plateNumber)
-  const [editVin, setEditVin] = useState(job.vin)
-  const [editStart, setEditStart] = useState(job.timeRange.start)
-  const [editEnd, setEditEnd] = useState(job.timeRange.end)
-
-  const timeIsValid = useMemo(() => {
-    const regex = /^([0-1]\d|2[0-3]):[0-5]\d$/
-    return regex.test(editStart) && regex.test(editEnd)
-  }, [editStart, editEnd])
-
-  const handleSaveEdits = useCallback(() => {
-    if (!onUpdateJob) return
-    if (!timeIsValid) return
-    onUpdateJob(job._id, {
-      plateNumber: editPlate,
-      vin: editVin,
-      timeRange: { start: editStart, end: editEnd }
-    })
-    setIsEditing(false)
-  }, [onUpdateJob, job._id, editPlate, editVin, editStart, editEnd, timeIsValid])
+  if (!isOpen || !job) return null
 
   return createPortal(
     <div className="modal-backdrop">
