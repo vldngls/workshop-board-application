@@ -2,7 +2,7 @@
 
 A comprehensive MERN workshop management system with TypeScript, featuring appointment scheduling, job order tracking, technician scheduling, quality inspection workflow, and real-time status updates.
 
-## 🚀 Tech Stack
+## Tech Stack
 
 - **Frontend**: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS
 - **Backend**: Express.js, TypeScript, MongoDB, Mongoose
@@ -10,7 +10,7 @@ A comprehensive MERN workshop management system with TypeScript, featuring appoi
 - **UI/UX**: React Hot Toast notifications, responsive design
 - **Deployment**: Vercel-ready frontend
 
-## ✨ Key Features
+## Key Features
 
 - **Dashboard Overview**: Real-time statistics, carried over jobs, important jobs
 - **Appointment Management**: Create, schedule, convert to job orders, no-show tracking
@@ -20,7 +20,7 @@ A comprehensive MERN workshop management system with TypeScript, featuring appoi
 - **Role-Based Access Control**: Administrator, Job Controller, Technician, Service Advisor
 - **Smart Features**: Conflict detection, break time management, toast notifications
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+
@@ -59,7 +59,7 @@ npm run dev
 - **Technician 1**: `technician1` / `test123456`
 - **Service Advisor 1**: `serviceadvisor1` / `test123456`
 
-## 📊 Job Status Types
+## Job Status Types
 
 | Status | Code | Description |
 |--------|------|-------------|
@@ -72,7 +72,7 @@ npm run dev
 | For Release | FR | Ready for customer pickup |
 | Complete | CP | Released to customer (FINAL) |
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 workshop-board-application/
@@ -92,7 +92,7 @@ workshop-board-application/
     └── public/                # Static assets
 ```
 
-## 🔧 Available Scripts
+## Available Scripts
 
 | Command | Description |
 |---------|-------------|
@@ -102,7 +102,7 @@ workshop-board-application/
 | `npm run build` | Build for production |
 | `npm run seed` | Seed database with sample data |
 
-## 📦 Deployment
+## Deployment
 
 For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)
 
@@ -111,15 +111,15 @@ For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)
 2. **Network Access**: Configure for multi-device access
 3. **Production**: Deploy to Vercel (frontend) and Vercel/Railway (backend)
 
-## 📄 Documentation
+## Documentation
 
 - **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete deployment guide
 - **[WORKFLOW_DOCUMENTATION.md](./WORKFLOW_DOCUMENTATION.md)** - Detailed workflow and features
 
-## 📞 Support
+## Support
 
 For issues or questions, contact the project maintainer.
 
 ---
 
-**Built with ❤️ using the MERN stack and modern web technologies**
+**Built with love using the MERN stack and modern web technologies**

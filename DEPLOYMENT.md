@@ -2,7 +2,7 @@
 
 A comprehensive guide for deploying the Workshop Board Application across different environments.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+
@@ -46,7 +46,7 @@ npm run dev
 
 ---
 
-## 📋 Environment Configurations
+## Environment Configurations
 
 ### Local Development
 **Server (.env):**
@@ -123,7 +123,7 @@ API_KEY=your-production-api-key
 
 ---
 
-## 🐳 MongoDB Setup Options
+## MongoDB Setup Options
 
 ### Option A: Docker (Recommended)
 ```bash
@@ -149,7 +149,7 @@ docker-compose -f docker-compose.network.yml up -d mongodb
 
 ---
 
-## 🌱 Database Seeding
+## Database Seeding
 
 ```bash
 # Basic seed data
@@ -170,7 +170,7 @@ npm run seed:comprehensive
 
 ---
 
-## 🚀 Production Deployment (Vercel)
+## Production Deployment (Vercel)
 
 ### Step 1: Deploy Backend
 1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
@@ -195,7 +195,7 @@ npm run seed:comprehensive
 
 ---
 
-## 🔧 Development Commands
+## Development Commands
 
 | Command | Description |
 |---------|-------------|
@@ -208,15 +208,16 @@ npm run seed:comprehensive
 
 ---
 
-## 🌐 Network Access Setup
+## Network Access Setup
 
 ### Quick Network Setup
 ```bash
 # Windows PowerShell:
-.\scripts\network-setup.ps1
+.\scripts\setup.ps1
 
 # Unix/Linux/macOS:
-./scripts/network-setup.sh
+chmod +x scripts/setup.sh
+./scripts/setup.sh
 ```
 
 ### Manual Network Configuration
@@ -239,7 +240,7 @@ Ensure your firewall allows connections on:
 
 ---
 
-## 🔒 Security Considerations
+## Security Considerations
 
 ### Development
 - Network access features only active in development
@@ -254,7 +255,7 @@ Ensure your firewall allows connections on:
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -293,7 +294,7 @@ curl http://YOUR_IP:4000/health
 
 ---
 
-## 📋 Deployment Checklist
+## Deployment Checklist
 
 ### Local Development
 - [ ] Node.js 18+ installed
@@ -317,7 +318,7 @@ curl http://YOUR_IP:4000/health
 
 ---
 
-## 📞 Support
+## Support
 
 For issues or questions:
 1. Check the troubleshooting section above
@@ -327,6 +328,6 @@ For issues or questions:
 
 ---
 
-**Last Updated:** $(date)  
+**Last Updated:** January 2025  
 **Version:** 1.0.0  
-**Status:** Production Ready ✅
+**Status:** Production Ready
