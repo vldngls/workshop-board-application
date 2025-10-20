@@ -4,13 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "dev": "nodemon --exec tsx src/index.ts",
-  "build": "tsc",
-  "start": "node dist/index.js",
-  "seed": "node ./scripts/seed.mjs",
-  "seed-enhanced": "node ./scripts/seed-enhanced.mjs",
-  "seed-comprehensive": "node ./scripts/seed-comprehensive.mjs"
-},
+    "dev": "nodemon --exec tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "seed": "node ./scripts/seed.mjs",
+    "seed-enhanced": "node ./scripts/seed-enhanced.mjs",
+    "seed-comprehensive": "node ./scripts/seed-comprehensive.mjs"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

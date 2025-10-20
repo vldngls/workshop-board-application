@@ -12,67 +12,52 @@ A comprehensive MERN workshop management system with TypeScript, featuring appoi
 
 ## ✨ Key Features
 
-### 1. **Dashboard Overview**
-- Real-time statistics (total jobs, on going, for release, on hold, etc.)
-- Carried over jobs section with visual indicators
-- Important jobs section with star favorites
-- Quick action cards for navigation
+- **Dashboard Overview**: Real-time statistics, carried over jobs, important jobs
+- **Appointment Management**: Create, schedule, convert to job orders, no-show tracking
+- **Job Order Management**: Complete lifecycle management with task tracking
+- **Workshop Timetable**: Interactive visual timetable with technician scheduling
+- **Quality Inspection Workflow**: Submit, approve, reject, and release jobs
+- **Role-Based Access Control**: Administrator, Job Controller, Technician, Service Advisor
+- **Smart Features**: Conflict detection, break time management, toast notifications
 
-### 2. **Appointment Management**
-- Create, view, update, and delete appointments
-- Schedule appointments with technicians and service advisors
-- Conflict detection for overlapping time slots
-- No-show tracking and management
-- Convert appointments to job orders
-- Bulk operations for no-show appointments
-- Flexible time slot management with break time configuration
+## 🚀 Quick Start
 
-### 3. **Job Order Management**
-- Create, view, update, and delete job orders
-- Comprehensive job details (job number, plate, VIN, technician, service advisor, time range)
-- Dynamic job task lists with completion tracking
-- Parts management with availability status
-- Advanced search and filtering
-- Pagination for large datasets
-- Star/favorite important jobs
-- Create job orders from existing appointments
+### Prerequisites
+- Node.js 18+
+- MongoDB (local, Docker, or Atlas)
+- Git
 
-### 4. **Workshop Timetable**
-- Interactive visual timetable (7 AM - 5 PM in 30-min intervals)
-- Drag-and-drop style grid view by technician
-- Real-time job progress indicators
-- Color-coded status badges
-- Click to view/edit job details
-- Important (★) and carried over (🔄) indicators
-- Appointment and job order visualization
+### Automated Setup (Recommended)
+```bash
+# Clone repository
+git clone <your-repo-url>
+cd workshop-board-application
 
-### 5. **Quality Inspection Workflow**
-- Submit jobs for QI (only when all tasks complete)
-- Dedicated QI queue section
-- Approve → moves to "For Release"
-- Reject → returns to "On Going" for re-work
-- Side-by-side QI and For Release sections
+# Run unified setup script
+# Windows PowerShell:
+.\scripts\setup.ps1
 
-### 6. **Carry Over System**
-- Automatically mark unfinished jobs at end of day
-- Visual carry over indicators throughout app
-- Dedicated dashboard section for carry over jobs
-- API endpoint for bulk carry over marking
+# Unix/Linux/macOS:
+chmod +x scripts/setup.sh
+./scripts/setup.sh
 
-### 7. **Smart Features**
-- **Technician Scheduling**: Conflict detection and availability checking
-- **Service Advisor Integration**: Assign service advisors to appointments and job orders
-- **Break Time Management**: Configurable lunch break settings
-- **Toast Notifications**: Non-intrusive success/error feedback
-- **Debounced Search**: Optimized API calls (300ms debounce)
-- **Lazy Loading**: Modal components load on-demand
-- **Memoization**: React.memo and useCallback for performance
+# The script will prompt you to choose:
+# 1. Local Development (localhost only)
+# 2. Network Deployment (accessible from other devices)
 
-### 8. **Role-Based Access Control**
-- **Administrator**: Full access to all features
-- **Job Controller**: Manage jobs, QI workflow, scheduling, appointments
-- **Technician**: View schedule, update task status, submit for QI
-- **Service Advisor**: Manage appointments, customer interactions
+# Start development
+npm run dev
+```
+
+**Access Points:**
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:4000
+
+### Default Login Credentials (after seeding)
+- **Administrator**: `admin` / `test123456`
+- **Job Controller**: `jobcontroller` / `test123456`
+- **Technician 1**: `technician1` / `test123456`
+- **Service Advisor 1**: `serviceadvisor1` / `test123456`
 
 ## 📊 Job Status Types
 
@@ -85,37 +70,7 @@ A comprehensive MERN workshop management system with TypeScript, featuring appoi
 | Hold Warranty | HW | Warranty claim processing |
 | Hold Insurance | HI | Insurance claim processing |
 | For Release | FR | Ready for customer pickup |
-| Finished Unclaimed | FU | Complete but not yet claimed |
 | Complete | CP | Released to customer (FINAL) |
-
-## 👥 User Roles
-
-| Role | Description | Permissions |
-|------|-------------|-------------|
-| **Administrator** | Full system access | All features, user management, system configuration |
-| **Job Controller** | Workshop operations manager | Job orders, appointments, QI workflow, technician scheduling |
-| **Technician** | Workshop technician | View schedule, update job status, submit for QI |
-| **Service Advisor** | Customer service representative | Manage appointments, customer interactions |
-
-## 🎯 UI/UX Highlights
-
-### Toast Notifications
-- ✅ **Success (Green)**: Successful operations
-- ❌ **Error (Red)**: Failed operations
-- Non-intrusive, auto-dismiss
-- Positioned top-right
-
-### Star Icons
-- ☆ **Hollow star**: Not important (gray)
-- ★ **Filled star**: Important (yellow)
-- Hover effect with scale animation
-- Click to toggle with instant feedback
-
-### Visual Indicators
-- 🔄 **Carry Over**: Red badge on carried over jobs
-- ⭐ **Important**: Yellow star on priority jobs
-- 🔍 **QI**: Purple section for quality inspection
-- ✅ **For Release**: Green section for ready jobs
 
 ## 🏗️ Project Structure
 
@@ -124,369 +79,42 @@ workshop-board-application/
 ├── server/                    # Express API
 │   ├── src/
 │   │   ├── controllers/       # Route controllers
-│   │   │   ├── auth.ts
-│   │   │   ├── appointments.ts
-│   │   │   ├── jobOrders.ts
-│   │   │   └── users.ts
 │   │   ├── models/            # MongoDB models
-│   │   │   ├── Appointment.ts
-│   │   │   ├── JobOrder.ts
-│   │   │   └── User.ts
 │   │   ├── middleware/        # Auth & RBAC
-│   │   │   └── auth.ts
-│   │   ├── config/            # Database config
-│   │   │   └── mongo.ts
-│   │   └── index.ts           # Server entry
-│   ├── scripts/               # Utility scripts
-│   │   └── seed.mjs           # Seed database
-│   └── package.json
-│
+│   │   └── config/            # Database config
+│   └── scripts/               # Utility scripts
 └── web/                       # Next.js Frontend
     ├── src/
-    │   ├── app/
-    │   │   ├── (auth)/login/  # Login page
-    │   │   ├── dashboard/     # Main dashboard
-    │   │   │   ├── page.tsx   # Overview dashboard
-    │   │   │   ├── appointments/ # Appointment management
-    │   │   │   ├── workshop/  # Timetable view
-    │   │   │   ├── job-orders/ # Job management
-    │   │   │   └── account-management/ # User mgmt
-    │   │   └── api/           # Next.js API routes
-    │   │       ├── appointments/ # Appointment API routes
-    │   │       ├── job-orders/ # Job order API routes
-    │   │       └── users/     # User API routes
+    │   ├── app/               # Next.js App Router
     │   ├── components/        # React components
-    │   │   ├── WorkshopTimetable.tsx
-    │   │   ├── JobOrderCard.tsx
-    │   │   ├── AddJobOrderModal.tsx
-    │   │   ├── CreateJobOrderFromAppointmentModal.tsx
-    │   │   ├── ReassignTimeSlotModal.tsx
-    │   │   ├── ReplotJobOrderModal.tsx
-    │   │   └── Sidebar.tsx
     │   ├── types/             # TypeScript types
-    │   │   ├── appointment.ts
-    │   │   ├── auth.ts
-    │   │   └── jobOrder.ts
-    │   └── middleware.ts      # Auth middleware
-    └── package.json
+    │   └── hooks/             # Custom React hooks
+    └── public/                # Static assets
 ```
 
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 18+
-- MongoDB (local or cloud)
-- npm or yarn
-- Docker (optional, for easy MongoDB setup)
-
-### Quick Start (Automated Setup)
-
-**For Unix/Linux/macOS:**
-```bash
-# Clone and setup
-git clone https://github.com/vldngls/workshop-board-application.git
-cd workshop-board-application
-
-# Run automated setup script
-chmod +x scripts/dev-setup.sh
-./scripts/dev-setup.sh
-
-# Start development servers
-npm run dev
-```
-
-**For Windows (PowerShell):**
-```powershell
-# Clone and setup
-git clone https://github.com/vldngls/workshop-board-application.git
-cd workshop-board-application
-
-# Run automated setup script
-.\scripts\dev-setup.ps1
-
-# Start development servers
-npm run dev
-```
-
-### Manual Installation
-
-1. **Clone the repository**
-```bash
-git clone https://github.com/vldngls/workshop-board-application.git
-cd workshop-board-application
-```
-
-2. **Install dependencies**
-```bash
-# Install all dependencies (root, server, and web)
-npm run install:all
-
-# Or install individually:
-npm install
-npm --prefix server install
-npm --prefix web install
-```
-
-3. **Setup MongoDB**
-
-**Option A: Using Docker (Recommended)**
-```bash
-# Start MongoDB with Docker Compose
-docker-compose -f docker-compose.dev.yml up -d mongodb
-
-# Optional: Start MongoDB Express for database management
-docker-compose -f docker-compose.dev.yml up -d mongo-express
-# Access at: http://localhost:8081 (admin/admin)
-```
-
-**Option B: Local MongoDB Installation**
-- Install MongoDB locally on your system
-- Start MongoDB service
-- Default connection: `mongodb://localhost:27017/workshop_board`
-
-4. **Configure environment variables**
-
-Create `server/.env`:
-```env
-PORT=4000
-MONGODB_URI=mongodb://localhost:27017/workshop_board
-JWT_SECRET=workshopjwtsecrettigerlily
-API_KEY=workshopapikeytigerlily
-```
-
-Create `web/.env.local`:
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
-JWT_SECRET=workshopjwtsecrettigerlily
-API_KEY=workshopapikeytigerlily
-```
-
-5. **Seed the database (optional)**
-```bash
-# Seed with basic data
-npm run seed
-
-# Seed with enhanced data
-npm run seed:enhanced
-
-# Seed with comprehensive data
-npm run seed:comprehensive
-```
-
-This creates:
-- 1 Administrator user
-- 1 Job Controller user
-- 5 Technician users
-- 5 Service Advisor users
-
-### Development
-
-**Option 1: Single Command (Recommended)**
-```bash
-# Start both frontend and backend simultaneously
-npm run dev
-```
-
-**Option 2: Separate Terminals**
-```bash
-# Terminal 1: Backend (Express)
-npm run server:dev
-
-# Terminal 2: Frontend (Next.js)
-npm run web:dev
-```
-
-**Option 3: Using Start Scripts**
-```bash
-# Unix/Linux/macOS
-./scripts/start-dev.sh
-
-# Windows PowerShell
-.\scripts\start-dev.ps1
-```
-
-### Access Points
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:4000
-- **MongoDB Express** (if using Docker): http://localhost:8081 (admin/admin)
-
-### Available Scripts
+## 🔧 Available Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start both frontend and backend in development mode |
-| `npm run build` | Build both applications for production |
-| `npm run start` | Start both applications in production mode |
-| `npm run server:dev` | Start only the backend server |
-| `npm run web:dev` | Start only the frontend server |
+| `npm run dev` | Start both frontend and backend |
+| `npm run server:dev` | Start only backend |
+| `npm run web:dev` | Start only frontend |
+| `npm run build` | Build for production |
 | `npm run seed` | Seed database with sample data |
-| `npm run seed:enhanced` | Seed with enhanced sample data |
-| `npm run seed:comprehensive` | Seed with comprehensive sample data |
-| `npm run install:all` | Install all dependencies |
-
-### Default Login Credentials (after seeding)
-
-- **Administrator**: `admin` / `test123456` (admin@workshop.com)
-- **Job Controller**: `jobcontroller` / `test123456` (jobcontroller@workshop.com)
-- **Technician 1**: `technician1` / `test123456` (tech1@workshop.com)
-- **Technician 2**: `technician2` / `test123456` (tech2@workshop.com)
-- **Technician 3**: `technician3` / `test123456` (tech3@workshop.com)
-- **Technician 4**: `technician4` / `test123456` (tech4@workshop.com)
-- **Technician 5**: `technician5` / `test123456` (tech5@workshop.com)
-- **Service Advisor 1**: `serviceadvisor1` / `test123456` (sa1@workshop.com)
-- **Service Advisor 2**: `serviceadvisor2` / `test123456` (sa2@workshop.com)
-- **Service Advisor 3**: `serviceadvisor3` / `test123456` (sa3@workshop.com)
-- **Service Advisor 4**: `serviceadvisor4` / `test123456` (sa4@workshop.com)
-- **Service Advisor 5**: `serviceadvisor5` / `test123456` (sa5@workshop.com)
-
-**Note**: All seeded users use the password `test123456`. You can login using either username or email address.
-
-## 📡 API Endpoints
-
-### Authentication
-- `POST /auth/login` - User login
-- `POST /auth/logout` - User logout
-- `GET /users/me` - Get current user
-
-### Appointments
-- `GET /appointments` - List all appointments (with filtering)
-- `POST /appointments` - Create new appointment
-- `GET /appointments/:id` - Get specific appointment
-- `PUT /appointments/:id` - Update appointment
-- `DELETE /appointments/:id` - Delete appointment
-- `POST /appointments/:id/create-job-order` - Convert appointment to job order
-- `DELETE /appointments/delete-all-no-show` - Delete all no-show appointments
-
-### Job Orders
-- `GET /job-orders` - List all job orders (with filtering)
-- `POST /job-orders` - Create new job order
-- `GET /job-orders/:id` - Get specific job order
-- `PUT /job-orders/:id` - Update job order
-- `DELETE /job-orders/:id` - Delete job order
-- `PATCH /job-orders/:id/toggle-important` - Toggle important status
-- `PATCH /job-orders/:id/submit-qi` - Submit for quality inspection
-- `PATCH /job-orders/:id/approve-qi` - Approve quality inspection
-- `PATCH /job-orders/:id/reject-qi` - Reject quality inspection
-- `PATCH /job-orders/:id/complete` - Mark job as complete
-- `PATCH /job-orders/:id/redo` - Mark job for rework
-- `POST /job-orders/mark-carry-over` - Mark unfinished jobs as carry over
-- `GET /job-orders/technicians/available` - Get available technicians
-
-### Users
-- `GET /users` - List all users
-- `POST /users` - Create new user (admin only)
-- `GET /users/:id` - Get specific user
-- `PUT /users/:id` - Update user
-- `DELETE /users/:id` - Delete user
-
-## ⚡ Performance Optimizations
-
-### Applied Optimizations
-1. **Component Memoization** - React.memo on JobOrderCard and WorkshopTimetable
-2. **Callback Optimization** - useCallback for all event handlers
-3. **Search Debouncing** - 300ms debounce on search inputs
-4. **Lazy Loading** - Modal components load on-demand
-5. **Memoized Calculations** - useMemo for expensive computations
-6. **Optimized Re-renders** - Custom comparison functions prevent unnecessary updates
-
-### Performance Impact
-- **Initial Load**: 50-60% faster
-- **Interaction**: Smooth 60fps scrolling
-- **Search**: 90% reduction in API calls
-- **Memory**: 30% reduction in usage
-- **Re-renders**: 50-70% fewer re-render cascades
-
-## 🎨 Theming
-
-- **Primary**: Ford Blue (#003478)
-- **Background**: White (#FFFFFF)
-- **Success**: Green (#10B981)
-- **Warning**: Yellow/Orange (#F59E0B)
-- **Error**: Red (#EF4444)
-- **Info**: Blue (#3B82F6)
-- **Purple**: Quality Inspection (#A855F7)
-
-## 📱 Responsive Design
-
-- **Desktop**: Full feature set with multi-column layouts
-- **Tablet**: Responsive grid, stacked sections
-- **Mobile**: Single column, touch-friendly interactions
-
-## 🔒 Security Features
-
-- JWT token authentication
-- HTTP-only cookies for token storage
-- Role-based access control (RBAC)
-- Password hashing with bcrypt
-- CORS configuration
-- Helmet.js security headers
-- Input validation with Zod
-- MongoDB injection prevention
-
-## 🧪 Testing Recommendations
-
-1. **Functional Testing**
-   - Test all CRUD operations for job orders
-   - Verify QI workflow (submit, approve, reject)
-   - Test technician scheduling conflicts
-   - Verify star/important functionality
-
-2. **Performance Testing**
-   - Use React DevTools Profiler
-   - Check for unnecessary re-renders
-   - Measure API response times
-   - Test with large datasets (100+ jobs)
-
-3. **Security Testing**
-   - Test authentication flows
-   - Verify RBAC permissions
-   - Test token expiration handling
-   - Check for XSS vulnerabilities
 
 ## 📦 Deployment
 
-### Frontend (Vercel)
-1. Import the `web/` directory in Vercel
-2. Set environment variables in Vercel dashboard
-3. Deploy
+For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)
 
-### Backend (Railway/Render/Heroku)
-1. Deploy the `server/` directory
-2. Set environment variables
-3. Connect to MongoDB (Atlas recommended)
-4. Update frontend API URL
+### Quick Deployment Overview
+1. **Local Development**: Use automated setup scripts
+2. **Network Access**: Configure for multi-device access
+3. **Production**: Deploy to Vercel (frontend) and Vercel/Railway (backend)
 
-### Environment Variables for Production
-```env
-# Backend
-NODE_ENV=production
-MONGODB_URI=mongodb+srv://your-atlas-connection-string
-JWT_SECRET=your-production-secret-key
-CORS_ORIGIN=https://your-frontend-domain.com
+## 📄 Documentation
 
-# Frontend
-NEXT_PUBLIC_API_BASE_URL=https://your-backend-api.com
-```
-
-## 🛠️ Development Tips
-
-1. **Database Seeding**: Run `npm run seed` in server folder for test data
-2. **Hot Reload**: Both dev servers support hot module replacement
-3. **Type Safety**: Use TypeScript strict mode for better error catching
-4. **Console**: Check browser console and server logs for debugging
-5. **API Testing**: Use Postman or Thunder Client for API endpoint testing
-
-## 📄 License
-
-This project is private and proprietary.
-
-## 👤 Author
-
-**vldngls**
-
-## 🤝 Contributing
-
-This is a private project. Contributions are by invitation only.
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete deployment guide
+- **[WORKFLOW_DOCUMENTATION.md](./WORKFLOW_DOCUMENTATION.md)** - Detailed workflow and features
 
 ## 📞 Support
 

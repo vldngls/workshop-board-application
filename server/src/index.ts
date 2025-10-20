@@ -15,9 +15,28 @@ if (process.env.NODE_ENV !== 'production') {
 
 const app = express();
 app.use(express.json());
+// Configure CORS based on environment
+const isDevelopment = process.env.NODE_ENV !== 'production';
+const allowedOrigins = [];
+
+if (isDevelopment) {
+  // Development: Allow local network access
+  allowedOrigins.push(
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    // Add common local network IP ranges
+    /^http:\/\/192\.168\.\d+\.\d+:3000$/,
+    /^http:\/\/10\.\d+\.\d+\.\d+:3000$/,
+    /^http:\/\/172\.(1[6-9]|2\d|3[01])\.\d+\.\d+:3000$/
+  );
+} else {
+  // Production: Only allow specific origins
+  allowedOrigins.push(process.env.WEB_ORIGIN || 'https://workshop-board-frontend.vercel.app');
+}
+
 app.use(
   cors({
-    origin: process.env.WEB_ORIGIN || 'http://localhost:3000',
+    origin: allowedOrigins,
     credentials: true,
   })
 );
@@ -70,6 +89,7 @@ app.get('/admin-only', requireRole(['administrator']), (_req, res) => {
 
 // Start server
 const port = process.env.PORT ? Number(process.env.PORT) : 4000;
+const host = isDevelopment ? (process.env.HOST || '0.0.0.0') : 'localhost'; // Network access only in development
 
 // For Vercel deployment
 export default app;
@@ -78,8 +98,10 @@ export default app;
 if (process.env.NODE_ENV !== 'production') {
   connectToMongo()
     .then(() => {
-      app.listen(port, () => {
-        console.log(`API listening on http://localhost:${port}`);
+      app.listen(port, host, () => {
+        console.log(`API listening on http://${host}:${port}`);
+        console.log(`Local access: http://localhost:${port}`);
+        console.log(`Network access: http://[YOUR_IP]:${port}`);
       });
     })
     .catch((err) => {
