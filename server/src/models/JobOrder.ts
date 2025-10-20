@@ -1,25 +1,26 @@
-import mongoose, { Schema } from 'mongoose'
+const mongoose = require('mongoose')
+const { Schema } = mongoose
 
-export type JobStatus = 'OG' | 'WP' | 'FP' | 'QI' | 'HC' | 'HW' | 'HI' | 'FR' | 'FU' | 'CP'
-export type JobItemStatus = 'Finished' | 'Unfinished'
-export type QIStatus = 'pending' | 'approved' | 'rejected' | null
+type JobStatus = 'OG' | 'WP' | 'FP' | 'QI' | 'HC' | 'HW' | 'HI' | 'FR' | 'FU' | 'CP'
+type JobItemStatus = 'Finished' | 'Unfinished'
+type QIStatus = 'pending' | 'approved' | 'rejected' | null
 
-export interface JobItem {
+interface JobItem {
   description: string
   status: JobItemStatus
 }
 
-export interface Part {
+interface Part {
   name: string
   availability: 'Available' | 'Unavailable'
 }
 
-export interface JobOrderDoc {
-  _id?: mongoose.Types.ObjectId
+interface JobOrderDoc {
+  _id?: any
   jobNumber: string
-  createdBy: mongoose.Types.ObjectId
-  assignedTechnician?: mongoose.Types.ObjectId | null  // Optional for carried over jobs
-  serviceAdvisor?: mongoose.Types.ObjectId | null
+  createdBy: any
+  assignedTechnician?: any | null  // Optional for carried over jobs
+  serviceAdvisor?: any | null
   plateNumber: string
   vin: string
   timeRange: {
@@ -40,7 +41,7 @@ export interface JobOrderDoc {
   updatedAt?: Date
 }
 
-const jobOrderSchema = new Schema<JobOrderDoc>({
+const jobOrderSchema = new Schema({
   jobNumber: { 
     type: String, 
     required: true, 
@@ -140,4 +141,6 @@ jobOrderSchema.index({ isImportant: 1, date: -1 })
 jobOrderSchema.index({ carriedOver: 1, date: -1 })
 jobOrderSchema.index({ qiStatus: 1 })
 
-export const JobOrder = mongoose.models.JobOrder || mongoose.model<JobOrderDoc>('JobOrder', jobOrderSchema)
+const JobOrder = mongoose.models.JobOrder || mongoose.model('JobOrder', jobOrderSchema)
+
+module.exports = { JobOrder }

@@ -1,22 +1,23 @@
-import mongoose, { Schema } from 'mongoose'
+const mongoose = require('mongoose')
+const { Schema } = mongoose
 
-export interface AppointmentDoc {
-  _id?: mongoose.Types.ObjectId
-  assignedTechnician: mongoose.Types.ObjectId
-  serviceAdvisor?: mongoose.Types.ObjectId | null
+interface AppointmentDoc {
+  _id?: any
+  assignedTechnician: any
+  serviceAdvisor?: any | null
   plateNumber: string
   timeRange: {
     start: string // Format: "07:00"
     end: string   // Format: "12:00"
   }
   date: Date
-  createdBy: mongoose.Types.ObjectId
+  createdBy: any
   noShow?: boolean
   createdAt?: Date
   updatedAt?: Date
 }
 
-const appointmentSchema = new Schema<AppointmentDoc>({
+const appointmentSchema = new Schema({
   assignedTechnician: { 
     type: Schema.Types.ObjectId, 
     ref: 'User', 
@@ -57,5 +58,7 @@ appointmentSchema.index({ assignedTechnician: 1, date: 1 })
 appointmentSchema.index({ date: 1 })
 appointmentSchema.index({ createdBy: 1 })
 
-export const Appointment = mongoose.models.Appointment || mongoose.model<AppointmentDoc>('Appointment', appointmentSchema)
+const Appointment = mongoose.models.Appointment || mongoose.model('Appointment', appointmentSchema)
+
+module.exports = { Appointment }
 

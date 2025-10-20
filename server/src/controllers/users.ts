@@ -1,9 +1,9 @@
-import { Router } from 'express'
-import { connectToMongo } from '../config/mongo.js'
-import { User } from '../models/User.js'
-import { z } from 'zod'
-import bcrypt from 'bcryptjs'
-import { verifyToken, requireRole } from '../middleware/auth.js'
+const { Router } = require('express')
+const { connectToMongo } = require('../config/mongo.js')
+const { User } = require('../models/User.js')
+const { z } = require('zod')
+const bcrypt = require('bcryptjs')
+const { verifyToken, requireRole } = require('../middleware/auth.js')
 
 const router = Router()
 
@@ -100,6 +100,6 @@ router.delete('/:id', verifyToken, requireRole(['administrator']), async (req, r
   return res.json({ ok: true })
 })
 
-export default router
+module.exports = router
 
 

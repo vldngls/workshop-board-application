@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken'
+const jwt = require('jsonwebtoken')
 
 interface JWTPayload {
   userId: string
@@ -15,7 +15,7 @@ declare global {
   }
 }
 
-export function verifyToken(req: any, res: any, next: any) {
+function verifyToken(req: any, res: any, next: any) {
   const authHeader = req.headers.authorization
   const token = authHeader && authHeader.split(' ')[1] // Bearer TOKEN
 
@@ -41,7 +41,7 @@ export function verifyToken(req: any, res: any, next: any) {
   }
 }
 
-export function requireRole(allowedRoles: string[]) {
+function requireRole(allowedRoles: string[]) {
   return (req: any, res: any, next: any) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required' })
@@ -54,3 +54,5 @@ export function requireRole(allowedRoles: string[]) {
     next()
   }
 }
+
+module.exports = { verifyToken, requireRole }

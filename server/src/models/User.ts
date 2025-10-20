@@ -1,9 +1,10 @@
-import mongoose, { Schema } from 'mongoose'
+const mongoose = require('mongoose')
+const { Schema } = mongoose
 
-export type Role = 'administrator' | 'job-controller' | 'technician' | 'service-advisor'
-export type TechnicianLevel = 'untrained' | 'level-0' | 'level-1' | 'level-2' | 'level-3'
+type Role = 'administrator' | 'job-controller' | 'technician' | 'service-advisor'
+type TechnicianLevel = 'untrained' | 'level-0' | 'level-1' | 'level-2' | 'level-3'
 
-export interface UserDoc {
+interface UserDoc {
   name: string
   email: string
   username?: string
@@ -13,7 +14,7 @@ export interface UserDoc {
   level?: TechnicianLevel // Only for technicians
 }
 
-const userSchema = new Schema<UserDoc>({
+const userSchema = new Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, index: true },
   username: { type: String, unique: true, sparse: true, index: true },
@@ -27,6 +28,8 @@ const userSchema = new Schema<UserDoc>({
   },
 }, { timestamps: true })
 
-export const User = mongoose.models.User || mongoose.model<UserDoc>('User', userSchema)
+const User = mongoose.models.User || mongoose.model('User', userSchema)
+
+module.exports = { User }
 
 

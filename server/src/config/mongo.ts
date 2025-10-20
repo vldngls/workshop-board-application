@@ -1,6 +1,6 @@
-import mongoose from 'mongoose'
+const mongoose = require('mongoose')
 
-export async function connectToMongo(): Promise<void> {
+async function connectToMongo(): Promise<void> {
   const mongoUri = process.env.MONGODB_URI
   if (!mongoUri) {
     throw new Error('MONGODB_URI is not set')
@@ -8,5 +8,7 @@ export async function connectToMongo(): Promise<void> {
   if (mongoose.connection.readyState === 1) return
   await mongoose.connect(mongoUri)
 }
+
+module.exports = { connectToMongo }
 
 

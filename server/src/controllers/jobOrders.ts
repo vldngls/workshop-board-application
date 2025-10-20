@@ -1,9 +1,9 @@
-import { Router } from 'express'
-import { z } from 'zod'
-import { connectToMongo } from '../config/mongo.js'
-import { JobOrder } from '../models/JobOrder.js'
-import { User } from '../models/User.js'
-import { verifyToken, requireRole } from '../middleware/auth.js'
+const { Router } = require('express')
+const { z } = require('zod')
+const { connectToMongo } = require('../config/mongo.js')
+const { JobOrder } = require('../models/JobOrder.js')
+const { User } = require('../models/User.js')
+const { verifyToken, requireRole } = require('../middleware/auth.js')
 
 const router = Router()
 
@@ -824,4 +824,4 @@ router.post('/mark-carry-over', verifyToken, requireRole(['administrator', 'job-
   }
 })
 
-export default router
+module.exports = router

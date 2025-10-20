@@ -1,12 +1,12 @@
-import express from 'express';
-import helmet from 'helmet';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import { connectToMongo } from './config/mongo.js';
-import authRouter from './controllers/auth.js';
-import usersRouter from './controllers/users.js';
-import jobOrdersRouter from './controllers/jobOrders.js';
-import appointmentsRouter from './controllers/appointments.js';
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const { connectToMongo } = require('./config/mongo.js');
+const authRouter = require('./controllers/auth.js');
+const usersRouter = require('./controllers/users.js');
+const jobOrdersRouter = require('./controllers/jobOrders.js');
+const appointmentsRouter = require('./controllers/appointments.js');
 
 // Only load .env file in development
 if (process.env.NODE_ENV !== 'production') {
@@ -17,7 +17,7 @@ const app = express();
 app.use(express.json());
 // Configure CORS based on environment
 const isDevelopment = process.env.NODE_ENV !== 'production';
-const allowedOrigins = [];
+const allowedOrigins: any[] = [];
 
 if (isDevelopment) {
   // Development: Allow local network access
@@ -60,7 +60,7 @@ if (!isDevelopment) {
 }
 
 // JWT authentication for protected routes
-import { verifyToken } from './middleware/auth.js';
+const { verifyToken } = require('./middleware/auth.js');
 
 app.use((req, res, next) => {
   // Public routes that don't need authentication
@@ -94,7 +94,7 @@ app.use('/job-orders', jobOrdersRouter); // protected by JWT
 app.use('/appointments', appointmentsRouter); // protected by JWT
 
 // Admin-only endpoint using JWT middleware
-import { requireRole } from './middleware/auth.js';
+const { requireRole } = require('./middleware/auth.js');
 
 app.get('/admin-only', requireRole(['administrator']), (_req, res) => {
   res.json({ secret: 'admin data' });
@@ -105,7 +105,7 @@ const port = process.env.PORT ? Number(process.env.PORT) : 4000;
 const host = isDevelopment ? (process.env.HOST || '0.0.0.0') : 'localhost'; // Network access only in development
 
 // For Vercel deployment
-export default app;
+module.exports = app;
 
 // For local development
 if (process.env.NODE_ENV !== 'production') {

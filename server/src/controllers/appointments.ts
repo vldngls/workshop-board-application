@@ -1,9 +1,10 @@
-import { Router } from 'express'
-import { z } from 'zod'
-import { connectToMongo } from '../config/mongo.js'
-import { Appointment } from '../models/Appointment.js'
-import { User } from '../models/User.js'
-import { verifyToken, requireRole } from '../middleware/auth.js'
+const { Router } = require('express')
+const { z } = require('zod')
+const { connectToMongo } = require('../config/mongo.js')
+const { Appointment } = require('../models/Appointment.js')
+const { User } = require('../models/User.js')
+const { JobOrder } = require('../models/JobOrder.js')
+const { verifyToken, requireRole } = require('../middleware/auth.js')
 
 const router = Router()
 
@@ -128,8 +129,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
       })
     }
     
-    // Import JobOrder model to check for job order conflicts
-    const { JobOrder } = await import('../models/JobOrder.js')
+    // Check for job order conflicts
     
     // Check for overlapping job orders
     const overlappingJobOrder = await JobOrder.findOne({
@@ -254,8 +254,7 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
         })
       }
       
-      // Import JobOrder model to check for job order conflicts
-      const { JobOrder } = await import('../models/JobOrder.js')
+      // Check for job order conflicts
       
       // Check for overlapping job orders
       const overlappingJobOrder = await JobOrder.findOne({
@@ -325,8 +324,7 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
       return res.status(404).json({ error: 'Appointment not found' })
     }
     
-    // Import JobOrder model
-    const { JobOrder } = await import('../models/JobOrder.js')
+    // Create job order
     
     const { jobNumber, vin, jobList, parts } = parsed.data
     
@@ -418,5 +416,5 @@ router.delete('/:id', verifyToken, requireRole(['administrator', 'job-controller
   }
 })
 
-export default router
+module.exports = router
 
