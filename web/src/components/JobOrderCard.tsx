@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, memo, useCallback } from 'react'
+import { useState, memo, useCallback, MouseEvent } from 'react'
 import toast from 'react-hot-toast'
-import { FiCalendar, FiRefreshCw, FiAlertTriangle } from 'react-icons/fi'
+import { FiCalendar, FiRefreshCw, FiAlertTriangle, FiClock, FiUser, FiTool, FiPackage } from 'react-icons/fi'
 import type { JobOrder, JobStatus, JobItemStatus } from '@/types/jobOrder'
 import { 
   useUpdateJobOrderStatus, 
@@ -13,6 +13,7 @@ import {
 
 interface JobOrderCardProps {
   jobOrder: JobOrder
+  onClick?: (jobOrder: JobOrder) => void
 }
 
 // Status mapping for display
@@ -30,19 +31,32 @@ const STATUS_LABELS: Record<JobStatus, string> = {
 }
 
 const STATUS_COLORS: Record<JobStatus, string> = {
-  'OG': 'bg-blue-500/20 text-blue-700 border border-blue-300/30',
-  'WP': 'bg-yellow-500/20 text-yellow-700 border border-yellow-300/30',
-  'FP': 'bg-cyan-500/20 text-cyan-700 border border-cyan-300/30',
-  'QI': 'bg-purple-500/20 text-purple-700 border border-purple-300/30',
-  'HC': 'bg-orange-500/20 text-orange-700 border border-orange-300/30',
-  'HW': 'bg-red-500/20 text-red-700 border border-red-300/30',
-  'HI': 'bg-pink-500/20 text-pink-700 border border-pink-300/30',
-  'FR': 'bg-green-500/20 text-green-700 border border-green-300/30',
-  'FU': 'bg-gray-500/20 text-gray-700 border border-gray-300/30',
-  'CP': 'bg-emerald-500/20 text-emerald-700 border border-emerald-300/30'
+  'OG': 'bg-blue-50 text-blue-700 border border-blue-200',
+  'WP': 'bg-amber-50 text-amber-700 border border-amber-200',
+  'FP': 'bg-cyan-50 text-cyan-700 border border-cyan-200',
+  'QI': 'bg-purple-50 text-purple-700 border border-purple-200',
+  'HC': 'bg-orange-50 text-orange-700 border border-orange-200',
+  'HW': 'bg-red-50 text-red-700 border border-red-200',
+  'HI': 'bg-pink-50 text-pink-700 border border-pink-200',
+  'FR': 'bg-green-50 text-green-700 border border-green-200',
+  'FU': 'bg-gray-50 text-gray-700 border border-gray-200',
+  'CP': 'bg-emerald-50 text-emerald-700 border border-emerald-200'
 }
 
-function JobOrderCard({ jobOrder }: JobOrderCardProps) {
+const STATUS_ACCENT: Record<JobStatus, string> = {
+  'OG': 'bg-blue-500',
+  'WP': 'bg-amber-500',
+  'FP': 'bg-cyan-500',
+  'QI': 'bg-purple-500',
+  'HC': 'bg-orange-500',
+  'HW': 'bg-red-500',
+  'HI': 'bg-pink-500',
+  'FR': 'bg-green-500',
+  'FU': 'bg-gray-500',
+  'CP': 'bg-emerald-500'
+}
+
+function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
   const [showStatusModal, setShowStatusModal] = useState(false)
   const [showJobTasksModal, setShowJobTasksModal] = useState(false)
   const [showPartsModal, setShowPartsModal] = useState(false)
@@ -172,13 +186,27 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
     )
   }, [jobOrder._id, updateJobMutation])
 
+  const totalTasks = jobOrder.jobList.length
+  const finishedTasks = jobOrder.jobList.filter(j => j.status === 'Finished').length
+  const partsAvailable = jobOrder.parts.filter(p => p.availability === 'Available').length
+  const partsTotal = jobOrder.parts.length
+
+  const stop = (e: MouseEvent) => e.stopPropagation()
+
   return (
-    <div className="floating-card p-4 relative group">
+    <div
+      className="floating-card p-4 relative group cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-xl"
+      onClick={() => onClick?.(jobOrder)}
+      role={onClick ? 'button' : undefined}
+      aria-label={onClick ? `Open details for job ${jobOrder.jobNumber}` : undefined}
+    >
+      {/* Left status accent bar */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${STATUS_ACCENT[jobOrder.status]}`}></div>
       {/* Important Star Button */}
       <button
-        onClick={toggleImportant}
+        onClick={(e) => { stop(e); toggleImportant() }}
         disabled={toggleImportantMutation.isPending}
-        className={`absolute top-3 right-3 text-2xl transition-all ${jobOrder.isImportant ? 'text-yellow-400 drop-shadow-lg' : 'text-gray-400/60'} hover:text-yellow-400 hover:scale-125 hover:drop-shadow-xl`}
+        className={`absolute top-3 right-3 text-2xl transition-all ${jobOrder.isImportant ? 'text-yellow-400 drop-shadow-lg' : 'text-gray-300'} hover:text-yellow-400 hover:scale-125 hover:drop-shadow-xl`}
         title={jobOrder.isImportant ? 'Remove from important' : 'Mark as important'}
       >
         {jobOrder.isImportant ? '★' : '☆'}
@@ -209,7 +237,13 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
       {/* Header */}
       <div className="flex justify-between items-start mb-4 mt-8">
         <div>
-          <h3 className="text-lg font-bold text-gray-900">{jobOrder.jobNumber}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-bold text-gray-900 tracking-tight">{jobOrder.jobNumber}</h3>
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-600 uppercase">
+              <FiClock />
+              {jobOrder.timeRange.start}–{jobOrder.timeRange.end}
+            </span>
+          </div>
           <p className="text-xs text-gray-600 font-medium mt-0.5">{formatDate(jobOrder.date)}</p>
         </div>
         <div className="flex flex-col items-end space-y-1 mr-8">
@@ -217,7 +251,7 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
             {STATUS_LABELS[jobOrder.status]}
           </span>
           <button
-            onClick={() => setShowStatusModal(true)}
+            onClick={(e) => { stop(e); setShowStatusModal(true) }}
             className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-all"
           >
             Change
@@ -228,22 +262,34 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
       {/* Info Grid - Compact */}
       <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
         <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
-          <span className="text-gray-600 font-medium">Plate:</span>
+          <div className="flex items-center gap-2 text-gray-600 font-medium">
+            <FiTool />
+            <span>Plate</span>
+          </div>
           <p className="font-bold text-gray-900 mt-0.5">{jobOrder.plateNumber}</p>
         </div>
         <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
-          <span className="text-gray-600 font-medium">VIN:</span>
+          <div className="flex items-center gap-2 text-gray-600 font-medium">
+            <FiPackage />
+            <span>VIN</span>
+          </div>
           <p className="font-bold text-gray-900 font-mono truncate mt-0.5">{jobOrder.vin}</p>
         </div>
         <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
-          <span className="text-gray-600 font-medium">Time:</span>
-          <p className="font-bold text-gray-900 mt-0.5">{jobOrder.timeRange.start} - {jobOrder.timeRange.end}</p>
+          <div className="flex items-center gap-2 text-gray-600 font-medium">
+            <FiClock />
+            <span>Duration</span>
+          </div>
+          <p className="font-bold text-gray-900 mt-0.5">{calculateDuration(jobOrder.timeRange.start, jobOrder.timeRange.end)}</p>
         </div>
         <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
           <div className="flex justify-between items-center mb-0.5">
-            <span className="text-gray-600 font-medium">Technician:</span>
+            <span className="flex items-center gap-2 text-gray-600 font-medium">
+              <FiUser />
+              Technician
+            </span>
             <button
-              onClick={() => setShowTechnicianModal(true)}
+              onClick={(e) => { stop(e); setShowTechnicianModal(true) }}
               className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline"
             >
               {jobOrder.assignedTechnician ? 'Reassign' : 'Assign'}
@@ -266,7 +312,7 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
           </p>
         </div>
         <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
-          <span className="text-gray-600 font-medium">Service Advisor:</span>
+          <span className="text-gray-600 font-medium">Service Advisor</span>
           <p className="font-bold text-gray-900 mt-0.5 truncate">
             {jobOrder.serviceAdvisor ? (
               <span className="text-gray-900">{jobOrder.serviceAdvisor.name}</span>
@@ -283,35 +329,43 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
       {/* Job & Parts - Compact */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50 text-xs">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-gray-600 font-semibold">Tasks ({jobOrder.jobList.filter(j => j.status === 'Finished').length}/{jobOrder.jobList.length})</span>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-gray-600 font-semibold">Tasks ({finishedTasks}/{totalTasks})</span>
             <button
-              onClick={() => setShowJobTasksModal(true)}
+              onClick={(e) => { stop(e); setShowJobTasksModal(true) }}
               className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline"
             >
               Manage
             </button>
           </div>
-          <div className="text-xs text-gray-700 font-medium">
-            {jobOrder.jobList.length} task{jobOrder.jobList.length > 1 ? 's' : ''}
+          {/* Progress bar */}
+          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-2 bg-green-500 rounded-full transition-all"
+              style={{ width: `${totalTasks === 0 ? 0 : Math.round((finishedTasks / totalTasks) * 100)}%` }}
+            />
+          </div>
+          <div className="mt-1 text-[11px] text-gray-600 font-medium">
+            {totalTasks} task{totalTasks !== 1 ? 's' : ''}
           </div>
         </div>
         <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50 text-xs">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-gray-600 font-semibold">Parts ({jobOrder.parts.filter(p => p.availability === 'Available').length}/{jobOrder.parts.length})</span>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-gray-600 font-semibold">Parts ({partsAvailable}/{partsTotal})</span>
             <button
-              onClick={() => setShowPartsModal(true)}
+              onClick={(e) => { stop(e); setShowPartsModal(true) }}
               className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline"
             >
               Manage
             </button>
           </div>
-          <div className="text-xs font-semibold">
-            {jobOrder.parts.filter(p => p.availability === 'Unavailable').length > 0 && (
-              <span className="text-red-600">{jobOrder.parts.filter(p => p.availability === 'Unavailable').length} missing</span>
-            )}
-            {jobOrder.parts.filter(p => p.availability === 'Unavailable').length === 0 && (
+          <div className="flex items-center gap-2 text-[11px] font-semibold">
+            {partsTotal === 0 && <span className="text-gray-600">No parts</span>}
+            {partsTotal > 0 && partsAvailable === partsTotal && (
               <span className="text-green-600">All available</span>
+            )}
+            {partsTotal > 0 && partsAvailable < partsTotal && (
+              <span className="text-red-600">{partsTotal - partsAvailable} missing</span>
             )}
           </div>
         </div>
@@ -319,7 +373,7 @@ function JobOrderCard({ jobOrder }: JobOrderCardProps) {
 
       {/* Days in Workshop - Only for WP, HC, HW, HI, carry-over */}
       {(['WP', 'HC', 'HW', 'HI'].includes(jobOrder.status) || jobOrder.carriedOver) && (
-        <div className="mb-3 p-3 bg-orange-500/20 backdrop-blur-sm border border-orange-300/30 rounded-xl text-xs">
+        <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-xl text-xs">
           <span className="text-orange-700 font-semibold">
             📊 Days in Workshop: {calculateDaysInWorkshop()} day{calculateDaysInWorkshop() !== 1 ? 's' : ''}
           </span>

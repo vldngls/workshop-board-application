@@ -56,6 +56,7 @@ export default function AppointmentsPage() {
   const [appointmentToReappoint, setAppointmentToReappoint] = useState<Appointment | null>(null)
   const [breakStart, setBreakStart] = useState('12:00')
   const [breakEnd, setBreakEnd] = useState('13:00')
+  const [showSearchModal, setShowSearchModal] = useState(false)
 
   // Load break settings from localStorage
   useEffect(() => {
@@ -643,14 +644,13 @@ export default function AppointmentsPage() {
             </div>
 
             {/* Search Section */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <input
-                type="text"
-                placeholder="Search appointments..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full sm:w-64 px-4 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/80 backdrop-blur-sm"
-              />
+            <div className="w-full sm:w-auto">
+              <button
+                onClick={() => setShowSearchModal(true)}
+                className="w-full sm:w-auto px-4 py-2 bg-white border border-neutral-300 rounded-lg text-sm font-medium text-neutral-800"
+              >
+                Open Search
+              </button>
             </div>
           </div>
 
@@ -784,6 +784,53 @@ export default function AppointmentsPage() {
           )}
         </div>
       </div>
+
+      {/* Create Job Order from Appointment Modal */}
+      {/* Search Modal */}
+      {showSearchModal && (
+        <div className="modal-backdrop">
+          <div className="floating-card max-w-xl w-full animate-fade-in">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-5">
+                <h3 className="text-xl font-bold text-gray-900">Search Appointments</h3>
+                <button
+                  onClick={() => setShowSearchModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+              <form
+                onSubmit={(e) => { e.preventDefault(); setShowSearchModal(false) }}
+                className="space-y-4"
+              >
+                <input
+                  type="text"
+                  placeholder="Search by plate number or technician name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setSearchTerm(''); setShowSearchModal(false) }}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 ford-gradient text-white rounded-lg font-semibold"
+                  >
+                    Search
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Job Order from Appointment Modal */}
       {showCreateJobOrderModal && selectedAppointment && (

@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { FiAlertTriangle, FiRefreshCw } from 'react-icons/fi'
 import { calculateWorkDuration, formatTime } from '@/utils/timetableUtils'
@@ -18,6 +18,12 @@ interface JobDetailsModalProps {
   onReassignTechnician?: () => void
   onReplotJob?: () => void
   onSubmitForQI?: (jobId: string) => void
+  onUpdateJob?: (jobId: string, updates: Partial<{
+    plateNumber: string
+    vin: string
+    timeRange: { start: string, end: string }
+  }>) => void
+  onViewIn?: (jobId: string, jobDate: string, status: string) => void
 }
 
 const JobDetailsModal = memo(({
@@ -33,7 +39,9 @@ const JobDetailsModal = memo(({
   onUpdatePartAvailability,
   onReassignTechnician,
   onReplotJob,
-  onSubmitForQI
+  onSubmitForQI,
+  onUpdateJob,
+  onViewIn
 }: JobDetailsModalProps) => {
   if (!isOpen || !job) return null
 
@@ -53,6 +61,28 @@ const JobDetailsModal = memo(({
     return statusLabels[status] || status
   }
 
+  const [isEditing, setIsEditing] = useState(false)
+  const [editPlate, setEditPlate] = useState(job.plateNumber)
+  const [editVin, setEditVin] = useState(job.vin)
+  const [editStart, setEditStart] = useState(job.timeRange.start)
+  const [editEnd, setEditEnd] = useState(job.timeRange.end)
+
+  const timeIsValid = useMemo(() => {
+    const regex = /^([0-1]\d|2[0-3]):[0-5]\d$/
+    return regex.test(editStart) && regex.test(editEnd)
+  }, [editStart, editEnd])
+
+  const handleSaveEdits = useCallback(() => {
+    if (!onUpdateJob) return
+    if (!timeIsValid) return
+    onUpdateJob(job._id, {
+      plateNumber: editPlate,
+      vin: editVin,
+      timeRange: { start: editStart, end: editEnd }
+    })
+    setIsEditing(false)
+  }, [onUpdateJob, job._id, editPlate, editVin, editStart, editEnd, timeIsValid])
+
   return createPortal(
     <div className="modal-backdrop">
       <div className="floating-card max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-fade-in">
@@ -71,12 +101,55 @@ const JobDetailsModal = memo(({
                 </button>
               )}
             </div>
+            <div className="flex items-center gap-2">
+              {onViewIn && (
+                <button
+                  onClick={() => onViewIn(job._id, new Date(job.date).toISOString().slice(0,10), job.status)}
+                  className="px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                  title={job.status === 'FP' ? 'Not yet plotted – you can assign on the board' : 'Open on job control board'}
+                >
+                  View In Timetable
+                </button>
+              )}
+              {onUpdateJob && (
+                isEditing ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSaveEdits}
+                      disabled={updating || !timeIsValid}
+                      className="px-3 py-2 rounded-lg text-sm font-semibold bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditing(false)
+                        setEditPlate(job.plateNumber)
+                        setEditVin(job.vin)
+                        setEditStart(job.timeRange.start)
+                        setEditEnd(job.timeRange.end)
+                      }}
+                      className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-200 hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-800 text-white hover:bg-black"
+                  >
+                    Edit Details
+                  </button>
+                )
+              )}
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
             >
               ✕
             </button>
+            </div>
           </div>
           
           <div className="space-y-4">
@@ -116,11 +189,27 @@ const JobDetailsModal = memo(({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-600">Plate Number</label>
-                <p className="text-lg">{job.plateNumber}</p>
+                {isEditing ? (
+                  <input
+                    value={editPlate}
+                    onChange={(e) => setEditPlate(e.target.value.toUpperCase())}
+                    className="mt-1 w-full px-3 py-2 border rounded-lg"
+                  />
+                ) : (
+                  <p className="text-lg">{job.plateNumber}</p>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">VIN</label>
-                <p className="text-sm font-mono">{job.vin}</p>
+                {isEditing ? (
+                  <input
+                    value={editVin}
+                    onChange={(e) => setEditVin(e.target.value.toUpperCase())}
+                    className="mt-1 w-full px-3 py-2 border rounded-lg font-mono"
+                  />
+                ) : (
+                  <p className="text-sm font-mono">{job.vin}</p>
+                )}
               </div>
             </div>
 
@@ -147,7 +236,28 @@ const JobDetailsModal = memo(({
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Time Slot</label>
-                <p className="text-lg">{formatTime(job.timeRange.start)} - {formatTime(job.timeRange.end)}</p>
+                {isEditing ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      value={editStart}
+                      onChange={(e) => setEditStart(e.target.value)}
+                      placeholder="HH:MM"
+                      className={`w-24 px-3 py-2 border rounded-lg ${timeIsValid ? '' : 'border-red-400'}`}
+                    />
+                    <span className="text-gray-500">–</span>
+                    <input
+                      value={editEnd}
+                      onChange={(e) => setEditEnd(e.target.value)}
+                      placeholder="HH:MM"
+                      className={`w-24 px-3 py-2 border rounded-lg ${timeIsValid ? '' : 'border-red-400'}`}
+                    />
+                  </div>
+                ) : (
+                  <p className="text-lg">{formatTime(job.timeRange.start)} - {formatTime(job.timeRange.end)}</p>
+                )}
+                {isEditing && !timeIsValid && (
+                  <p className="text-xs text-red-600 mt-1">Enter valid 24h times (HH:MM)</p>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Work Duration</label>

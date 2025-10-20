@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useCallback, useMemo, lazy, Suspense, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Toaster } from 'react-hot-toast'
 import type { JobOrder, JobStatus } from "@/types/jobOrder"
 import JobOrderCard from "@/components/JobOrderCard"
-import { useJobOrders } from '@/hooks/useJobOrders'
+import JobDetailsModal from "@/components/modals/JobDetailsModal"
+import { useJobOrders, useUpdateJobOrder } from '@/hooks/useJobOrders'
 import RoleGuard from "@/components/RoleGuard"
 
 // Lazy load the modal for better initial load performance
@@ -32,11 +33,15 @@ const STATUS_LABELS: Record<JobStatus | 'all' | 'hold' | 'carried' | 'important'
 
 export default function JobOrdersPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [showAddModal, setShowAddModal] = useState(false)
   const [filter, setFilter] = useState<JobStatus | 'all' | 'hold' | 'carried' | 'important' | 'unclaimed'>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedJob, setSelectedJob] = useState<JobOrder | null>(null)
+  const [showDetails, setShowDetails] = useState(false)
+  const updateJobMutation = useUpdateJobOrder()
 
   // Read filter from URL parameters on mount
   useEffect(() => {
@@ -130,6 +135,33 @@ export default function JobOrdersPage() {
     setCurrentPage(page)
   }, [])
 
+  const handleOpenDetails = useCallback((job: JobOrder) => {
+    setSelectedJob(job)
+    setShowDetails(true)
+  }, [])
+
+  const handleCloseDetails = useCallback(() => {
+    setShowDetails(false)
+    setSelectedJob(null)
+  }, [])
+
+  const handleUpdateJob = useCallback((jobId: string, updates: Partial<{ plateNumber: string, vin: string, timeRange: { start: string, end: string } }>) => {
+    updateJobMutation.mutate({ id: jobId, updates: updates as any }, {
+      onSuccess: () => {
+        // Keep modal open and refresh list state via query invalidation
+      }
+    })
+  }, [updateJobMutation])
+
+  const handleViewIn = useCallback((jobId: string, jobDate: string, status: string) => {
+    const dateParam = (() => {
+      const d = new Date(jobDate)
+      if (isNaN(d.getTime())) return new Date().toISOString().slice(0,10)
+      return d.toISOString().slice(0,10)
+    })()
+    router.push(`/dashboard/workshop?date=${encodeURIComponent(dateParam)}&highlight=${encodeURIComponent(jobId)}`)
+  }, [router])
+
   const handleJobOrderCreated = useCallback(() => {
     setShowAddModal(false)
     // TanStack Query will automatically refetch due to cache invalidation
@@ -166,7 +198,7 @@ export default function JobOrdersPage() {
       <div className="floating-card p-6">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Search */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Search Job Orders
             </label>
@@ -176,7 +208,7 @@ export default function JobOrdersPage() {
                 placeholder="Search by job number, plate number, VIN, or technician name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ford-blue focus:border-transparent"
+                className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ford-blue focus:border-transparent"
               />
               <button
                 type="submit"
@@ -185,11 +217,6 @@ export default function JobOrdersPage() {
                 Search
               </button>
             </form>
-            {searchTerm && (
-              <div className="mt-2 text-sm text-gray-600">
-                Press Enter or click Search to find results
-              </div>
-            )}
           </div>
 
           {/* Status Filter Dropdown */}
@@ -243,6 +270,13 @@ export default function JobOrdersPage() {
         )}
       </div>
 
+      {/* Search helper text */}
+      {searchTerm && (
+        <div className="mt-[-12px] mb-2 text-sm text-gray-600">
+          Press Enter or click Search to find results
+        </div>
+      )}
+
       {/* Results Summary */}
       <div className="text-sm text-gray-600">
         Showing {jobOrders.length} of {pagination.totalItems} job orders
@@ -286,6 +320,7 @@ export default function JobOrdersPage() {
               <JobOrderCard
                 key={jobOrder._id}
                 jobOrder={jobOrder}
+                onClick={handleOpenDetails}
               />
             ))}
           </div>
@@ -351,6 +386,20 @@ export default function JobOrdersPage() {
             onSuccess={handleJobOrderCreated}
           />
         </Suspense>
+      )}
+
+      {/* Job Details Modal */}
+      {showDetails && selectedJob && (
+        <JobDetailsModal
+          isOpen={showDetails}
+          job={selectedJob as any}
+          updating={false}
+          breakStart={"12:00"}
+          breakEnd={"13:00"}
+          onClose={handleCloseDetails}
+          onUpdateJob={handleUpdateJob}
+          onViewIn={handleViewIn}
+        />
       )}
       </div>
     </RoleGuard>
