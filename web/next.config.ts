@@ -12,10 +12,8 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: [
       'localhost',
       '127.0.0.1',
-      // Add common local network IP ranges
-      /^192\.168\.\d+\.\d+$/,
-      /^10\.\d+\.\d+\.\d+$/,
-      /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/,
+      // Note: RegExp patterns not supported in allowedDevOrigins
+      // Network access is handled at the server level instead
     ],
   }),
   // Removed rewrite rule that was bypassing Next.js API routes

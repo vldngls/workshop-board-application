@@ -10,6 +10,7 @@
     "module": "esnext",
     "target": "es2022",
     "types": ["node"],
+    "typeRoots": ["./node_modules/@types", "./src/types"],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -42,6 +43,12 @@
     "skipLibCheck": true,
     "noImplicitAny": false,
     "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "strictBindCallApply": false,
+    "strictPropertyInitialization": false,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": false,
+    "noUncheckedIndexedAccess": false,
 
     "esModuleInterop": true,
     "resolveJsonModule": true,

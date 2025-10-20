@@ -252,7 +252,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     
     const parsed = createJobOrderSchema.safeParse(req.body)
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Invalid payload', details: parsed.error.errors })
+      return res.status(400).json({ error: 'Invalid payload', details: parsed.error.issues })
     }
     
     const { jobNumber, assignedTechnician, serviceAdvisor, plateNumber, vin, timeRange, jobList, parts, date, status } = parsed.data
@@ -387,7 +387,7 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
     
     const parsed = updateJobOrderSchema.safeParse(req.body)
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Invalid payload', details: parsed.error.errors })
+      return res.status(400).json({ error: 'Invalid payload', details: parsed.error.issues })
     }
     
     // Check if the id is a MongoDB ObjectId or a job number

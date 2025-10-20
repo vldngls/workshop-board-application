@@ -81,7 +81,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     
     const parsed = createAppointmentSchema.safeParse(req.body)
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Invalid payload', details: parsed.error.errors })
+      return res.status(400).json({ error: 'Invalid payload', details: parsed.error.issues })
     }
     
     const { assignedTechnician, serviceAdvisor, plateNumber, timeRange, date } = parsed.data
@@ -194,7 +194,7 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
     
     const parsed = updateAppointmentSchema.safeParse(req.body)
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Invalid payload', details: parsed.error.errors })
+      return res.status(400).json({ error: 'Invalid payload', details: parsed.error.issues })
     }
     
     const appointment = await Appointment.findById(req.params.id)
@@ -317,7 +317,7 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
     
     const parsed = createJobOrderFromAppointmentSchema.safeParse(req.body)
     if (!parsed.success) {
-      return res.status(400).json({ error: 'Invalid payload', details: parsed.error.errors })
+      return res.status(400).json({ error: 'Invalid payload', details: parsed.error.issues })
     }
     
     const appointment = await Appointment.findById(req.params.id)
