@@ -46,6 +46,19 @@ app.use(
   })
 );
 
+// Ensure MongoDB connection on Vercel (production/serverless)
+if (!isDevelopment) {
+  app.use(async (_req, _res, next) => {
+    try {
+      await connectToMongo();
+      next();
+    } catch (err) {
+      console.error('Failed to connect to MongoDB (production):', err);
+      next(err);
+    }
+  });
+}
+
 // JWT authentication for protected routes
 import { verifyToken } from './middleware/auth.js';
 
