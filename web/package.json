@@ -17,7 +17,6 @@
     "react-dom": "19.1.0",
     "react-hot-toast": "^2.6.0",
     "react-icons": "^5.5.0",
-    "workshop-board-application": "file:.."
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
