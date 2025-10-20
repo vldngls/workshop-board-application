@@ -14,7 +14,7 @@ router.get('/', verifyToken, async (req, res) => {
     
     const { date, technician, assignedToMe } = req.query
     
-    const filter: any = {}
+    const filter: Record<string, any> = {}
     if (technician) filter.assignedTechnician = technician
     if (assignedToMe === 'true') {
       // Filter to only show appointments assigned to the current user
@@ -34,10 +34,10 @@ router.get('/', verifyToken, async (req, res) => {
       .sort({ date: 1, 'timeRange.start': 1 })
       .lean()
     
-    res.json({ appointments })
+    return res.json({ appointments })
   } catch (error) {
     console.error('Error fetching appointments:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -56,10 +56,10 @@ router.get('/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ error: 'Appointment not found' })
     }
     
-    res.json({ appointment })
+    return res.json({ appointment })
   } catch (error) {
     console.error('Error fetching appointment:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -104,13 +104,13 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
       return res.status(401).json({ error: 'User not authenticated' })
     }
     
-    const appointmentDate = date ? new Date(date) : new Date()
+    const appointmentDate = new Date(date || new Date())
     
     // Check for overlapping appointments
     const overlappingAppointment = await Appointment.findOne({
       assignedTechnician,
       date: {
-        $gte: new Date(appointmentDate.toISOString().split('T')[0]),
+        $gte: new Date(appointmentDate.toISOString().split('T')[0] || ''),
         $lt: new Date(new Date(appointmentDate).setDate(appointmentDate.getDate() + 1))
       },
       $or: [
@@ -135,7 +135,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     const overlappingJobOrder = await JobOrder.findOne({
       assignedTechnician,
       date: {
-        $gte: new Date(appointmentDate.toISOString().split('T')[0]),
+        $gte: new Date(appointmentDate.toISOString().split('T')[0] || ''),
         $lt: new Date(new Date(appointmentDate).setDate(appointmentDate.getDate() + 1))
       },
       $or: [
@@ -168,10 +168,10 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    res.status(201).json({ appointment: populatedAppointment })
+    return res.status(201).json({ appointment: populatedAppointment })
   } catch (error) {
     console.error('Error creating appointment:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -290,10 +290,10 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    res.json({ appointment: updatedAppointment })
+    return res.json({ appointment: updatedAppointment })
   } catch (error) {
     console.error('Error updating appointment:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -377,10 +377,10 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    res.status(201).json({ jobOrder: populatedJobOrder })
+    return res.status(201).json({ jobOrder: populatedJobOrder })
   } catch (error) {
     console.error('Error creating job order from appointment:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -391,13 +391,13 @@ router.delete('/delete-all-no-show', verifyToken, requireRole(['administrator', 
     
     const result = await Appointment.deleteMany({ noShow: true })
     
-    res.json({ 
+    return res.json({ 
       message: `Deleted ${result.deletedCount} no-show appointments successfully`,
       deletedCount: result.deletedCount
     })
   } catch (error) {
     console.error('Error deleting all no-show appointments:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -411,10 +411,10 @@ router.delete('/:id', verifyToken, requireRole(['administrator', 'job-controller
       return res.status(404).json({ error: 'Appointment not found' })
     }
     
-    res.json({ message: 'Appointment deleted successfully' })
+    return res.json({ message: 'Appointment deleted successfully' })
   } catch (error) {
     console.error('Error deleting appointment:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 

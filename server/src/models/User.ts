@@ -23,7 +23,7 @@ const userSchema = new Schema<UserDoc>({
   level: { 
     type: String, 
     enum: ['untrained', 'level-0', 'level-1', 'level-2', 'level-3'],
-    required: function() { return this.role === 'technician' }
+    required: function(this: any): boolean { return this.role === 'technician' }
   },
 }, { timestamps: true })
 

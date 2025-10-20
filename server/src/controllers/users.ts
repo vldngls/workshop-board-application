@@ -11,7 +11,7 @@ const router = Router()
 router.get('/me', verifyToken, async (req, res) => {
   try {
     // User info is already in req.user from JWT verification
-    res.json({
+    return res.json({
       user: {
         id: req.user?.userId,
         email: req.user?.email,
@@ -21,7 +21,7 @@ router.get('/me', verifyToken, async (req, res) => {
     })
   } catch (error) {
     console.error('Error fetching current user:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -29,13 +29,13 @@ router.get('/', verifyToken, async (req, res) => {
   await connectToMongo()
   
   // Build filter based on query parameters
-  const filter: any = {}
+  const filter: Record<string, any> = {}
   if (req.query.role) {
     filter.role = req.query.role
   }
   
   const users = await User.find(filter, { name: 1, email: 1, role: 1, level: 1, pictureUrl: 1 }).sort({ createdAt: -1 }).lean()
-  res.json({ users })
+  return res.json({ users })
 })
 
 const createSchema = z.object({
@@ -63,7 +63,7 @@ router.post('/', verifyToken, requireRole(['administrator']), async (req, res) =
     level: role === 'technician' ? (level || 'Junior') : undefined,
     pictureUrl: pictureUrl || undefined 
   })
-  res.status(201).json({ id: user._id })
+  return res.status(201).json({ id: user._id })
 })
 
 const updateSchema = z.object({
@@ -80,7 +80,7 @@ router.put('/:id', verifyToken, requireRole(['administrator']), async (req, res)
   const { id } = req.params
   const parsed = updateSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'Invalid payload' })
-  const update: any = {}
+  const update: Record<string, any> = {}
   if (parsed.data.name) update.name = parsed.data.name
   if (parsed.data.email) update.email = parsed.data.email
   if (parsed.data.role) update.role = parsed.data.role
@@ -89,7 +89,7 @@ router.put('/:id', verifyToken, requireRole(['administrator']), async (req, res)
   if (parsed.data.password) update.passwordHash = await bcrypt.hash(parsed.data.password, 10)
   const result = await User.findByIdAndUpdate(id, update, { new: true })
   if (!result) return res.status(404).json({ error: 'Not found' })
-  res.json({ ok: true })
+  return res.json({ ok: true })
 })
 
 router.delete('/:id', verifyToken, requireRole(['administrator']), async (req, res) => {
@@ -97,7 +97,7 @@ router.delete('/:id', verifyToken, requireRole(['administrator']), async (req, r
   const { id } = req.params
   const result = await User.findByIdAndDelete(id)
   if (!result) return res.status(404).json({ error: 'Not found' })
-  res.json({ ok: true })
+  return res.json({ ok: true })
 })
 
 export default router

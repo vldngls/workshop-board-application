@@ -14,7 +14,7 @@ router.get('/', verifyToken, async (req, res) => {
     
     const { status, technician, date, search, assignedToMe, page = '1', limit = '10' } = req.query
     
-    const filter: any = {}
+    const filter: Record<string, any> = {}
     if (status) filter.status = status
     if (technician) filter.assignedTechnician = technician
     if (assignedToMe === 'true') {
@@ -36,7 +36,7 @@ router.get('/', verifyToken, async (req, res) => {
         name: { $regex: search, $options: 'i' }
       }).select('_id').lean()
       
-      const technicianIds = matchingTechnicians.map(tech => tech._id)
+      const technicianIds = matchingTechnicians.map((tech: any) => tech._id)
       
       filter.$or = [
         { jobNumber: { $regex: search, $options: 'i' } },
@@ -64,7 +64,7 @@ router.get('/', verifyToken, async (req, res) => {
     
     const totalPages = Math.ceil(total / limitNum)
     
-    res.json({ 
+    return res.json({ 
       jobOrders,
       pagination: {
         currentPage: pageNum,
@@ -77,7 +77,7 @@ router.get('/', verifyToken, async (req, res) => {
     })
   } catch (error) {
     console.error('Error fetching job orders:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -99,7 +99,7 @@ router.get('/technicians/available', verifyToken, async (req, res) => {
     // Find technicians with conflicting job orders
     const conflictingJobs = await JobOrder.find({
       date: {
-        $gte: new Date(jobDate.toISOString().split('T')[0]),
+        $gte: new Date(jobDate.toISOString().split('T')[0] || ''),
         $lt: new Date(new Date(jobDate).setDate(jobDate.getDate() + 1))
       },
       $or: [
@@ -110,7 +110,7 @@ router.get('/technicians/available', verifyToken, async (req, res) => {
       ]
     }).select('assignedTechnician')
     
-    const busyTechnicianIds = conflictingJobs.map(job => job.assignedTechnician)
+    const busyTechnicianIds = conflictingJobs.map((job: any) => job.assignedTechnician)
     
     // Get all technicians excluding busy ones
     const availableTechnicians = await User.find({
@@ -118,10 +118,10 @@ router.get('/technicians/available', verifyToken, async (req, res) => {
       _id: { $nin: busyTechnicianIds }
     }).select('name email level').lean()
     
-    res.json({ technicians: availableTechnicians })
+    return res.json({ technicians: availableTechnicians })
   } catch (error) {
     console.error('Error fetching available technicians:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -139,7 +139,7 @@ router.get('/available-for-slot', verifyToken, async (req, res) => {
     // Calculate available duration in minutes
     const [startHour, startMinute] = (startTime as string).split(':').map(Number)
     const [endHour, endMinute] = (endTime as string).split(':').map(Number)
-    const availableMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute)
+    const availableMinutes = ((endHour || 0) * 60 + (endMinute || 0)) - ((startHour || 0) * 60 + (startMinute || 0))
     
     // Find unassigned jobs (no technician or in FP status - for plotting)
     // that could fit in this time slot
@@ -176,14 +176,14 @@ router.get('/available-for-slot', verifyToken, async (req, res) => {
       }
     })
     
-    res.json({ 
+    return res.json({ 
       jobs: jobsWithFitInfo,
       availableMinutes,
       timeSlot: { start: startTime, end: endTime }
     })
   } catch (error) {
     console.error('Error fetching available jobs for slot:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -216,10 +216,10 @@ router.get('/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ error: 'Job order not found' })
     }
     
-    res.json({ jobOrder })
+    return res.json({ jobOrder })
   } catch (error) {
     console.error('Error fetching job order:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -283,7 +283,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     const conflictingJob = await JobOrder.findOne({
       assignedTechnician,
       date: {
-        $gte: new Date(jobDate.toISOString().split('T')[0]),
+        $gte: new Date(jobDate.toISOString().split('T')[0] || ''),
         $lt: new Date(new Date(jobDate).setDate(jobDate.getDate() + 1))
       },
       $or: [
@@ -335,10 +335,10 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    res.status(201).json({ jobOrder: populatedJobOrder })
+    return res.status(201).json({ jobOrder: populatedJobOrder })
   } catch (error) {
     console.error('Error creating job order:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -499,10 +499,10 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    res.json({ jobOrder: updatedJobOrder })
+    return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error updating job order:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -516,10 +516,10 @@ router.delete('/:id', verifyToken, requireRole(['administrator', 'job-controller
       return res.status(404).json({ error: 'Job order not found' })
     }
     
-    res.json({ message: 'Job order deleted successfully' })
+    return res.json({ message: 'Job order deleted successfully' })
   } catch (error) {
     console.error('Error deleting job order:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -542,10 +542,10 @@ router.patch('/:id/toggle-important', verifyToken, requireRole(['administrator',
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    res.json({ jobOrder: updatedJobOrder })
+    return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error toggling important status:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -560,13 +560,13 @@ router.patch('/:id/submit-qi', verifyToken, requireRole(['administrator', 'job-c
     }
     
     // Check if all tasks are finished
-    const allTasksFinished = jobOrder.jobList.every(task => task.status === 'Finished')
+    const allTasksFinished = jobOrder.jobList.every((task: any) => task.status === 'Finished')
     if (!allTasksFinished) {
       return res.status(400).json({ error: 'Cannot submit for QI: Not all tasks are finished' })
     }
     
     // Check if all parts are available
-    const allPartsAvailable = jobOrder.parts.every(part => part.availability === 'Available')
+    const allPartsAvailable = jobOrder.parts.every((part: any) => part.availability === 'Available')
     if (!allPartsAvailable) {
       return res.status(400).json({ error: 'Cannot submit for QI: Not all parts are available' })
     }
@@ -581,10 +581,10 @@ router.patch('/:id/submit-qi', verifyToken, requireRole(['administrator', 'job-c
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    res.json({ jobOrder: updatedJobOrder })
+    return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error submitting for QI:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -612,10 +612,10 @@ router.patch('/:id/approve-qi', verifyToken, requireRole(['administrator', 'job-
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    res.json({ jobOrder: updatedJobOrder })
+    return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error approving QI:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -643,10 +643,10 @@ router.patch('/:id/reject-qi', verifyToken, requireRole(['administrator', 'job-c
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    res.json({ jobOrder: updatedJobOrder })
+    return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error rejecting QI:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -673,10 +673,10 @@ router.patch('/:id/complete', verifyToken, requireRole(['administrator', 'job-co
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    res.json({ jobOrder: updatedJobOrder })
+    return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error completing job:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -703,10 +703,10 @@ router.patch('/:id/mark-complete', verifyToken, requireRole(['administrator', 'j
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    res.json({ jobOrder: updatedJobOrder })
+    return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error marking job as complete:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -734,10 +734,10 @@ router.patch('/:id/redo', verifyToken, requireRole(['administrator', 'job-contro
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    res.json({ jobOrder: updatedJobOrder })
+    return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error redoing job:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
@@ -761,20 +761,20 @@ router.post('/mark-carry-over', verifyToken, requireRole(['administrator', 'job-
     })
     
     // Mark them as carried over
-    const updates = unfinishedJobs.map(job => {
+    const updates = unfinishedJobs.map((job: any) => {
       job.carriedOver = true
       return job.save()
     })
     
     await Promise.all(updates)
     
-    res.json({ 
+    return res.json({ 
       message: 'Unfinished jobs marked as carry over',
       count: unfinishedJobs.length
     })
   } catch (error) {
     console.error('Error marking carry over:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 })
 
