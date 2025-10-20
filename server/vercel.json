@@ -2,10 +2,9 @@
   "version": 2,
   "builds": [
     {
-      "src": "package.json",
+      "src": "dist/index.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["src/**"],
         "maxDuration": 30
       }
     }
@@ -13,7 +12,7 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/$1"
+      "dest": "/dist/index.js"
     }
   ],
   "env": {
