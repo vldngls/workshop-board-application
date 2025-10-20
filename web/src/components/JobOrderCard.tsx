@@ -471,18 +471,18 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
         <div className="flex flex-col space-y-2 min-w-0 w-44">
           <div className="text-center bg-white/60 backdrop-blur-sm rounded-lg p-2 shadow-sm">
             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Progress</div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-20 h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-3 bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-700 shadow-sm"
-                  style={{ width: `${totalTasks === 0 ? 0 : Math.round((finishedTasks / totalTasks) * 100)}%` }}
-                />
-              </div>
+            <div className="w-28 h-3 bg-gray-200 rounded-full overflow-hidden mb-1 mx-auto">
+              <div
+                className="h-3 bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-700 shadow-sm"
+                style={{ width: `${totalTasks === 0 ? 0 : Math.round((finishedTasks / totalTasks) * 100)}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <div className="text-sm font-bold text-gray-900">{finishedTasks}/{totalTasks}</div>
               <div className="text-xs text-gray-500 font-medium">
                 {totalTasks > 0 ? Math.round((finishedTasks / totalTasks) * 100) : 0}%
               </div>
             </div>
-            <div className="text-sm font-bold text-gray-900">{finishedTasks}/{totalTasks}</div>
           </div>
 
           <div className="text-center bg-white/60 backdrop-blur-sm rounded-lg p-2 shadow-sm">
@@ -491,18 +491,18 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
               <div className="text-xs text-gray-500 font-medium bg-gray-50 px-2 py-1 rounded">No Parts Required</div>
             ) : (
               <>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-20 h-3 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-3 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full transition-all duration-700 shadow-sm"
-                      style={{ width: `${Math.round((partsAvailable / partsTotal) * 100)}%` }}
-                    />
-                  </div>
+                <div className="w-28 h-3 bg-gray-200 rounded-full overflow-hidden mb-1 mx-auto">
+                  <div
+                    className="h-3 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full transition-all duration-700 shadow-sm"
+                    style={{ width: `${Math.round((partsAvailable / partsTotal) * 100)}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="text-sm font-bold text-gray-900">{partsAvailable}/{partsTotal}</div>
                   <div className="text-xs text-gray-500 font-medium">
                     {Math.round((partsAvailable / partsTotal) * 100)}%
                   </div>
                 </div>
-                <div className="text-sm font-bold text-gray-900">{partsAvailable}/{partsTotal}</div>
               </>
             )}
           </div>
