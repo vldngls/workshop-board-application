@@ -153,7 +153,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
 
   return createPortal(
     <div className="modal-backdrop">
-      <div className="floating-card max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+      <div className="ios-card max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-content">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Add New Job Order</h2>

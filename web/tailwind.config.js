@@ -14,10 +14,11 @@ module.exports = {
         },
         'ford-blue': '#003478',
         'ford-blue-light': '#0047a8',
-        // iOS 26 Inspired Colors
+        // iOS 26 Inspired Colors - Unified with Ford Blue
         ios: {
-          primary: '#007AFF',
-          'primary-dark': '#0056CC',
+          primary: '#003478',
+          'primary-dark': '#002a5c',
+          'primary-light': '#0047a8',
           secondary: '#5856D6',
           success: '#34C759',
           warning: '#FF9500',

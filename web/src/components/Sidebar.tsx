@@ -48,6 +48,7 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
   const { title, items } = getNavForRole(userInfo.role)
   const pathname = usePathname()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   // Get user info from server
   useEffect(() => {
@@ -101,7 +102,29 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
   }
 
   return (
-    <aside className="fixed top-0 left-0 w-64 min-w-64 max-w-64 flex-shrink-0 p-4 flex flex-col h-screen overflow-hidden ios-card border-r border-gray-200 z-10">
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg border border-gray-200"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`fixed top-0 left-0 w-64 min-w-64 max-w-64 flex-shrink-0 p-4 flex flex-col h-screen overflow-hidden ios-card border-r border-gray-200 z-10 transition-transform duration-300 ease-in-out ${
+        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      }`}>
       <div>
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
@@ -135,6 +158,7 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
             <Link 
               key={item.href} 
               href={item.href}
+              onClick={() => setIsMobileMenuOpen(false)}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${
                 item.href === "/dashboard" 
                   ? (pathname === "/dashboard" ? "ford-gradient text-white shadow-lg" : "text-gray-700 hover:bg-gray-100")
@@ -156,7 +180,8 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
           {isLoggingOut ? "Logging out..." : "Logout"}
         </button>
       </form>
-    </aside>
+      </aside>
+    </>
   )
 }
 

@@ -90,7 +90,7 @@ export default function LoginPage() {
           {mounted ? (
             <form onSubmit={onSubmit} className="space-y-6" autoComplete="on">
               <div className="space-y-5">
-                <div>
+                <div className="form-field">
                   <label className="ios-label">
                     Email or Username
                   </label>
@@ -100,7 +100,7 @@ export default function LoginPage() {
                       onChange={(e) => setEmailOrUsername(e.target.value)} 
                       type="text" 
                       required 
-                      className="w-full pl-4 pr-12 py-3" 
+                      className="ios-input pl-4 pr-12" 
                       placeholder="Email or username"
                       autoComplete="username email" 
                     />
@@ -112,7 +112,7 @@ export default function LoginPage() {
                   </div>
                 </div>
                 
-                <div>
+                <div className="form-field">
                   <label className="ios-label">
                     Password
                   </label>
@@ -122,7 +122,7 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)} 
                       type={showPassword ? "text" : "password"}
                       required 
-                      className="w-full pl-4 pr-12 py-3" 
+                      className="ios-input pl-4 pr-12" 
                       placeholder="Password"
                       autoComplete="current-password" 
                     />
@@ -147,7 +147,7 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 animate-fade-in">
+                <div className="form-error bg-red-50 border border-red-200 rounded-xl p-4 animate-fade-in">
                   <div className="flex items-center">
                     <svg className="h-5 w-5 text-red-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -160,16 +160,7 @@ export default function LoginPage() {
               <button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #003478 0%, #0047a8 100%)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #0047a8 0%, #003478 100%)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #003478 0%, #0047a8 100%)'
-                }}
+                className="btn w-full"
               >
                 {isLoading ? (
                   <>

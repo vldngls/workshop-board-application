@@ -26,12 +26,12 @@ export default function ConfirmDialog({
   if (!isOpen) return null
 
   const confirmButtonClass = confirmVariant === 'danger'
-    ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white'
-    : 'bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue text-white'
+    ? 'btn-destructive'
+    : 'btn'
 
   return createPortal(
     <div className="modal-backdrop">
-      <div className="floating-card max-w-md w-full animate-fade-in">
+      <div className="ios-card max-w-md w-full modal-content">
         <div className="p-6">
           <h3 className="text-xl font-bold text-neutral-900 mb-3">
             {title}
@@ -42,13 +42,13 @@ export default function ConfirmDialog({
           <div className="flex gap-3 justify-end">
             <button
               onClick={onCancel}
-              className="px-6 py-2.5 bg-white/50 hover:bg-white/70 rounded-xl font-semibold text-neutral-700 transition-all duration-200 border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
+              className="btn-secondary"
             >
               {cancelLabel}
             </button>
             <button
               onClick={onConfirm}
-              className={`px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 ${confirmButtonClass}`}
+              className={confirmButtonClass}
             >
               {confirmLabel}
             </button>

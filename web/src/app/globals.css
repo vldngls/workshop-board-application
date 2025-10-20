@@ -3,14 +3,16 @@
 @tailwind utilities;
 
 :root {
+  /* Primary Brand Colors - Ford Blue */
   --color-ford-blue: #003478;
   --color-ford-blue-light: #0047a8;
   --ford-blue: #003478;
   --ford-blue-light: #0047a8;
   
-  /* iOS 26 Inspired Color System */
-  --ios-primary: #007AFF;
-  --ios-primary-dark: #0056CC;
+  /* Unified Color System - Based on Ford Blue */
+  --ios-primary: #003478;
+  --ios-primary-dark: #002a5c;
+  --ios-primary-light: #0047a8;
   --ios-secondary: #5856D6;
   --ios-success: #34C759;
   --ios-warning: #FF9500;
@@ -103,8 +105,8 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* iOS 26 Inspired Card System */
-.ios-card {
+/* Unified Card System */
+.ios-card, .floating-card {
   background: var(--ios-bg-primary);
   border-radius: 16px;
   box-shadow: var(--ios-shadow-md);
@@ -112,7 +114,7 @@ body {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.ios-card:hover {
+.ios-card:hover, .floating-card:hover {
   box-shadow: var(--ios-shadow-lg);
   transform: translateY(-1px);
 }
@@ -130,33 +132,24 @@ body {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
 }
 
-/* Legacy floating-card for backward compatibility */
-.floating-card {
-  background: var(--ios-bg-primary);
-  border-radius: 16px;
-  box-shadow: var(--ios-shadow-md);
-  border: 1px solid var(--ios-gray-2);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.floating-card:hover {
-  box-shadow: var(--ios-shadow-lg);
-  transform: translateY(-1px);
-}
-
-/* Modal Backdrop with Enhanced Blur */
+/* Enhanced Modal Backdrop */
 .modal-backdrop {
   @apply fixed inset-0 flex items-center justify-center p-4;
   z-index: 99999;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
-  animation: fadeIn 0.2s ease-out;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
+}
+
+.modal-content {
+  animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
 }
 
 @keyframes fadeIn {
@@ -168,28 +161,52 @@ body {
   }
 }
 
-/* iOS 26 Inspired Button System */
-.ios-button {
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Unified Button System */
+.btn, .ios-button {
   @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-base font-semibold transition-all duration-200;
-  background: var(--ios-primary);
+  background: linear-gradient(135deg, var(--ios-primary) 0%, var(--ios-primary-light) 100%);
   color: white;
   border: none;
   box-shadow: var(--ios-shadow-sm);
   min-height: 44px; /* iOS minimum touch target */
 }
 
-.ios-button:hover {
-  background: var(--ios-primary-dark);
+.btn:hover, .ios-button:hover {
+  background: linear-gradient(135deg, var(--ios-primary-light) 0%, var(--ios-primary) 100%);
   box-shadow: var(--ios-shadow-md);
   transform: translateY(-1px);
 }
 
-.ios-button:active {
+.btn:active, .ios-button:active {
   transform: translateY(0);
   box-shadow: var(--ios-shadow-sm);
 }
 
-.ios-button:disabled {
+.btn:disabled, .ios-button:disabled {
   background: var(--ios-gray-4);
   color: var(--ios-gray-6);
   cursor: not-allowed;
@@ -197,44 +214,167 @@ body {
   box-shadow: none;
 }
 
-.ios-button-secondary {
+.btn-secondary, .ios-button-secondary {
   background: var(--ios-bg-primary);
   color: var(--ios-primary);
   border: 1px solid var(--ios-gray-3);
 }
 
-.ios-button-secondary:hover {
+.btn-secondary:hover, .ios-button-secondary:hover {
   background: var(--ios-gray-1);
   border-color: var(--ios-gray-4);
 }
 
-.ios-button-destructive {
+.btn-destructive, .ios-button-destructive {
   background: var(--ios-error);
 }
 
-.ios-button-destructive:hover {
+.btn-destructive:hover, .ios-button-destructive:hover {
   background: #D70015;
 }
 
-/* Legacy button styles for backward compatibility */
-.btn {
-  @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-base font-semibold transition-all duration-200;
-  background: linear-gradient(135deg, var(--ford-blue) 0%, var(--ford-blue-light) 100%);
-  color: white;
-  border: none;
-  box-shadow: var(--ios-shadow-sm);
-  min-height: 44px; /* iOS minimum touch target */
+/* Unified Form Input System */
+.ios-input {
+  @apply w-full px-4 py-3 rounded-xl border border-gray-300 text-gray-900 placeholder-gray-500 transition-all duration-200;
+  background: var(--ios-bg-primary);
+  font-size: 16px; /* Prevents zoom on iOS */
 }
 
-.btn:hover {
-  background: linear-gradient(135deg, var(--ford-blue-light) 0%, var(--ford-blue) 100%);
-  box-shadow: var(--ios-shadow-md);
-  transform: translateY(-1px);
+.ios-input:focus {
+  outline: none;
+  border-color: var(--ios-primary);
+  box-shadow: 0 0 0 3px rgba(0, 52, 120, 0.1);
+  background: var(--ios-bg-primary);
 }
 
-.btn:active {
-  transform: translateY(0);
-  box-shadow: var(--ios-shadow-sm);
+.ios-input:disabled {
+  background: var(--ios-gray-1);
+  color: var(--ios-gray-6);
+  cursor: not-allowed;
+}
+
+.ios-label {
+  @apply block text-sm font-semibold text-gray-700 mb-2;
+}
+
+.ios-select {
+  @apply w-full px-4 py-3 rounded-xl border border-gray-300 text-gray-900 transition-all duration-200;
+  background: var(--ios-bg-primary);
+  font-size: 16px;
+}
+
+.ios-select:focus {
+  outline: none;
+  border-color: var(--ios-primary);
+  box-shadow: 0 0 0 3px rgba(0, 52, 120, 0.1);
+}
+
+/* Form Validation States */
+.ios-input.error, .ios-select.error {
+  border-color: var(--ios-error);
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.1);
+}
+
+.ios-input.success, .ios-select.success {
+  border-color: var(--ios-success);
+  box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.1);
+}
+
+.ios-input.warning, .ios-select.warning {
+  border-color: var(--ios-warning);
+  box-shadow: 0 0 0 3px rgba(255, 149, 0, 0.1);
+}
+
+/* Form Error Messages */
+.form-error {
+  @apply text-sm text-red-600 mt-1 flex items-center gap-1;
+}
+
+.form-success {
+  @apply text-sm text-green-600 mt-1 flex items-center gap-1;
+}
+
+.form-warning {
+  @apply text-sm text-yellow-600 mt-1 flex items-center gap-1;
+}
+
+/* Form Field Container */
+.form-field {
+  @apply space-y-1;
+}
+
+.form-field.error .ios-label {
+  @apply text-red-600;
+}
+
+.form-field.success .ios-label {
+  @apply text-green-600;
+}
+
+.form-field.warning .ios-label {
+  @apply text-yellow-600;
+}
+
+/* Loading States */
+.loading-spinner {
+  @apply inline-block w-5 h-5 border-2 border-gray-300 border-t-transparent rounded-full animate-spin;
+}
+
+.loading-skeleton {
+  @apply bg-gray-200 rounded animate-pulse;
+}
+
+.loading-skeleton-text {
+  @apply bg-gray-200 rounded h-4 animate-pulse;
+}
+
+.loading-skeleton-button {
+  @apply bg-gray-200 rounded-xl h-11 animate-pulse;
+}
+
+.loading-skeleton-card {
+  @apply bg-gray-200 rounded-2xl h-32 animate-pulse;
+}
+
+/* Status Indicators */
+.status-indicator {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.status-success {
+  @apply bg-green-100 text-green-800;
+}
+
+.status-warning {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.status-error {
+  @apply bg-red-100 text-red-800;
+}
+
+.status-info {
+  @apply bg-blue-100 text-blue-800;
+}
+
+/* Responsive Design Utilities */
+@media (max-width: 768px) {
+  .modal-backdrop {
+    @apply p-2;
+  }
+  
+  .ios-card {
+    @apply mx-2;
+  }
+  
+  .btn, .ios-button {
+    @apply text-sm px-4 py-2;
+    min-height: 40px;
+  }
+  
+  .ios-input, .ios-select {
+    @apply text-base; /* Prevents zoom on iOS */
+  }
 }
 
 .btn-primary {

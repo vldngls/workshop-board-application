@@ -22,6 +22,7 @@ import {
   FiSettings as FiWrench
 } from 'react-icons/fi'
 import type { JobOrder } from '@/types/jobOrder'
+import SkeletonLoader from '@/components/SkeletonLoader'
 
 interface DashboardStats {
   total: number
@@ -449,16 +450,29 @@ export default function MainDashboard() {
 
       {/* iOS 26 Inspired Statistics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-        {/* Total Jobs */}
-        <Link href="/dashboard/job-orders" className="group ios-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
-          <div className="flex flex-col items-center text-center">
-            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-gray-200 transition-colors duration-200">
-              <FiClipboard size={20} color="#6b7280" />
+        {loading ? (
+          // Skeleton loading for statistics
+          Array.from({ length: 8 }).map((_, index) => (
+            <div key={index} className="ios-card p-4">
+              <div className="flex flex-col items-center text-center">
+                <SkeletonLoader type="avatar" className="mb-3" />
+                <SkeletonLoader type="text" lines={1} className="mb-1" width="60%" />
+                <SkeletonLoader type="text" lines={1} width="40%" />
+              </div>
             </div>
-            <p className="text-xs font-semibold mb-1" style={{color: 'var(--ios-text-tertiary)'}}>Total</p>
-            <p className="text-xl font-bold" style={{color: 'var(--ios-text-primary)'}}>{stats.total}</p>
-          </div>
-        </Link>
+          ))
+        ) : (
+          <>
+            {/* Total Jobs */}
+            <Link href="/dashboard/job-orders" className="group ios-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mb-3 group-hover:bg-gray-200 transition-colors duration-200">
+                  <FiClipboard size={20} color="#6b7280" />
+                </div>
+                <p className="text-xs font-semibold mb-1" style={{color: 'var(--ios-text-tertiary)'}}>Total</p>
+                <p className="text-xl font-bold" style={{color: 'var(--ios-text-primary)'}}>{stats.total}</p>
+              </div>
+            </Link>
 
         {/* On Going */}
         <Link href="/dashboard/job-orders?filter=OG" className="group ios-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
@@ -536,14 +550,33 @@ export default function MainDashboard() {
             <p className="text-xl font-bold" style={{color: 'var(--ios-text-primary)'}}>{stats.finishedUnclaimed}</p>
           </div>
         </Link>
+          </>
+        )}
       </div>
 
       {/* Quick Stats Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Status Breakdown */}
-        <div className="floating-card p-5">
-          <h3 className="text-lg font-bold mb-3 text-gray-900">Status Breakdown</h3>
-          <div className="space-y-2">
+        {loading ? (
+          // Skeleton loading for breakdown cards
+          Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="ios-card p-5">
+              <SkeletonLoader type="text" lines={1} className="mb-3" width="60%" />
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, lineIndex) => (
+                  <div key={lineIndex} className="flex justify-between items-center">
+                    <SkeletonLoader type="text" lines={1} width="70%" />
+                    <SkeletonLoader type="text" lines={1} width="20%" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        ) : (
+          <>
+            {/* Status Breakdown */}
+            <div className="ios-card p-5">
+              <h3 className="text-lg font-bold mb-3 text-gray-900">Status Breakdown</h3>
+              <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">On Going (OG)</span>
               <span className="font-semibold text-blue-600">{stats.onGoing}</span>
@@ -653,6 +686,8 @@ export default function MainDashboard() {
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* Pending Job Orders Section - Horizontal Scroll */}

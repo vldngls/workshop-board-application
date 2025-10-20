@@ -41,7 +41,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   return (
     <div className="h-screen overflow-hidden" style={{background: 'var(--ios-bg-secondary)'}}>
       <Sidebar role={role} name={name ?? null} />
-      <main className="ml-64 h-full overflow-auto p-6 min-w-0 transition-all duration-300 ease-in-out">{children}</main>
+      <main className="ml-0 md:ml-64 h-full overflow-auto p-4 md:p-6 min-w-0 transition-all duration-300 ease-in-out">{children}</main>
     </div>
   )
 }
