@@ -71,6 +71,7 @@ export default function MainDashboard() {
   const [showJobDetailsModal, setShowJobDetailsModal] = useState(false)
   const [selectedJobForDetails, setSelectedJobForDetails] = useState<JobOrderWithTechnician | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [isCheckingCarryOver, setIsCheckingCarryOver] = useState(false)
   
   // Break time settings (stored in localStorage)
   const [breakStart, setBreakStart] = useState('12:00')
@@ -126,6 +127,11 @@ export default function MainDashboard() {
     // Only fetch dashboard data for non-technicians
     if (userRole && userRole !== 'technician') {
       fetchDashboardData()
+      
+      // Auto-check for carry-over jobs if user is admin or job-controller
+      if (userRole === 'administrator' || userRole === 'job-controller') {
+        handleCheckCarryOver()
+      }
     }
   }, [userRole])
 
@@ -233,6 +239,36 @@ export default function MainDashboard() {
       console.error('Error fetching dashboard data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCheckCarryOver = async () => {
+    if (isCheckingCarryOver) return
+    
+    setIsCheckingCarryOver(true)
+    try {
+      const response = await fetch('/api/job-orders/check-carry-over', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(`Found and processed ${data.count} carry-over job(s)`)
+        // Refresh dashboard data
+        fetchDashboardData()
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.error || 'Failed to check carry-over jobs')
+      }
+    } catch (error) {
+      console.error('Error checking carry-over:', error)
+      toast.error('Failed to check carry-over jobs')
+    } finally {
+      setIsCheckingCarryOver(false)
     }
   }
 
@@ -844,6 +880,28 @@ export default function MainDashboard() {
             <div className="flex-1">
               <h3 className="font-bold text-lg text-slate-900 mb-1">Break Settings</h3>
               <p className="text-sm text-slate-600 font-medium">{breakStart} - {breakEnd}</p>
+            </div>
+          </div>
+        </button>
+
+        <button 
+          onClick={handleCheckCarryOver} 
+          disabled={isCheckingCarryOver}
+          className="group ios-card p-6 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200 text-left disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
+              {isCheckingCarryOver ? (
+                <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <FiRefreshCw size={20} color="#475569" />
+              )}
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-lg text-slate-900 mb-1">Check Carry-Over</h3>
+              <p className="text-sm text-slate-600 font-medium">
+                {isCheckingCarryOver ? 'Checking...' : 'Process previous day jobs'}
+              </p>
             </div>
           </div>
         </button>

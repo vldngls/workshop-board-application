@@ -2,7 +2,22 @@
 
 import { useState, memo, useCallback, MouseEvent } from 'react'
 import toast from 'react-hot-toast'
-import { FiCalendar, FiRefreshCw, FiAlertTriangle, FiClock, FiUser, FiTool, FiPackage } from 'react-icons/fi'
+import { 
+  FiCalendar, 
+  FiRefreshCw, 
+  FiAlertTriangle, 
+  FiClock, 
+  FiUser, 
+  FiTool, 
+  FiPackage,
+  FiEdit3,
+  FiCheck,
+  FiX,
+  FiChevronDown,
+  FiChevronUp,
+  FiPlus,
+  FiTrash2
+} from 'react-icons/fi'
 import type { JobOrder, JobStatus, JobItemStatus } from '@/types/jobOrder'
 import { 
   useUpdateJobOrderStatus, 
@@ -57,10 +72,9 @@ const STATUS_ACCENT: Record<JobStatus, string> = {
 }
 
 function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
-  const [showStatusModal, setShowStatusModal] = useState(false)
-  const [showJobTasksModal, setShowJobTasksModal] = useState(false)
-  const [showPartsModal, setShowPartsModal] = useState(false)
-  const [showTechnicianModal, setShowTechnicianModal] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [editingValue, setEditingValue] = useState('')
   const [updatingTaskIndex, setUpdatingTaskIndex] = useState<number | null>(null)
   const [updatingPartIndex, setUpdatingPartIndex] = useState<number | null>(null)
 
@@ -69,11 +83,11 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
   const updateJobMutation = useUpdateJobOrder()
   const toggleImportantMutation = useToggleImportant()
 
-  // Fetch available technicians when modal opens
+  // Fetch available technicians when needed
   const { data: availableTechnicians = [] } = useAvailableTechnicians(
-    showTechnicianModal ? jobOrder.date.split('T')[0] : undefined,
-    showTechnicianModal ? jobOrder.timeRange.start : undefined,
-    showTechnicianModal ? jobOrder.timeRange.end : undefined
+    jobOrder.date.split('T')[0],
+    jobOrder.timeRange.start,
+    jobOrder.timeRange.end
   )
 
   const getStatusColor = useCallback((status: JobStatus) => {
@@ -89,12 +103,29 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
     return `${diffHours}h ${diffMinutes}m`
   }, [])
 
+  const formatDate = useCallback((dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  }, [])
+
+  const calculateDaysInWorkshop = useCallback(() => {
+    if (!jobOrder.originalCreatedDate) return 0
+    const today = new Date()
+    const createdDate = new Date(jobOrder.originalCreatedDate)
+    const diffTime = Math.abs(today.getTime() - createdDate.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }, [jobOrder.originalCreatedDate])
+
   const handleStatusUpdate = useCallback(async (newStatus: JobStatus) => {
     updateStatusMutation.mutate(
       { id: jobOrder._id, status: newStatus },
       {
         onSuccess: () => {
-          setShowStatusModal(false)
+          setEditingField(null)
         }
       }
     )
@@ -119,27 +150,6 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
     )
   }, [jobOrder._id, jobOrder.jobList, updateJobMutation])
 
-  const formatDate = useCallback((dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })
-  }, [])
-
-  const calculateDaysInWorkshop = useCallback(() => {
-    if (!jobOrder.originalCreatedDate) return 0
-    const today = new Date()
-    const createdDate = new Date(jobOrder.originalCreatedDate)
-    const diffTime = Math.abs(today.getTime() - createdDate.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
-  }, [jobOrder.originalCreatedDate])
-
-  const toggleImportant = useCallback(async () => {
-    toggleImportantMutation.mutate(jobOrder._id)
-  }, [jobOrder._id, toggleImportantMutation])
-
   const handlePartAvailabilityUpdate = useCallback(async (partIndex: number, newAvailability: 'Available' | 'Unavailable') => {
     setUpdatingPartIndex(partIndex)
     
@@ -149,7 +159,6 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
       availability: newAvailability
     }
     
-    // Check if all parts will be available after this update
     const allPartsAvailable = updatedParts.every(part => part.availability === 'Available')
     const hasUnavailableParts = updatedParts.some(part => part.availability === 'Unavailable')
     const wasWaitingParts = jobOrder.status === 'WP'
@@ -161,12 +170,10 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
           setUpdatingPartIndex(null)
         },
         onSuccess: () => {
-          // If all parts are now available and job was in WP status, show guidance message
           if (allPartsAvailable && wasWaitingParts) {
             toast.success('All parts are now available! Please replot this job by assigning a technician and setting the time range to add it back to the job control board.', { duration: 7000 })
           }
           
-          // If parts became unavailable, notify user about re-plotting requirement
           if (hasUnavailableParts && newAvailability === 'Unavailable' && !wasWaitingParts) {
             toast.error('Part marked unavailable. Job removed from job control board and will need to be re-plotted once parts are available.', { duration: 6000 })
           }
@@ -180,11 +187,58 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
       { id: jobOrder._id, updates: { assignedTechnician: technicianId } },
       {
         onSuccess: () => {
-          setShowTechnicianModal(false)
+          setEditingField(null)
         }
       }
     )
   }, [jobOrder._id, updateJobMutation])
+
+  const handleFieldEdit = useCallback((field: string, currentValue: string) => {
+    setEditingField(field)
+    setEditingValue(currentValue)
+  }, [])
+
+  const handleFieldSave = useCallback(async () => {
+    if (!editingField) return
+
+    const updates: any = {}
+    
+    switch (editingField) {
+      case 'plateNumber':
+        updates.plateNumber = editingValue.toUpperCase()
+        break
+      case 'vin':
+        updates.vin = editingValue.toUpperCase()
+        break
+      case 'timeRange':
+        const [start, end] = editingValue.split('-')
+        if (start && end) {
+          updates.timeRange = { start: start.trim(), end: end.trim() }
+        }
+        break
+      default:
+        return
+    }
+
+    updateJobMutation.mutate(
+      { id: jobOrder._id, updates },
+      {
+        onSuccess: () => {
+          setEditingField(null)
+          setEditingValue('')
+        }
+      }
+    )
+  }, [editingField, editingValue, jobOrder._id, updateJobMutation])
+
+  const handleFieldCancel = useCallback(() => {
+    setEditingField(null)
+    setEditingValue('')
+  }, [])
+
+  const toggleImportant = useCallback(async () => {
+    toggleImportantMutation.mutate(jobOrder._id)
+  }, [jobOrder._id, toggleImportantMutation])
 
   const totalTasks = jobOrder.jobList.length
   const finishedTasks = jobOrder.jobList.filter(j => j.status === 'Finished').length
@@ -195,18 +249,23 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
 
   return (
     <div
-      className="floating-card p-4 relative group cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-xl"
+      className="floating-card p-3 relative group transition-all duration-300 hover:shadow-lg hover:bg-white/80 w-full"
       onClick={() => onClick?.(jobOrder)}
       role={onClick ? 'button' : undefined}
       aria-label={onClick ? `Open details for job ${jobOrder.jobNumber}` : undefined}
     >
       {/* Left status accent bar */}
-      <div className={`absolute left-0 top-0 bottom-0 w-1 ${STATUS_ACCENT[jobOrder.status]}`}></div>
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${STATUS_ACCENT[jobOrder.status]} rounded-l-2xl`}></div>
+      
       {/* Important Star Button */}
       <button
         onClick={(e) => { stop(e); toggleImportant() }}
         disabled={toggleImportantMutation.isPending}
-        className={`absolute top-3 right-3 text-2xl transition-all ${jobOrder.isImportant ? 'text-yellow-400 drop-shadow-lg' : 'text-gray-300'} hover:text-yellow-400 hover:scale-125 hover:drop-shadow-xl`}
+        className={`absolute top-3 right-3 text-xl transition-all duration-200 ${
+          jobOrder.isImportant 
+            ? 'text-yellow-400 drop-shadow-lg' 
+            : 'text-gray-300 hover:text-yellow-400'
+        } hover:scale-125 hover:drop-shadow-xl`}
         title={jobOrder.isImportant ? 'Remove from important' : 'Mark as important'}
       >
         {jobOrder.isImportant ? '★' : '☆'}
@@ -215,391 +274,447 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
       {/* Source Type & Carried Over Badge */}
       <div className="absolute top-3 left-3 flex gap-1.5">
         {jobOrder.sourceType === 'appointment' && (
-          <div className="bg-blue-500/20 backdrop-blur-sm text-blue-700 px-2 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 border border-blue-300/30">
-            <FiCalendar size={14} />
+          <div className="bg-blue-500/20 backdrop-blur-sm text-blue-700 px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 border border-blue-300/30">
+            <FiCalendar size={12} />
             <span>Appointment</span>
           </div>
         )}
         {jobOrder.sourceType === 'carry-over' && (
-          <div className="bg-purple-500/20 backdrop-blur-sm text-purple-700 px-2 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 border border-purple-300/30">
-            <FiRefreshCw size={14} />
+          <div className="bg-purple-500/20 backdrop-blur-sm text-purple-700 px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 border border-purple-300/30">
+            <FiRefreshCw size={12} />
             <span>Carry-over</span>
           </div>
         )}
         {jobOrder.carriedOver && (
-          <div className="bg-red-500/20 backdrop-blur-sm text-red-700 px-2 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 border border-red-300/30">
-            <FiAlertTriangle size={14} />
+          <div className="bg-red-500/20 backdrop-blur-sm text-red-700 px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 border border-red-300/30">
+            <FiAlertTriangle size={12} />
             <span>Carried</span>
           </div>
         )}
       </div>
 
-      {/* Header */}
-      <div className="flex justify-between items-start mb-4 mt-8">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-bold text-gray-900 tracking-tight">{jobOrder.jobNumber}</h3>
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-600 uppercase">
-              <FiClock />
-              {jobOrder.timeRange.start}–{jobOrder.timeRange.end}
-            </span>
+      {/* Main Content - Enhanced Visual Hierarchy */}
+      <div className="flex items-start justify-between gap-12 mt-4 w-full">
+        {/* Column 1: Job Info */}
+        <div className="flex flex-col space-y-2 min-w-0 flex-1">
+          <div className="space-y-1">
+            <h3 className="text-2xl font-black text-gray-900 tracking-tight leading-tight">{jobOrder.jobNumber}</h3>
+            <div className="h-0.5 w-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"></div>
           </div>
-          <p className="text-xs text-gray-600 font-medium mt-0.5">{formatDate(jobOrder.date)}</p>
+          <div className="flex items-center gap-2 text-gray-700 bg-gray-50 px-2 py-1 rounded-md">
+            <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+              <FiClock size={12} className="text-blue-600" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-gray-900">{jobOrder.timeRange.start}–{jobOrder.timeRange.end}</div>
+              <div className="text-xs text-gray-500">Hours</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-gray-700 bg-gray-50 px-2 py-1 rounded-md">
+            <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
+              <FiCalendar size={12} className="text-green-600" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-gray-900">{formatDate(jobOrder.date)}</div>
+              <div className="text-xs text-gray-500">Created</div>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col items-end space-y-1 mr-8">
-          <span className={`px-3 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-sm ${getStatusColor(jobOrder.status)}`}>
-            {STATUS_LABELS[jobOrder.status]}
-          </span>
-          <button
-            onClick={(e) => { stop(e); setShowStatusModal(true) }}
-            className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-all"
-          >
-            Change
-          </button>
-        </div>
-      </div>
 
-      {/* Info Grid - Compact */}
-      <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
-        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
-          <div className="flex items-center gap-2 text-gray-600 font-medium">
-            <FiTool />
-            <span>Plate</span>
-          </div>
-          <p className="font-bold text-gray-900 mt-0.5">{jobOrder.plateNumber}</p>
-        </div>
-        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
-          <div className="flex items-center gap-2 text-gray-600 font-medium">
-            <FiPackage />
-            <span>VIN</span>
-          </div>
-          <p className="font-bold text-gray-900 font-mono truncate mt-0.5">{jobOrder.vin}</p>
-        </div>
-        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
-          <div className="flex items-center gap-2 text-gray-600 font-medium">
-            <FiClock />
-            <span>Duration</span>
-          </div>
-          <p className="font-bold text-gray-900 mt-0.5">{calculateDuration(jobOrder.timeRange.start, jobOrder.timeRange.end)}</p>
-        </div>
-        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
-          <div className="flex justify-between items-center mb-0.5">
-            <span className="flex items-center gap-2 text-gray-600 font-medium">
-              <FiUser />
-              Technician
-            </span>
-            <button
-              onClick={(e) => { stop(e); setShowTechnicianModal(true) }}
-              className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline"
-            >
-              {jobOrder.assignedTechnician ? 'Reassign' : 'Assign'}
-            </button>
-          </div>
-          <p className="font-bold truncate">
-            {jobOrder.assignedTechnician ? (
-              <span className="text-gray-900">
-                {jobOrder.assignedTechnician.name}
-                {jobOrder.assignedTechnician.level && (
-                  <span className="ml-1 text-xs text-gray-600 font-medium">({jobOrder.assignedTechnician.level})</span>
-                )}
-              </span>
-            ) : (
-              <span className="text-red-600 font-bold flex items-center gap-1">
-                <FiAlertTriangle size={14} />
-                Needs Assignment
-              </span>
-            )}
-          </p>
-        </div>
-        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50">
-          <span className="text-gray-600 font-medium">Service Advisor</span>
-          <p className="font-bold text-gray-900 mt-0.5 truncate">
-            {jobOrder.serviceAdvisor ? (
-              <span className="text-gray-900">{jobOrder.serviceAdvisor.name}</span>
-            ) : (
-              <span className="text-red-600 font-bold flex items-center gap-1">
-                <FiAlertTriangle size={14} />
-                Required
-              </span>
-            )}
-          </p>
-        </div>
-      </div>
-
-      {/* Job & Parts - Compact */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50 text-xs">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-gray-600 font-semibold">Tasks ({finishedTasks}/{totalTasks})</span>
-            <button
-              onClick={(e) => { stop(e); setShowJobTasksModal(true) }}
-              className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline"
-            >
-              Manage
-            </button>
-          </div>
-          {/* Progress bar */}
-          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-2 bg-green-500 rounded-full transition-all"
-              style={{ width: `${totalTasks === 0 ? 0 : Math.round((finishedTasks / totalTasks) * 100)}%` }}
-            />
-          </div>
-          <div className="mt-1 text-[11px] text-gray-600 font-medium">
-            {totalTasks} task{totalTasks !== 1 ? 's' : ''}
-          </div>
-        </div>
-        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-2.5 border border-white/50 text-xs">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-gray-600 font-semibold">Parts ({partsAvailable}/{partsTotal})</span>
-            <button
-              onClick={(e) => { stop(e); setShowPartsModal(true) }}
-              className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline"
-            >
-              Manage
-            </button>
-          </div>
-          <div className="flex items-center gap-2 text-[11px] font-semibold">
-            {partsTotal === 0 && <span className="text-gray-600">No parts</span>}
-            {partsTotal > 0 && partsAvailable === partsTotal && (
-              <span className="text-green-600">All available</span>
-            )}
-            {partsTotal > 0 && partsAvailable < partsTotal && (
-              <span className="text-red-600">{partsTotal - partsAvailable} missing</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Days in Workshop - Only for WP, HC, HW, HI, carry-over */}
-      {(['WP', 'HC', 'HW', 'HI'].includes(jobOrder.status) || jobOrder.carriedOver) && (
-        <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-xl text-xs">
-          <span className="text-orange-700 font-semibold">
-            📊 Days in Workshop: {calculateDaysInWorkshop()} day{calculateDaysInWorkshop() !== 1 ? 's' : ''}
-          </span>
-          {jobOrder.originalCreatedDate && (
-            <span className="text-orange-600 ml-2 font-medium">
-              (Created: {formatDate(jobOrder.originalCreatedDate)})
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Status Change Modal */}
-      {showStatusModal && (
-        <div className="modal-backdrop">
-          <div className="floating-card max-w-md w-full animate-fade-in">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-5">
-                <h3 className="text-xl font-bold text-gray-900">Change Job Order Status</h3>
+        {/* Column 2: Personnel */}
+        <div className="flex flex-col space-y-2 min-w-0 w-48">
+          <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2 shadow-sm">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Technician</div>
+            {editingField === 'technician' ? (
+              <div className="space-y-1">
+                {availableTechnicians.slice(0, 3).map((tech: any) => (
+                  <button
+                    key={tech._id}
+                    onClick={(e) => { stop(e); handleTechnicianReassign(tech._id) }}
+                    className="block w-full p-1.5 rounded text-xs font-semibold text-left bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all"
+                  >
+                    {tech.name}
+                  </button>
+                ))}
                 <button
-                  onClick={() => setShowStatusModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
+                  onClick={(e) => { stop(e); handleFieldCancel() }}
+                  className="block w-full p-1.5 rounded text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200"
                 >
-                  ×
+                  Cancel
                 </button>
               </div>
-              
-              <div className="space-y-4">
-                <p className="text-sm text-gray-700 font-medium">
-                  Current status: <span className="font-bold">{STATUS_LABELS[jobOrder.status]}</span>
-                </p>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  {Object.entries(STATUS_LABELS).map(([status, label]) => (
-                    <button
-                      key={status}
-                      onClick={() => handleStatusUpdate(status as JobStatus)}
-                      disabled={updateStatusMutation.isPending || status === jobOrder.status}
-                      className={`p-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                        status === jobOrder.status
-                          ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
-                          : 'bg-blue-500/20 text-blue-700 hover:bg-blue-500/30 border border-blue-300/30 hover:shadow-lg hover:-translate-y-0.5'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  {jobOrder.assignedTechnician ? (
+                    <div>
+                      <div className="text-sm font-bold text-gray-900 truncate">
+                        {jobOrder.assignedTechnician.name}
+                      </div>
+                      {jobOrder.assignedTechnician.level && (
+                        <div className="text-xs text-blue-600 font-medium">L{jobOrder.assignedTechnician.level}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-red-600 font-bold flex items-center gap-1">
+                      <FiAlertTriangle size={12} />
+                      <span className="text-xs">Unassigned</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => { stop(e); handleFieldEdit('technician', '') }}
+                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 rounded hover:bg-gray-100"
+                >
+                  <FiEdit3 size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2 shadow-sm">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Service Advisor</div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                {jobOrder.serviceAdvisor ? (
+                  <div>
+                    <div className="text-sm font-bold text-gray-900 truncate">{jobOrder.serviceAdvisor.name}</div>
+                    <div className="text-xs text-green-600 font-medium">Assigned</div>
+                  </div>
+                ) : (
+                  <div className="text-red-600 font-bold flex items-center gap-1">
+                    <FiAlertTriangle size={12} />
+                    <span className="text-xs">Required</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Column 3: Vehicle Info */}
+        <div className="flex flex-col space-y-2 min-w-0 w-52">
+          <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2 shadow-sm">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Plate Number</div>
+            {editingField === 'plateNumber' ? (
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={editingValue}
+                  onChange={(e) => setEditingValue(e.target.value)}
+                  className="w-full px-2 py-1 text-sm font-bold border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleFieldSave()
+                    if (e.key === 'Escape') handleFieldCancel()
+                  }}
+                />
+                <button onClick={(e) => { stop(e); handleFieldSave() }} className="text-green-600 p-0.5 rounded hover:bg-green-50">
+                  <FiCheck size={14} />
+                </button>
+                <button onClick={(e) => { stop(e); handleFieldCancel() }} className="text-red-600 p-0.5 rounded hover:bg-red-50">
+                  <FiX size={14} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <div className="text-lg font-black text-gray-900 tracking-wide">{jobOrder.plateNumber}</div>
+                </div>
+                <button
+                  onClick={(e) => { stop(e); handleFieldEdit('plateNumber', jobOrder.plateNumber) }}
+                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 rounded hover:bg-gray-100"
+                >
+                  <FiEdit3 size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2 shadow-sm">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">VIN</div>
+            {editingField === 'vin' ? (
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={editingValue}
+                  onChange={(e) => setEditingValue(e.target.value)}
+                  className="w-full px-2 py-1 text-xs font-bold border border-gray-300 rounded font-mono focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleFieldSave()
+                    if (e.key === 'Escape') handleFieldCancel()
+                  }}
+                />
+                <button onClick={(e) => { stop(e); handleFieldSave() }} className="text-green-600 p-0.5 rounded hover:bg-green-50">
+                  <FiCheck size={14} />
+                </button>
+                <button onClick={(e) => { stop(e); handleFieldCancel() }} className="text-red-600 p-0.5 rounded hover:bg-red-50">
+                  <FiX size={14} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-gray-900 font-mono tracking-wide">{jobOrder.vin}</div>
+                </div>
+                <button
+                  onClick={(e) => { stop(e); handleFieldEdit('vin', jobOrder.vin) }}
+                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 rounded hover:bg-gray-100"
+                >
+                  <FiEdit3 size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Column 4: Progress & Parts */}
+        <div className="flex flex-col space-y-2 min-w-0 w-44">
+          <div className="text-center bg-white/60 backdrop-blur-sm rounded-lg p-2 shadow-sm">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Progress</div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-20 h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-3 bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-700 shadow-sm"
+                  style={{ width: `${totalTasks === 0 ? 0 : Math.round((finishedTasks / totalTasks) * 100)}%` }}
+                />
+              </div>
+              <div className="text-xs text-gray-500 font-medium">
+                {totalTasks > 0 ? Math.round((finishedTasks / totalTasks) * 100) : 0}%
+              </div>
+            </div>
+            <div className="text-sm font-bold text-gray-900">{finishedTasks}/{totalTasks}</div>
+          </div>
+
+          <div className="text-center bg-white/60 backdrop-blur-sm rounded-lg p-2 shadow-sm">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Parts Status</div>
+            {partsTotal === 0 ? (
+              <div className="text-xs text-gray-500 font-medium bg-gray-50 px-2 py-1 rounded">No Parts Required</div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-20 h-3 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-3 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full transition-all duration-700 shadow-sm"
+                      style={{ width: `${Math.round((partsAvailable / partsTotal) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-gray-500 font-medium">
+                    {Math.round((partsAvailable / partsTotal) * 100)}%
+                  </div>
+                </div>
+                <div className="text-sm font-bold text-gray-900">{partsAvailable}/{partsTotal}</div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Column 5: Status & Expand */}
+        <div className="flex flex-col items-center gap-2 min-w-0 w-36">
+          <div className="text-center">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Status</div>
+            {editingField === 'status' ? (
+              <div className="space-y-1 max-h-32 overflow-y-auto bg-white rounded border border-gray-200 p-1">
+                {Object.entries(STATUS_LABELS).map(([status, label]) => (
+                  <button
+                    key={status}
+                    onClick={(e) => { stop(e); handleStatusUpdate(status as JobStatus) }}
+                    disabled={updateStatusMutation.isPending || status === jobOrder.status}
+                    className={`block w-full p-1.5 rounded text-xs font-semibold transition-all ${
+                      status === jobOrder.status
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <span className={`px-3 py-2 rounded-lg text-xs font-bold backdrop-blur-sm shadow-sm ${getStatusColor(jobOrder.status)}`}>
+                  {STATUS_LABELS[jobOrder.status]}
+                </span>
+                <button
+                  onClick={(e) => { stop(e); handleFieldEdit('status', jobOrder.status) }}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-all flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100"
+                >
+                  <FiEdit3 size={10} />
+                  Change
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="text-center">
+            <button
+              onClick={(e) => { stop(e); setIsExpanded(!isExpanded) }}
+              className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-lg hover:bg-gray-100 bg-white/60 backdrop-blur-sm shadow-sm"
+              title={isExpanded ? 'Collapse details' : 'Expand details'}
+            >
+              {isExpanded ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Expandable Details - Optimized Horizontal Layout */}
+      {isExpanded && (
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Tasks Section */}
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/50">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-base font-bold text-gray-800 flex items-center gap-2">
+                  <FiTool size={18} />
+                  Tasks Progress
+                </h4>
+                <div className="text-sm text-gray-600 font-semibold">
+                  {finishedTasks}/{totalTasks} ({totalTasks > 0 ? Math.round((finishedTasks / totalTasks) * 100) : 0}%)
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Job Tasks Modal */}
-      {showJobTasksModal && (
-        <div className="modal-backdrop">
-          <div className="floating-card max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-5">
-                <h3 className="text-xl font-bold text-gray-900">Manage Job Tasks</h3>
-                <button
-                  onClick={() => setShowJobTasksModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
-                >
-                  ×
-                </button>
-              </div>
-              
               <div className="space-y-3">
-                {jobOrder.jobList.map((job, index) => (
-                  <div key={index} className="bg-white/50 backdrop-blur-sm border border-white/50 rounded-xl p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <h4 className="font-bold text-gray-900">{job.description}</h4>
-                      <span className={`px-3 py-1 rounded-xl text-xs font-semibold backdrop-blur-sm ${
-                        job.status === 'Finished' 
-                          ? 'bg-green-500/20 text-green-700 border border-green-300/30' 
-                          : 'bg-gray-500/20 text-gray-700 border border-gray-300/30'
-                      }`}>
-                        {job.status}
-                      </span>
+                {jobOrder.jobList.map((task, index) => (
+                  <div key={index} className="p-3 bg-white/50 rounded-lg border border-white/30">
+                    <div className="mb-2">
+                      <span className="font-medium text-gray-800 text-sm">{task.description}</span>
                     </div>
-                    
-                    <div className="flex space-x-2">
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => handleJobTaskUpdate(index, 'Finished')}
-                        disabled={updatingTaskIndex === index || job.status === 'Finished'}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
-                          job.status === 'Finished'
-                            ? 'bg-green-500/20 text-green-400 cursor-not-allowed border border-green-300/30'
-                            : 'bg-green-500/20 text-green-700 hover:bg-green-500/30 border border-green-300/30 hover:shadow-lg hover:-translate-y-0.5'
+                        onClick={(e) => { stop(e); handleJobTaskUpdate(index, 'Finished') }}
+                        disabled={updatingTaskIndex === index || task.status === 'Finished'}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          task.status === 'Finished'
+                            ? 'bg-green-500 text-white shadow-sm cursor-not-allowed'
+                            : 'bg-green-500/20 text-green-700 hover:bg-green-500/30 hover:shadow-md'
                         }`}
                       >
-                        Mark Finished
+                        {updatingTaskIndex === index ? '...' : '✓ Finished'}
                       </button>
                       <button
-                        onClick={() => handleJobTaskUpdate(index, 'Unfinished')}
-                        disabled={updatingTaskIndex === index || job.status === 'Unfinished'}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
-                          job.status === 'Unfinished'
-                            ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
-                            : 'bg-gray-500/20 text-gray-700 hover:bg-gray-500/30 border border-gray-300/30 hover:shadow-lg hover:-translate-y-0.5'
+                        onClick={(e) => { stop(e); handleJobTaskUpdate(index, 'Unfinished') }}
+                        disabled={updatingTaskIndex === index || task.status === 'Unfinished'}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          task.status === 'Unfinished'
+                            ? 'bg-red-500 text-white shadow-sm cursor-not-allowed'
+                            : 'bg-red-500/20 text-red-700 hover:bg-red-500/30 hover:shadow-md'
                         }`}
                       >
-                        Mark Unfinished
+                        {updatingTaskIndex === index ? '...' : '✗ Unfinished'}
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Parts Management Modal */}
-      {showPartsModal && (
-        <div className="modal-backdrop">
-          <div className="floating-card max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-5">
-                <h3 className="text-xl font-bold text-gray-900">Manage Parts Availability</h3>
-                <button
-                  onClick={() => setShowPartsModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
-                >
-                  ×
-                </button>
+            {/* Parts Section */}
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/50">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-base font-bold text-gray-800 flex items-center gap-2">
+                  <FiPackage size={18} />
+                  Parts Status
+                </h4>
+                <div className="text-sm text-gray-600 font-semibold">
+                  {partsAvailable}/{partsTotal} ({partsTotal > 0 ? Math.round((partsAvailable / partsTotal) * 100) : 0}%)
+                </div>
               </div>
-              
               <div className="space-y-3">
                 {jobOrder.parts.map((part, index) => (
-                  <div key={index} className="bg-white/50 backdrop-blur-sm border border-white/50 rounded-xl p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <h4 className="font-bold text-gray-900">{part.name}</h4>
-                      <span className={`px-3 py-1 rounded-xl text-xs font-semibold backdrop-blur-sm ${
-                        part.availability === 'Available' 
-                          ? 'bg-green-500/20 text-green-700 border border-green-300/30' 
-                          : 'bg-red-500/20 text-red-700 border border-red-300/30'
-                      }`}>
-                        {part.availability}
-                      </span>
+                  <div key={index} className="p-3 bg-white/50 rounded-lg border border-white/30">
+                    <div className="mb-2">
+                      <span className="font-medium text-gray-800 text-sm">{part.name}</span>
+                      {part.description && (
+                        <p className="text-xs text-gray-600 mt-1">{part.description}</p>
+                      )}
                     </div>
-                    
-                    <div className="flex space-x-2">
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => handlePartAvailabilityUpdate(index, 'Available')}
+                        onClick={(e) => { stop(e); handlePartAvailabilityUpdate(index, 'Available') }}
                         disabled={updatingPartIndex === index || part.availability === 'Available'}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                           part.availability === 'Available'
-                            ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
-                            : 'bg-green-500/20 text-green-700 hover:bg-green-500/30 border border-green-300/30 hover:shadow-lg hover:-translate-y-0.5'
+                            ? 'bg-green-500 text-white shadow-sm cursor-not-allowed'
+                            : 'bg-green-500/20 text-green-700 hover:bg-green-500/30 hover:shadow-md'
                         }`}
                       >
-                        Mark Available
+                        {updatingPartIndex === index ? '...' : '✓ Available'}
                       </button>
                       <button
-                        onClick={() => handlePartAvailabilityUpdate(index, 'Unavailable')}
+                        onClick={(e) => { stop(e); handlePartAvailabilityUpdate(index, 'Unavailable') }}
                         disabled={updatingPartIndex === index || part.availability === 'Unavailable'}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                           part.availability === 'Unavailable'
-                            ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
-                            : 'bg-red-500/20 text-red-700 hover:bg-red-500/30 border border-red-300/30 hover:shadow-lg hover:-translate-y-0.5'
+                            ? 'bg-red-500 text-white shadow-sm cursor-not-allowed'
+                            : 'bg-red-500/20 text-red-700 hover:bg-red-500/30 hover:shadow-md'
                         }`}
                       >
-                        Mark Unavailable
+                        {updatingPartIndex === index ? '...' : '✗ Unavailable'}
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Technician Reassignment Modal */}
-      {showTechnicianModal && (
-        <div className="modal-backdrop">
-          <div className="floating-card max-w-md w-full animate-fade-in">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-5">
-                <h3 className="text-xl font-bold text-gray-900">Reassign Technician</h3>
-                <button
-                  onClick={() => setShowTechnicianModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <p className="text-sm text-gray-700 font-medium">
-                  Current: <span className="font-bold">
-                    {jobOrder.assignedTechnician ? jobOrder.assignedTechnician.name : (
-                      <span className="text-red-600">Not Assigned</span>
-                    )}
-                  </span>
-                </p>
-                
-                <div className="space-y-2">
-                  <p className="text-sm font-bold text-gray-800">Available Technicians:</p>
-                  {availableTechnicians.length === 0 ? (
-                    <p className="text-sm text-gray-600 font-medium">No available technicians for this time slot</p>
+            {/* Service Advisor & Additional Info Section */}
+            <div className="space-y-4">
+              {/* Service Advisor */}
+              <div className="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/50">
+                <h4 className="text-base font-bold text-gray-800 flex items-center gap-2 mb-4">
+                  <FiUser size={18} />
+                  Service Advisor
+                </h4>
+                <div className="p-4 bg-white/50 rounded-lg border border-white/30">
+                  {jobOrder.serviceAdvisor ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-gray-800">{jobOrder.serviceAdvisor.name}</p>
+                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-semibold">
+                          Assigned
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600">{jobOrder.serviceAdvisor.email}</p>
+                    </div>
                   ) : (
-                    availableTechnicians.map((tech: any) => (
-                      <button
-                        key={tech._id}
-                        onClick={() => handleTechnicianReassign(tech._id)}
-                        disabled={updateJobMutation.isPending === true || (jobOrder.assignedTechnician?._id === tech._id)}
-                        className={`w-full p-3 rounded-xl text-sm font-semibold text-left transition-all duration-200 ${
-                          jobOrder.assignedTechnician && tech._id === jobOrder.assignedTechnician._id
-                            ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed border border-gray-300/30'
-                            : 'bg-blue-500/20 text-blue-700 hover:bg-blue-500/30 border border-blue-300/30 hover:shadow-lg hover:-translate-y-0.5'
-                        }`}
-                      >
-                        <div className="flex justify-between items-center">
-                          <div className="flex flex-col">
-                            <span>{tech.name}</span>
-                            {tech.level && (
-                              <span className="text-xs text-gray-600 font-medium">Level: {tech.level}</span>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    ))
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-red-600 font-semibold">No service advisor assigned</span>
+                      <span className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-semibold">
+                        Required
+                      </span>
+                    </div>
                   )}
+                </div>
+              </div>
+
+              {/* Job Details Summary */}
+              <div className="bg-white/60 backdrop-blur-sm rounded-xl p-5 border border-white/50">
+                <h4 className="text-base font-bold text-gray-800 flex items-center gap-2 mb-4">
+                  <FiInfo size={18} />
+                  Job Summary
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-2 bg-white/50 rounded-lg">
+                    <span className="text-sm text-gray-600">Created By:</span>
+                    <span className="text-sm font-semibold text-gray-800">{jobOrder.createdBy?.name || 'Unknown'}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-white/50 rounded-lg">
+                    <span className="text-sm text-gray-600">Source:</span>
+                    <span className="text-sm font-semibold text-gray-800 capitalize">
+                      {jobOrder.sourceType?.replace('-', ' ') || 'Direct'}
+                    </span>
+                  </div>
+                  {jobOrder.carriedOver && (
+                    <div className="flex justify-between items-center p-2 bg-orange-100 rounded-lg">
+                      <span className="text-sm text-orange-700">Carried Over:</span>
+                      <span className="text-sm font-semibold text-orange-800">Yes</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center p-2 bg-white/50 rounded-lg">
+                    <span className="text-sm text-gray-600">Last Updated:</span>
+                    <span className="text-sm font-semibold text-gray-800">
+                      {formatDate(jobOrder.updatedAt)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

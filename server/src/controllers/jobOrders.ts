@@ -741,6 +741,52 @@ router.patch('/:id/redo', verifyToken, requireRole(['administrator', 'job-contro
   }
 })
 
+// Check and mark carry-over jobs from previous days
+router.post('/check-carry-over', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    // Find all jobs from previous days that are not completed and not already marked as carried over
+    const previousDaysJobs = await JobOrder.find({
+      date: { $lt: today },
+      status: { $nin: ['FR', 'FU', 'CP'] }, // Not completed statuses
+      carriedOver: { $ne: true } // Not already marked as carried over
+    })
+      .populate('createdBy', 'name email')
+      .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
+      .lean()
+    
+    // Mark them as carried over and update their source type
+    const updates = previousDaysJobs.map((job: any) => 
+      JobOrder.findByIdAndUpdate(
+        job._id,
+        { 
+          carriedOver: true,
+          sourceType: 'carry-over',
+          assignedTechnician: null, // Remove technician assignment for replotting
+          timeRange: { start: '00:00', end: '00:00' } // Reset time range
+        },
+        { new: true }
+      )
+    )
+    
+    const updatedJobs = await Promise.all(updates)
+    
+    return res.json({ 
+      message: 'Carry-over jobs processed successfully',
+      count: updatedJobs.length,
+      jobs: updatedJobs
+    })
+  } catch (error) {
+    console.error('Error checking carry over:', error)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // Mark unfinished jobs as carry over (to be run at end of day)
 router.post('/mark-carry-over', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
   try {
