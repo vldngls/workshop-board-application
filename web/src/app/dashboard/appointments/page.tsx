@@ -344,7 +344,15 @@ export default function AppointmentsPage() {
     setSelectedAppointment(null)
     queryClient.invalidateQueries({ queryKey: ['appointments'] })
     queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
+    queryClient.invalidateQueries({ queryKey: ['job-orders'] })
     toast.success('Job order created from appointment!')
+  }
+
+  const handleConflictsResolved = () => {
+    // Refresh job orders data when conflicts are resolved
+    queryClient.invalidateQueries({ queryKey: ['job-orders'] })
+    queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
+    toast.success('Conflicts resolved - affected jobs moved to For Plotting')
   }
 
   const handleTimeSlotSelect = (startTime: string) => {
@@ -841,6 +849,7 @@ export default function AppointmentsPage() {
             setSelectedAppointment(null)
           }}
           onSuccess={handleCreateJobOrderSuccess}
+          onConflictsResolved={handleConflictsResolved}
         />
       )}
 

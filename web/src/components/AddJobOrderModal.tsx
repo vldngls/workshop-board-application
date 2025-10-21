@@ -34,12 +34,9 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
   // TanStack Query hooks
   const createJobMutation = useCreateJobOrder()
   
-  // Fetch available technicians
-  const { data: technicians = [], isLoading: loadingTechnicians } = useAvailableTechnicians(
-    formData.date,
-    formData.timeRange.start,
-    formData.timeRange.end
-  )
+  // Fetch all technicians (not just available ones)
+  const { data: techniciansData, isLoading: loadingTechnicians } = useUsers({ role: 'technician' })
+  const technicians = techniciansData?.users || []
   
   // Fetch service advisors
   const { data: serviceAdvisorsData, isLoading: loadingServiceAdvisors } = useUsers({ role: 'service-advisor' })
@@ -263,6 +260,11 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
+              {formData.assignedTechnician && !formData.timeRange.start && (
+                <p className="text-xs text-blue-600 mt-1">
+                  💡 Select a technician first to see their schedule and click on available time slots
+                </p>
+              )}
             </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -313,9 +315,6 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
                   </option>
                 ))}
               </select>
-              {technicians.length === 0 && formData.date && formData.timeRange.start && formData.timeRange.end && !loadingTechnicians && (
-                <p className="text-sm text-red-600 mt-1">No technicians available for this time slot</p>
-              )}
             </div>
 
             {/* Service Advisor */}
@@ -341,8 +340,17 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
             </div>
 
             {/* Visual Schedule Selector */}
-            {formData.assignedTechnician && durationHours > 0 && (
+            {formData.assignedTechnician && (
               <div className="border-t border-gray-200 pt-4">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Technician Schedule - {technicians.find((t: any) => t._id === formData.assignedTechnician)?.name}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Click on an available time slot to set the start time, or manually enter it above.
+                    {durationHours > 0 && ` Duration: ${durationHours} hour${durationHours > 1 ? 's' : ''}`}
+                  </p>
+                </div>
                 <TechnicianScheduleView
                   technicianId={formData.assignedTechnician}
                   date={formData.date || new Date().toISOString().split('T')[0]}
@@ -462,7 +470,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
               </button>
               <button
                 type="submit"
-                disabled={createJobMutation.isPending || technicians.length === 0}
+                disabled={createJobMutation.isPending}
                 className="px-6 py-2.5 bg-gradient-to-r from-ford-blue to-ford-blue-light hover:from-ford-blue-light hover:to-ford-blue disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-semibold transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-none"
               >
                 {createJobMutation.isPending ? 'Creating...' : 'Create Job Order'}

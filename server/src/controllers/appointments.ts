@@ -296,10 +296,188 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
   }
 })
 
+// Check for conflicts when changing appointment duration
+const checkConflictsSchema = z.object({
+  timeRange: z.object({
+    start: z.string(),
+    end: z.string()
+  }),
+  assignedTechnician: z.string().min(1)
+})
+
+router.post('/:id/check-conflicts', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const parsed = checkConflictsSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid payload', details: parsed.error.issues })
+    }
+    
+    const appointment = await Appointment.findById(req.params.id)
+    if (!appointment) {
+      return res.status(404).json({ error: 'Appointment not found' })
+    }
+    
+    const { timeRange, assignedTechnician } = parsed.data
+    
+    // Find job orders that would conflict with the new time range
+    console.log(`Checking conflicts for time range: ${timeRange.start} - ${timeRange.end}`)
+    console.log(`Technician: ${assignedTechnician}, Date: ${appointment.date}`)
+    
+    // First, get all job orders for this technician on this date
+    const allJobs = await JobOrder.find({
+      assignedTechnician: assignedTechnician,
+      date: appointment.date,
+      status: { $nin: ['FR', 'FU', 'CP'] } // Exclude completed jobs
+    })
+      .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
+      .lean()
+    
+    console.log(`Found ${allJobs.length} jobs for this technician on this date`)
+    
+    // Filter for conflicts using JavaScript (more reliable than complex MongoDB queries)
+    const conflictingJobs = allJobs.filter(job => {
+      const jobStart = job.timeRange.start
+      const jobEnd = job.timeRange.end
+      const newStart = timeRange.start
+      const newEnd = timeRange.end
+      
+      console.log(`Checking job ${job.jobNumber}: ${jobStart} - ${jobEnd} vs new: ${newStart} - ${newEnd}`)
+      
+      // Convert time strings to minutes for easier comparison
+      const timeToMinutes = (timeStr: string) => {
+        const [hours, minutes] = timeStr.split(':').map(Number)
+        return hours * 60 + minutes
+      }
+      
+      const jobStartMinutes = timeToMinutes(jobStart)
+      const jobEndMinutes = timeToMinutes(jobEnd)
+      const newStartMinutes = timeToMinutes(newStart)
+      const newEndMinutes = timeToMinutes(newEnd)
+      
+      // Check for any overlap
+      const hasOverlap = (
+        // New appointment starts during existing job
+        (newStartMinutes >= jobStartMinutes && newStartMinutes < jobEndMinutes) ||
+        // New appointment ends during existing job  
+        (newEndMinutes > jobStartMinutes && newEndMinutes <= jobEndMinutes) ||
+        // New appointment completely contains existing job
+        (newStartMinutes <= jobStartMinutes && newEndMinutes >= jobEndMinutes) ||
+        // Existing job completely contains new appointment
+        (jobStartMinutes <= newStartMinutes && jobEndMinutes >= newEndMinutes)
+      )
+      
+      if (hasOverlap) {
+        console.log(`CONFLICT DETECTED: Job ${job.jobNumber} overlaps with new time range`)
+        console.log(`  Job: ${jobStartMinutes}-${jobEndMinutes} minutes`)
+        console.log(`  New: ${newStartMinutes}-${newEndMinutes} minutes`)
+      }
+      
+      return hasOverlap
+    })
+    
+    return res.json({ 
+      hasConflicts: conflictingJobs.length > 0,
+      conflictingJobs: conflictingJobs.map(job => ({
+        _id: job._id,
+        jobNumber: job.jobNumber,
+        plateNumber: job.plateNumber,
+        timeRange: job.timeRange,
+        status: job.status,
+        sourceType: job.sourceType,
+        carriedOver: job.carriedOver,
+        assignedTechnician: job.assignedTechnician,
+        serviceAdvisor: job.serviceAdvisor
+      }))
+    })
+  } catch (error) {
+    console.error('Error checking appointment conflicts:', error)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Resolve conflicts by marking conflicting jobs as "For Plotting"
+const resolveConflictsSchema = z.object({
+  conflictingJobIds: z.array(z.string())
+})
+
+router.post('/:id/resolve-conflicts', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const parsed = resolveConflictsSchema.safeParse(req.body)
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid payload', details: parsed.error.issues })
+    }
+    
+    const { conflictingJobIds } = parsed.data
+    
+    console.log('Resolving conflicts for job IDs:', conflictingJobIds)
+    
+    // Update conflicting jobs to "For Plotting" status and remove technician assignment
+    const updatePromises = conflictingJobIds.map(async (jobId) => {
+      console.log(`Updating job ${jobId} to For Plotting status`)
+      
+      // First, let's check if the job exists
+      const existingJob = await JobOrder.findById(jobId)
+      if (!existingJob) {
+        console.log(`Job ${jobId} not found`)
+        return null
+      }
+      
+      console.log(`Job ${jobId} current status: ${existingJob.status}`)
+      
+      const updatedJob = await JobOrder.findByIdAndUpdate(
+        jobId,
+        { 
+          status: 'FP',
+          assignedTechnician: null,
+          timeRange: { start: '00:00', end: '00:00' }
+        },
+        { new: true }
+      )
+      
+      if (updatedJob) {
+        console.log(`Job ${jobId} updated successfully:`, {
+          jobNumber: updatedJob.jobNumber,
+          status: updatedJob.status,
+          assignedTechnician: updatedJob.assignedTechnician,
+          timeRange: updatedJob.timeRange
+        })
+      } else {
+        console.log(`Job ${jobId} update FAILED`)
+      }
+      
+      return updatedJob
+    })
+    
+    const updatedJobs = await Promise.all(updatePromises)
+    const successfulUpdates = updatedJobs.filter(job => job !== null)
+    
+    console.log(`Successfully updated ${successfulUpdates.length} out of ${conflictingJobIds.length} jobs`)
+    
+    return res.json({ 
+      message: 'Conflicts resolved successfully',
+      updatedJobs: successfulUpdates.map(job => ({
+        _id: job._id,
+        jobNumber: job.jobNumber,
+        status: job.status
+      }))
+    })
+  } catch (error) {
+    console.error('Error resolving appointment conflicts:', error)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // Convert appointment to job order
 const createJobOrderFromAppointmentSchema = z.object({
   jobNumber: z.string().min(1),
   vin: z.string().min(1),
+  assignedTechnician: z.string().min(1),
+  serviceAdvisor: z.string().min(1),
   jobList: z.array(z.object({
     description: z.string().min(1),
     status: z.enum(['Finished', 'Unfinished'])
@@ -307,7 +485,12 @@ const createJobOrderFromAppointmentSchema = z.object({
   parts: z.array(z.object({
     name: z.string().min(1),
     availability: z.enum(['Available', 'Unavailable'])
-  })).optional()
+  })).optional(),
+  timeRange: z.object({
+    start: z.string(),
+    end: z.string()
+  }).optional(),
+  actualEndTime: z.string().optional()
 })
 
 router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
@@ -326,7 +509,7 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
     
     // Create job order
     
-    const { jobNumber, vin, jobList, parts } = parsed.data
+    const { jobNumber, vin, assignedTechnician, serviceAdvisor, jobList, parts, timeRange, actualEndTime } = parsed.data
     
     // Check if job number already exists
     const existingJob = await JobOrder.findOne({ jobNumber: jobNumber.toUpperCase() })
@@ -345,18 +528,22 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
     const allPartsUnavailable = parts && parts.length > 0 ? parts.every(part => part.availability === 'Unavailable') : false
     const initialStatus = hasUnavailableParts ? 'WP' : 'OG'
     
-    // Get current time for actualEndTime if provided
-    const actualEndTime = req.body.actualEndTime
+    // Use provided timeRange or fall back to appointment timeRange
+    const finalTimeRange = timeRange || appointment.timeRange
+    
+    console.log('Creating job order with time range:', finalTimeRange)
+    console.log('Original appointment time range:', appointment.timeRange)
+    console.log('Provided time range:', timeRange)
     
     // Create job order from appointment
     const jobOrder = await JobOrder.create({
       jobNumber: jobNumber.toUpperCase(),
       createdBy: userId,
-      assignedTechnician: allPartsUnavailable ? null : appointment.assignedTechnician,
-      serviceAdvisor: appointment.serviceAdvisor,
+      assignedTechnician: allPartsUnavailable ? null : assignedTechnician,
+      serviceAdvisor: serviceAdvisor,
       plateNumber: appointment.plateNumber,
       vin: vin.toUpperCase(),
-      timeRange: appointment.timeRange,
+      timeRange: finalTimeRange,
       actualEndTime: actualEndTime || undefined,
       jobList,
       parts: parts || [],
@@ -365,6 +552,8 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
       originalCreatedDate: new Date(),
       sourceType: 'appointment'
     })
+    
+    console.log('Created job order:', jobOrder.jobNumber, 'with time range:', jobOrder.timeRange)
     
     // Delete the appointment
     await Appointment.findByIdAndDelete(req.params.id)

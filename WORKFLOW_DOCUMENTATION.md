@@ -356,6 +356,6 @@ Frontend displays user-friendly toast notifications.
 ---
 
 **Last Updated:** $(date)
-**Version:** 1.0.0
+**Version:** 1.6.4
 **Status:** Production Ready ✅
 

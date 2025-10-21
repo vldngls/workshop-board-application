@@ -159,28 +159,54 @@ const JobDetailsModal = memo(({
                 <p className="text-lg font-semibold">{job.jobNumber}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600 mb-1 block">Status</label>
+                <label className="text-sm font-medium text-gray-600 mb-2 block">Status</label>
                 {onUpdateJobStatus ? (
-                  <select
-                    value={job.status}
-                    onChange={(e) => onUpdateJobStatus(job._id, e.target.value)}
-                    disabled={updating}
-                    className="px-3 py-1 rounded-xl text-sm font-medium border-2 border-gray-300 focus:outline-none focus:border-blue-500"
-                  >
-                  <option value="OG">OG - On Going</option>
-                  <option value="WP">WP - Waiting Parts</option>
-                  <option value="FP">FP - For Plotting</option>
-                  <option value="QI">QI - Quality Inspection</option>
-                  <option value="HC">HC - Hold Customer</option>
-                  <option value="HW">HW - Hold Warranty</option>
-                  <option value="HI">HI - Hold Insurance</option>
-                  <option value="FR">FR - For Release</option>
-                  <option value="FU">FU - Finished Unclaimed</option>
-                  <option value="CP">CP - Complete</option>
-                </select>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { value: 'OG', label: 'On Going', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+                        { value: 'WP', label: 'Waiting Parts', color: 'bg-orange-100 text-orange-800 border-orange-200' },
+                        { value: 'FP', label: 'For Plotting', color: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
+                        { value: 'QI', label: 'Quality Inspection', color: 'bg-purple-100 text-purple-800 border-purple-200' },
+                        { value: 'HC', label: 'Hold Customer', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+                        { value: 'HW', label: 'Hold Warranty', color: 'bg-red-100 text-red-800 border-red-200' },
+                        { value: 'HI', label: 'Hold Insurance', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+                        { value: 'FR', label: 'For Release', color: 'bg-green-100 text-green-800 border-green-200' },
+                        { value: 'FU', label: 'Finished Unclaimed', color: 'bg-gray-100 text-gray-800 border-gray-200' },
+                        { value: 'CP', label: 'Complete', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' }
+                      ].map(({ value, label, color }) => (
+                        <button
+                          key={value}
+                          onClick={() => onUpdateJobStatus(job._id, value)}
+                          disabled={updating || value === job.status}
+                          className={`p-3 rounded-lg text-sm font-semibold border-2 transition-all ${
+                            value === job.status
+                              ? `${color} border-opacity-50 cursor-not-allowed opacity-75`
+                              : `${color} hover:shadow-md hover:scale-105 cursor-pointer`
+                          }`}
+                        >
+                          <div className="text-center">
+                            <div className="font-bold">{value}</div>
+                            <div className="text-xs mt-1">{label}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="text-xs text-gray-500 text-center mt-2">
+                      Click a status to change it
+                    </div>
+                  </div>
                 ) : (
-                  <div className="px-3 py-1 rounded-xl text-sm font-medium border-2 border-gray-200 bg-gray-50 text-gray-600">
-                    {job.status} - {getStatusLabel(job.status)}
+                  <div className="space-y-2">
+                    <div className="text-center">
+                      <div className="text-sm font-medium text-gray-600 mb-2">Current Status</div>
+                      <div className="px-4 py-3 rounded-lg text-sm font-medium border-2 border-gray-200 bg-gray-50 text-gray-600">
+                        {job.status} - {getStatusLabel(job.status)}
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500 text-center">
+                      Status changes are not available in this view
+                    </div>
                   </div>
                 )}
               </div>

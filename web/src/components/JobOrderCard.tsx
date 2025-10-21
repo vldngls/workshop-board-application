@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, memo, useCallback, MouseEvent } from 'react'
+import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import { 
   FiCalendar, 
@@ -510,38 +511,62 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
         </div>
 
         {/* Column 5: Status & Expand */}
-        <div className="flex flex-col items-center gap-2 min-w-0 w-36">
-          <div className="text-center">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Status</div>
+        <div className="flex flex-col items-center gap-3 min-w-0 w-40">
+          <div className="text-center w-full">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Status</div>
             {editingField === 'status' ? (
-              <div className="space-y-1 max-h-32 overflow-y-auto bg-white rounded border border-gray-200 p-1">
-                {Object.entries(STATUS_LABELS).map(([status, label]) => (
-                  <button
-                    key={status}
-                    onClick={(e) => { stop(e); handleStatusUpdate(status as JobStatus) }}
-                    disabled={updateStatusMutation.isPending || status === jobOrder.status}
-                    className={`block w-full p-1.5 rounded text-xs font-semibold transition-all ${
-                      status === jobOrder.status
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              createPortal(
+                <div 
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm"
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                      setEditingField(null)
+                    }
+                  }}
+                >
+                  <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-2xl max-w-md w-full mx-4">
+                    <div className="text-lg font-bold text-gray-800 mb-4 text-center">Select New Status for {jobOrder.jobNumber}</div>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {Object.entries(STATUS_LABELS).map(([status, label]) => (
+                        <button
+                          key={status}
+                          onClick={(e) => { stop(e); handleStatusUpdate(status as JobStatus) }}
+                          disabled={updateStatusMutation.isPending || status === jobOrder.status}
+                          className={`p-4 rounded-xl text-sm font-semibold transition-all border-2 ${
+                            status === jobOrder.status
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
+                              : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 hover:border-blue-300 hover:shadow-lg hover:scale-105'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <div className="font-bold text-base">{label}</div>
+                            <div className="text-xs opacity-75 mt-1">({status})</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={(e) => { stop(e); setEditingField(null) }}
+                      className="w-full p-3 text-sm text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>,
+                document.body
+              )
             ) : (
               <div className="flex flex-col items-center gap-2">
-                <span className={`px-3 py-2 rounded-lg text-xs font-bold backdrop-blur-sm shadow-sm ${getStatusColor(jobOrder.status)}`}>
-                  {STATUS_LABELS[jobOrder.status]}
-                </span>
                 <button
                   onClick={(e) => { stop(e); handleFieldEdit('status', jobOrder.status) }}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-all flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100"
+                  className={`px-4 py-3 rounded-lg text-sm font-bold backdrop-blur-sm shadow-sm transition-all hover:shadow-md hover:scale-105 cursor-pointer border-2 border-transparent hover:border-white/30 ${getStatusColor(jobOrder.status)}`}
+                  title="Click to change status"
                 >
-                  <FiEdit3 size={10} />
-                  Change
+                  {STATUS_LABELS[jobOrder.status]}
                 </button>
+                <div className="text-xs text-gray-500 text-center">
+                  Click status to change
+                </div>
               </div>
             )}
           </div>

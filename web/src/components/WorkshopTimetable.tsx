@@ -255,6 +255,12 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
     toast.success('Job order created from appointment!')
   }, [fetchData])
 
+  const handleConflictsResolved = useCallback(() => {
+    // Refresh data when conflicts are resolved
+    fetchData()
+    toast.success('Conflicts resolved - affected jobs moved to For Plotting')
+  }, [fetchData])
+
   const reassignTechnician = useCallback(async (technicianId: string) => {
     try {
       setUpdating(true)
@@ -480,6 +486,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
             setSelectedAppointment(null)
           }}
           onSuccess={handleCreateJobOrderSuccess}
+          onConflictsResolved={handleConflictsResolved}
         />
       )}
 
