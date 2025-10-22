@@ -3,9 +3,9 @@
   "private": true,
   "workspaces": ["server", "web"],
   "scripts": {
-    "dev": "concurrently \"npm run server:dev\" \"npm run web:dev\"",
+    "dev": "concurrently --names \"SERVER,WEB\" --prefix-colors \"cyan,magenta\" \"npm run server:dev\" \"npm run web:dev\"",
     "build": "npm run server:build && npm run web:build",
-    "start": "concurrently \"npm run server:start\" \"npm run web:start\"",
+    "start": "concurrently --names \"SERVER,WEB\" --prefix-colors \"cyan,magenta\" \"npm run server:start\" \"npm run web:start\"",
     "web:dev": "npm --prefix web run dev",
     "web:build": "npm --prefix web run build",
     "web:start": "npm --prefix web run start",
