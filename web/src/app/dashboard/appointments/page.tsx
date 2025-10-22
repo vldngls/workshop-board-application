@@ -958,7 +958,7 @@ export default function AppointmentsPage() {
                   <select
                     value={appointmentToReappoint.assignedTechnician?._id || ''}
                     onChange={(e) => {
-                      const technician = technicians.find(t => t._id === e.target.value)
+                      const technician = technicians && Array.isArray(technicians) ? technicians.find(t => t._id === e.target.value) : undefined
                       setAppointmentToReappoint({
                         ...appointmentToReappoint,
                         assignedTechnician: technician ? {

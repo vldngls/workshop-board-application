@@ -8,8 +8,6 @@ interface JobDetailsModalProps {
   isOpen: boolean
   job: JobOrderWithDetails | null
   updating: boolean
-  breakStart: string
-  breakEnd: string
   onClose: () => void
   onToggleImportant?: (jobId: string) => void
   onUpdateJobStatus?: (jobId: string, status: string) => void
@@ -30,8 +28,6 @@ const JobDetailsModal = memo(({
   isOpen,
   job,
   updating,
-  breakStart,
-  breakEnd,
   onClose,
   onToggleImportant,
   onUpdateJobStatus,
@@ -287,7 +283,7 @@ const JobDetailsModal = memo(({
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Work Duration</label>
-                <p className="text-lg font-semibold text-blue-600">{calculateWorkDuration(job.timeRange.start, job.timeRange.end, breakStart, breakEnd)}</p>
+                <p className="text-lg font-semibold text-blue-600">{calculateWorkDuration(job.timeRange.start, job.timeRange.end)}</p>
               </div>
             </div>
 

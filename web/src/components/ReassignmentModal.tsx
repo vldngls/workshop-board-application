@@ -7,8 +7,6 @@ import type { JobOrderWithDetails } from '@/utils/timetableUtils'
 
 interface ReassignmentModalProps {
   job: JobOrderWithDetails
-  breakStart: string
-  breakEnd: string
   calculateEndTime: (startTime: string, duration: number) => string
   onClose: () => void
   onSuccess: () => void
@@ -16,8 +14,6 @@ interface ReassignmentModalProps {
 
 export default function ReassignmentModal({
   job,
-  breakStart,
-  breakEnd,
   calculateEndTime,
   onClose,
   onSuccess

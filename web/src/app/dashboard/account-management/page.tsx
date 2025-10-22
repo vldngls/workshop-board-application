@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { Role, TechnicianLevel, User } from "@/types/auth"
 import RoleGuard from "@/components/RoleGuard"
+import BreakTimeManager from "@/components/BreakTimeManager"
 
 export default function AccountManagementPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'all' | 'technicians' | 'service-advisors'>('all')
+  const [showBreakTimeManager, setShowBreakTimeManager] = useState(false)
+  const [selectedTechnician, setSelectedTechnician] = useState<User | null>(null)
 
   const apiBase = useMemo(() => "/api/users", [])
 
@@ -100,7 +103,17 @@ export default function AccountManagementPage() {
                   <h2 className="text-lg font-bold text-gray-900">Technicians</h2>
                   <p className="text-sm text-gray-600 font-medium">Manage technician levels and assignments</p>
                 </div>
-                <TechnicianTable technicians={technicians} apiBase={apiBase} onUpdated={fetchUsers} />
+                <TechnicianTable 
+                  technicians={technicians} 
+                  apiBase={apiBase} 
+                  onUpdated={fetchUsers}
+                  onManageBreakTimes={(technician) => {
+                    // Find the most current technician data from the users list
+                    const currentTechnician = users.find(u => u._id === technician._id) || technician
+                    setSelectedTechnician(currentTechnician)
+                    setShowBreakTimeManager(true)
+                  }}
+                />
               </div>
 
               {/* Service Advisors Section */}
@@ -131,7 +144,17 @@ export default function AccountManagementPage() {
                 <h2 className="text-lg font-bold text-gray-900">Technician Management</h2>
                 <p className="text-sm text-gray-600 font-medium">View and manage all technicians with their levels</p>
               </div>
-              <TechnicianTable technicians={technicians} apiBase={apiBase} onUpdated={fetchUsers} />
+              <TechnicianTable 
+                technicians={technicians} 
+                apiBase={apiBase} 
+                onUpdated={fetchUsers}
+                onManageBreakTimes={(technician) => {
+                  // Find the most current technician data from the users list
+                  const currentTechnician = users.find(u => u._id === technician._id) || technician
+                  setSelectedTechnician(currentTechnician)
+                  setShowBreakTimeManager(true)
+                }}
+              />
             </div>
           ) : (
             <div className="floating-card">
@@ -143,6 +166,29 @@ export default function AccountManagementPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Break Time Manager Modal */}
+      {showBreakTimeManager && selectedTechnician && (
+        <BreakTimeManager
+          technician={selectedTechnician}
+          onUpdate={async (breakTimes) => {
+            // Update the user in the local state
+            setUsers(prev => prev.map(user => 
+              user._id === selectedTechnician._id 
+                ? { ...user, breakTimes }
+                : user
+            ))
+            // Refresh the users list to ensure we have the latest data
+            await fetchUsers()
+            setShowBreakTimeManager(false)
+            setSelectedTechnician(null)
+          }}
+          onClose={() => {
+            setShowBreakTimeManager(false)
+            setSelectedTechnician(null)
+          }}
+        />
       )}
       </div>
     </RoleGuard>
@@ -400,7 +446,12 @@ function DeleteUserButton({ apiBase, id, onDeleted }: { apiBase: string; id: str
 }
 
 // New Technician Table Component
-function TechnicianTable({ technicians, apiBase, onUpdated }: { technicians: User[]; apiBase: string; onUpdated: () => void }) {
+function TechnicianTable({ technicians, apiBase, onUpdated, onManageBreakTimes }: { 
+  technicians: User[]; 
+  apiBase: string; 
+  onUpdated: () => void;
+  onManageBreakTimes: (technician: User) => void;
+}) {
   if (technicians.length === 0) {
     return (
       <div className="p-8 text-center text-gray-500">
@@ -448,6 +499,12 @@ function TechnicianTable({ technicians, apiBase, onUpdated }: { technicians: Use
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                <button
+                  onClick={() => onManageBreakTimes(technician)}
+                  className="text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Break Times
+                </button>
                 <EditTechnicianForm apiBase={apiBase} technician={technician} onUpdated={onUpdated} />
                 <DeleteUserButton apiBase={apiBase} id={technician._id} onDeleted={onUpdated} />
               </td>

@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useUsers } from '@/hooks/useJobOrders'
+import { hasBreakTimeOverlap } from '@/utils/breakTimeUtils'
 
 interface TimeSlot {
   time: string
@@ -26,44 +28,45 @@ export default function TechnicianScheduleView({
   onTimeSlotSelect,
   selectedStart
 }: TechnicianScheduleViewProps) {
-  const [breakStart, setBreakStart] = useState('12:00')
-  const [breakEnd, setBreakEnd] = useState('13:00')
+  // Get technician data including break times
+  const { data: techniciansData } = useUsers({ role: 'technician' })
+  const technicians = techniciansData?.users || []
+  const technician = technicians && Array.isArray(technicians) ? technicians.find((t: any) => t._id === technicianId) : undefined
+  const breakTimes = technician?.breakTimes || []
+  
 
-  // Load break settings from localStorage
-  useEffect(() => {
-    const savedBreakStart = localStorage.getItem('breakStart')
-    const savedBreakEnd = localStorage.getItem('breakEnd')
-    if (savedBreakStart) setBreakStart(savedBreakStart)
-    if (savedBreakEnd) setBreakEnd(savedBreakEnd)
-  }, [])
-
-  // Check if a specific time slot is during break time
+  // Check if a specific time slot is during any break time
   const isBreakTime = (time: string): boolean => {
-    const [hour, minute] = time.split(':').map(Number)
-    const [breakStartHour, breakStartMinute] = breakStart.split(':').map(Number)
-    const [breakEndHour, breakEndMinute] = breakEnd.split(':').map(Number)
-    
-    const slotMinutes = hour * 60 + minute
-    const breakStartMinutes = breakStartHour * 60 + breakStartMinute
-    const breakEndMinutes = breakEndHour * 60 + breakEndMinute
-    
-    // Slot is during break if it's >= break start and < break end
-    return slotMinutes >= breakStartMinutes && slotMinutes < breakEndMinutes
+    return breakTimes.some((breakTime: any) => {
+      const [hour, minute] = time.split(':').map(Number)
+      const [breakStartHour, breakStartMinute] = breakTime.startTime.split(':').map(Number)
+      const [breakEndHour, breakEndMinute] = breakTime.endTime.split(':').map(Number)
+      
+      const slotMinutes = hour * 60 + minute
+      const breakStartMinutes = breakStartHour * 60 + breakStartMinute
+      const breakEndMinutes = breakEndHour * 60 + breakEndMinute
+      
+      // Slot is during break if it's >= break start and < break end
+      return slotMinutes >= breakStartMinutes && slotMinutes < breakEndMinutes
+    })
   }
 
-  // Check if an appointment duration would overlap with break time
+  // Check if an appointment duration would overlap with any break time
   const wouldOverlapWithBreak = (startTime: string, duration: number): boolean => {
     const [startHour, startMinute] = startTime.split(':').map(Number)
-    const [breakStartHour, breakStartMinute] = breakStart.split(':').map(Number)
-    const [breakEndHour, breakEndMinute] = breakEnd.split(':').map(Number)
-    
     const startMinutes = startHour * 60 + startMinute
     const endMinutes = startMinutes + duration
-    const breakStartMinutes = breakStartHour * 60 + breakStartMinute
-    const breakEndMinutes = breakEndHour * 60 + breakEndMinute
     
-    // Check if appointment overlaps with break time
-    return startMinutes < breakEndMinutes && endMinutes > breakStartMinutes
+    return breakTimes.some((breakTime: any) => {
+      const [breakStartHour, breakStartMinute] = breakTime.startTime.split(':').map(Number)
+      const [breakEndHour, breakEndMinute] = breakTime.endTime.split(':').map(Number)
+      
+      const breakStartMinutes = breakStartHour * 60 + breakStartMinute
+      const breakEndMinutes = breakEndHour * 60 + breakEndMinute
+      
+      // Check if appointment overlaps with break time
+      return startMinutes < breakEndMinutes && endMinutes > breakStartMinutes
+    })
   }
 
   // Generate time slots from 7:00 AM to 6:00 PM
@@ -74,13 +77,29 @@ export default function TechnicianScheduleView({
         const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
         const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour
         const ampm = hour >= 12 ? 'PM' : 'AM'
+        const isBreak = isBreakTime(timeStr)
+        
+        // Find which break time this slot belongs to
+        const currentBreakTime = breakTimes.find((breakTime: any) => {
+          const [hour, minute] = timeStr.split(':').map(Number)
+          const [breakStartHour, breakStartMinute] = breakTime.startTime.split(':').map(Number)
+          const [breakEndHour, breakEndMinute] = breakTime.endTime.split(':').map(Number)
+          
+          const slotMinutes = hour * 60 + minute
+          const breakStartMinutes = breakStartHour * 60 + breakStartMinute
+          const breakEndMinutes = breakEndHour * 60 + breakEndMinute
+          
+          return slotMinutes >= breakStartMinutes && slotMinutes < breakEndMinutes
+        })
+        
         slots.push({
           time: timeStr,
           label: `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`,
-          isOccupied: isBreakTime(timeStr),
-          occupiedBy: isBreakTime(timeStr) ? 'Break Time' : undefined,
-          type: isBreakTime(timeStr) ? 'break' : undefined
+          isOccupied: false, // Break times are not "occupied" for selection purposes
+          occupiedBy: isBreak ? (currentBreakTime?.description || 'Break Time') : undefined,
+          type: isBreak ? 'break' : undefined
         })
+        
       }
     }
     return slots
@@ -173,20 +192,58 @@ export default function TechnicianScheduleView({
 
     console.log('Schedule updated with', slots.length, 'slots')
     return slots
-  }, [scheduleData, breakStart, breakEnd])
+  }, [scheduleData, breakTimes])
+
+  // Helper function to calculate end time accounting for break times
+  const calculateEndTimeWithBreaks = (startTime: string, durationMinutes: number): string => {
+    const [startHour, startMinute] = startTime.split(':').map(Number)
+    const startDate = new Date()
+    startDate.setHours(startHour, startMinute, 0, 0)
+    
+    // Calculate initial end time without breaks
+    let endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
+    
+    // Check if the time range crosses any break time
+    for (const breakTime of breakTimes) {
+      const [breakStartHour, breakStartMinute] = breakTime.startTime.split(':').map(Number)
+      const [breakEndHour, breakEndMinute] = breakTime.endTime.split(':').map(Number)
+      
+      const breakStartDate = new Date()
+      breakStartDate.setHours(breakStartHour, breakStartMinute, 0, 0)
+      
+      const breakEndDate = new Date()
+      breakEndDate.setHours(breakEndHour, breakEndMinute, 0, 0)
+      
+      const breakDuration = (breakEndDate.getTime() - breakStartDate.getTime()) / (1000 * 60)
+      
+      // Work overlaps if: start < breakEnd AND initialEnd > breakStart
+      if (startDate < breakEndDate && endDate > breakStartDate) {
+        // The break falls within the work period - add break duration to skip it
+        endDate = new Date(endDate.getTime() + breakDuration * 60 * 1000)
+      }
+    }
+    
+    const endHour = String(endDate.getHours()).padStart(2, '0')
+    const endMinute = String(endDate.getMinutes()).padStart(2, '0')
+    return `${endHour}:${endMinute}`
+  }
 
   const handleSlotClick = (slot: TimeSlot) => {
+    // Don't allow selection of already occupied slots (jobs/appointments)
     if (slot.isOccupied) return
 
-    // Calculate end time based on duration
+    // Calculate end time accounting for break times
+    const endTime = calculateEndTimeWithBreaks(slot.time, duration)
     const [startHour, startMin] = slot.time.split(':').map(Number)
+    const [endHour, endMin] = endTime.split(':').map(Number)
     const startMinutes = startHour * 60 + startMin
-    const endMinutes = startMinutes + duration
+    const endMinutes = endHour * 60 + endMin
     
-    // Check if any slots between start and end would be occupied
+    // Check if any slots between start and end would be occupied by jobs/appointments (not breaks)
     const hasOccupiedSlots = schedule.some(s => {
       const [sHour, sMin] = s.time.split(':').map(Number)
       const sMinutes = sHour * 60 + sMin
+      // Only check for conflicts with jobs/appointments, not break times
       return s.isOccupied && sMinutes >= startMinutes && sMinutes < endMinutes
     })
 
@@ -207,7 +264,11 @@ export default function TechnicianScheduleView({
     
     const [startHour, startMin] = selectedStart.split(':').map(Number)
     const startMinutes = startHour * 60 + startMin
-    const endMinutes = startMinutes + duration
+    
+    // Calculate end time accounting for break times
+    const endTime = calculateEndTimeWithBreaks(selectedStart, duration)
+    const [endHour, endMin] = endTime.split(':').map(Number)
+    const endMinutes = endHour * 60 + endMin
     
     return slotMinutes >= startMinutes && slotMinutes < endMinutes
   }
@@ -257,6 +318,10 @@ export default function TechnicianScheduleView({
             <span>Job Order</span>
           </div>
           <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-orange-100 border border-orange-300 rounded"></div>
+            <span>Break Time</span>
+          </div>
+          <div className="flex items-center gap-1">
             <div className="w-3 h-3 bg-blue-500 rounded"></div>
             <span>Selected</span>
           </div>
@@ -269,10 +334,14 @@ export default function TechnicianScheduleView({
             const isSelected = isSlotInSelection(slot.time)
             
             let bgClass = 'bg-green-50 border-green-300 hover:bg-green-100'
-            if (slot.isOccupied) {
-              bgClass = slot.type === 'appointment' 
-                ? 'bg-pink-100 border-pink-300 cursor-not-allowed' 
-                : 'bg-blue-100 border-blue-300 cursor-not-allowed'
+            if (slot.type === 'break') {
+              bgClass = 'bg-orange-100 border-orange-300 hover:bg-orange-200'
+            } else if (slot.isOccupied) {
+              if (slot.type === 'appointment') {
+                bgClass = 'bg-pink-100 border-pink-300 cursor-not-allowed'
+              } else {
+                bgClass = 'bg-blue-100 border-blue-300 cursor-not-allowed'
+              }
             } else if (isSelected) {
               bgClass = 'bg-blue-500 border-blue-600 text-white'
             }

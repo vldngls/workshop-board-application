@@ -4,6 +4,12 @@ const { Schema } = mongoose
 type Role = 'administrator' | 'job-controller' | 'technician' | 'service-advisor'
 type TechnicianLevel = 'untrained' | 'level-0' | 'level-1' | 'level-2' | 'level-3'
 
+interface BreakTime {
+  description: string
+  startTime: string // Format: "12:00"
+  endTime: string   // Format: "13:00"
+}
+
 interface UserDoc {
   name: string
   email: string
@@ -12,6 +18,7 @@ interface UserDoc {
   role: Role
   pictureUrl?: string
   level?: TechnicianLevel // Only for technicians
+  breakTimes?: BreakTime[] // Only for technicians
 }
 
 const userSchema = new Schema({
@@ -26,6 +33,11 @@ const userSchema = new Schema({
     enum: ['untrained', 'level-0', 'level-1', 'level-2', 'level-3'],
     required: function(this: any): boolean { return this.role === 'technician' }
   },
+  breakTimes: [{
+    description: { type: String, required: true },
+    startTime: { type: String, required: true },
+    endTime: { type: String, required: true }
+  }],
 }, { timestamps: true })
 
 const User = mongoose.models.User || mongoose.model('User', userSchema)

@@ -394,8 +394,6 @@ export default function JobOrdersPage() {
           isOpen={showDetails}
           job={selectedJob as any}
           updating={false}
-          breakStart={"12:00"}
-          breakEnd={"13:00"}
           onClose={handleCloseDetails}
           onUpdateJob={handleUpdateJob}
           onViewIn={handleViewIn}

@@ -9,8 +9,6 @@ interface TimetableGridProps {
   jobOrders: JobOrderWithDetails[]
   appointments: Appointment[]
   highlightedJobId: string | null
-  breakStart: string
-  breakEnd: string
   onJobClick: (job: JobOrderWithDetails) => void
   onAppointmentClick: (appointment: Appointment) => void
   onDeleteAppointment?: (appointmentId: string) => void
@@ -21,8 +19,6 @@ const TimetableGrid = memo(({
   jobOrders,
   appointments,
   highlightedJobId,
-  breakStart,
-  breakEnd,
   onJobClick,
   onAppointmentClick,
   onDeleteAppointment
@@ -63,8 +59,6 @@ const TimetableGrid = memo(({
               jobOrders={jobOrders}
               appointments={appointments}
               highlightedJobId={highlightedJobId}
-              breakStart={breakStart}
-              breakEnd={breakEnd}
               onJobClick={onJobClick}
               onAppointmentClick={onAppointmentClick}
               onDeleteAppointment={onDeleteAppointment}

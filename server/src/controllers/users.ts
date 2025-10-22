@@ -34,7 +34,7 @@ router.get('/', verifyToken, async (req, res) => {
     filter.role = req.query.role
   }
   
-  const users = await User.find(filter, { name: 1, email: 1, role: 1, level: 1, pictureUrl: 1 }).sort({ createdAt: -1 }).lean()
+  const users = await User.find(filter, { name: 1, email: 1, role: 1, level: 1, pictureUrl: 1, breakTimes: 1 }).sort({ createdAt: -1 }).lean()
   return res.json({ users })
 })
 
@@ -73,13 +73,24 @@ const updateSchema = z.object({
   role: z.enum(['administrator', 'job-controller', 'technician']).optional(),
   level: z.enum(['Junior', 'Senior', 'Master', 'Lead']).optional(),
   pictureUrl: z.string().url().optional().or(z.literal('')).optional(),
+  breakTimes: z.array(z.object({
+    description: z.string().min(1),
+    startTime: z.string().regex(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/),
+    endTime: z.string().regex(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)
+  })).optional(),
 })
 
 router.put('/:id', verifyToken, requireRole(['administrator']), async (req, res) => {
   await connectToMongo()
   const { id } = req.params
+  console.log('Updating user:', id, 'with data:', req.body)
+  
   const parsed = updateSchema.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: 'Invalid payload' })
+  if (!parsed.success) {
+    console.error('Validation failed:', parsed.error)
+    return res.status(400).json({ error: 'Invalid payload', details: parsed.error.issues })
+  }
+  
   const update: Record<string, any> = {}
   if (parsed.data.name) update.name = parsed.data.name
   if (parsed.data.email) update.email = parsed.data.email
@@ -87,9 +98,31 @@ router.put('/:id', verifyToken, requireRole(['administrator']), async (req, res)
   if (parsed.data.level !== undefined) update.level = parsed.data.level
   if (parsed.data.pictureUrl !== undefined) update.pictureUrl = parsed.data.pictureUrl || undefined
   if (parsed.data.password) update.passwordHash = await bcrypt.hash(parsed.data.password, 10)
+  if (parsed.data.breakTimes !== undefined) {
+    console.log('Setting break times:', parsed.data.breakTimes)
+    update.breakTimes = parsed.data.breakTimes
+  }
+  
+  console.log('Update object:', update)
   const result = await User.findByIdAndUpdate(id, update, { new: true })
   if (!result) return res.status(404).json({ error: 'Not found' })
-  return res.json({ ok: true })
+  
+  console.log('Updated user:', result)
+  
+  // Return the updated user data
+  return res.json({ 
+    ok: true, 
+    user: {
+      _id: result._id,
+      name: result.name,
+      email: result.email,
+      username: result.username,
+      role: result.role,
+      level: result.level,
+      breakTimes: result.breakTimes,
+      pictureUrl: result.pictureUrl
+    }
+  })
 })
 
 router.delete('/:id', verifyToken, requireRole(['administrator']), async (req, res) => {

@@ -27,9 +27,6 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
   
   const [durationHours, setDurationHours] = useState<number>(2) // Default 2 hours
   
-  // Break time settings (from localStorage)
-  const [breakStart, setBreakStart] = useState('12:00')
-  const [breakEnd, setBreakEnd] = useState('13:00')
 
   // TanStack Query hooks
   const createJobMutation = useCreateJobOrder()
@@ -42,55 +39,52 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
   const { data: serviceAdvisorsData, isLoading: loadingServiceAdvisors } = useUsers({ role: 'service-advisor' })
   const serviceAdvisors = serviceAdvisorsData?.users || []
 
-  // Load break settings
-  useEffect(() => {
-    const savedBreakStart = localStorage.getItem('breakStart')
-    const savedBreakEnd = localStorage.getItem('breakEnd')
-    if (savedBreakStart) setBreakStart(savedBreakStart)
-    if (savedBreakEnd) setBreakEnd(savedBreakEnd)
-  }, [])
 
-  // Calculate end time when start time or duration changes
+  // Calculate end time when start time, duration, or technician changes
   useEffect(() => {
     if (formData.timeRange.start && durationHours) {
-      const calculatedEnd = calculateEndTimeWithBreak(formData.timeRange.start, durationHours * 60)
+      const calculatedEnd = calculateEndTimeWithBreak(formData.timeRange.start, durationHours * 60, formData.assignedTechnician)
       handleInputChange('timeRange', { ...formData.timeRange, end: calculatedEnd })
     }
-  }, [formData.timeRange.start, durationHours, breakStart, breakEnd])
+  }, [formData.timeRange.start, durationHours, formData.assignedTechnician])
 
-  // Calculate end time from start time and duration, accounting for lunch break
-  const calculateEndTimeWithBreak = (startTime: string, durationMinutes: number): string => {
+  // Calculate end time from start time and duration, accounting for technician's break times
+  const calculateEndTimeWithBreak = (startTime: string, durationMinutes: number, technicianId?: string): string => {
     const [startHour, startMinute] = startTime.split(':').map(Number)
     const startDate = new Date()
     startDate.setHours(startHour, startMinute, 0, 0)
     
-    const [breakStartHour, breakStartMinute] = breakStart.split(':').map(Number)
-    const [breakEndHour, breakEndMinute] = breakEnd.split(':').map(Number)
+    // Calculate initial end time without breaks
+    let endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
     
-    const breakStartDate = new Date()
-    breakStartDate.setHours(breakStartHour, breakStartMinute, 0, 0)
-    
-    const breakEndDate = new Date()
-    breakEndDate.setHours(breakEndHour, breakEndMinute, 0, 0)
-    
-    const breakDuration = (breakEndDate.getTime() - breakStartDate.getTime()) / (1000 * 60)
-    
-    // Calculate initial end time without break
-    const initialEndDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
-    
-    // Check if work period overlaps with break
-    if (startDate < breakEndDate && initialEndDate > breakStartDate) {
-      // The break falls within the work period - add break duration to skip it
-      const endDate = new Date(initialEndDate.getTime() + breakDuration * 60 * 1000)
+    // Get technician's break times if technicianId is provided
+    if (technicianId && technicians && Array.isArray(technicians)) {
+      const technician = technicians.find((t: any) => t._id === technicianId)
+      const breakTimes = technician?.breakTimes || []
       
-      const endHour = String(endDate.getHours()).padStart(2, '0')
-      const endMinute = String(endDate.getMinutes()).padStart(2, '0')
-      return `${endHour}:${endMinute}`
+      // Check if the time range crosses any break time
+      for (const breakTime of breakTimes) {
+        const [breakStartHour, breakStartMinute] = breakTime.startTime.split(':').map(Number)
+        const [breakEndHour, breakEndMinute] = breakTime.endTime.split(':').map(Number)
+        
+        const breakStartDate = new Date()
+        breakStartDate.setHours(breakStartHour, breakStartMinute, 0, 0)
+        
+        const breakEndDate = new Date()
+        breakEndDate.setHours(breakEndHour, breakEndMinute, 0, 0)
+        
+        const breakDuration = (breakEndDate.getTime() - breakStartDate.getTime()) / (1000 * 60)
+        
+        // Work overlaps if: start < breakEnd AND initialEnd > breakStart
+        if (startDate < breakEndDate && endDate > breakStartDate) {
+          // The break falls within the work period - add break duration to skip it
+          endDate = new Date(endDate.getTime() + breakDuration * 60 * 1000)
+        }
+      }
     }
     
-    // No overlap with break, return initial calculation
-    const endHour = String(initialEndDate.getHours()).padStart(2, '0')
-    const endMinute = String(initialEndDate.getMinutes()).padStart(2, '0')
+    const endHour = String(endDate.getHours()).padStart(2, '0')
+    const endMinute = String(endDate.getMinutes()).padStart(2, '0')
     return `${endHour}:${endMinute}`
   }
 
@@ -287,9 +281,9 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
                 <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600">
                   {formData.timeRange.end || 'Set start time'}
                 </div>
-                {formData.timeRange.start && formData.timeRange.end && (
+                {formData.timeRange.start && formData.timeRange.end && formData.assignedTechnician && (
                   <p className="text-xs text-gray-500 mt-1">
-                    Break: {breakStart}-{breakEnd} included
+                    Technician break times included in calculation
                   </p>
                 )}
               </div>
@@ -344,7 +338,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
               <div className="border-t border-gray-200 pt-4">
                 <div className="mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    Technician Schedule - {technicians.find((t: any) => t._id === formData.assignedTechnician)?.name}
+                    Technician Schedule - {technicians && Array.isArray(technicians) ? technicians.find((t: any) => t._id === formData.assignedTechnician)?.name : 'Unknown'}
                   </h3>
                   <p className="text-sm text-gray-600">
                     Click on an available time slot to set the start time, or manually enter it above.

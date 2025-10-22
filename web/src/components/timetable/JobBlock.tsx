@@ -6,52 +6,15 @@ import type { JobOrderWithDetails } from '@/utils/timetableUtils'
 interface JobBlockProps {
   job: JobOrderWithDetails
   highlightedJobId: string | null
-  breakStart: string
-  breakEnd: string
   onClick: (job: JobOrderWithDetails) => void
 }
 
-const JobBlock = memo(({ job, highlightedJobId, breakStart, breakEnd, onClick }: JobBlockProps) => {
+const JobBlock = memo(({ job, highlightedJobId, onClick }: JobBlockProps) => {
   const isHighlighted = highlightedJobId === job._id
   const span = getJobSpan(job)
   const offset = getJobOffset(job)
   const progress = getJobProgress(job)
 
-  // Calculate break time styling
-  const getBreakTimeStyle = () => {
-    const [startHour, startMinute] = job.timeRange.start.split(':').map(Number)
-    const [endHour, endMinute] = job.timeRange.end.split(':').map(Number)
-    const [breakStartHour, breakStartMinute] = breakStart.split(':').map(Number)
-    const [breakEndHour, breakEndMinute] = breakEnd.split(':').map(Number)
-    
-    const jobStartMinutes = startHour * 60 + startMinute
-    const jobEndMinutes = endHour * 60 + endMinute
-    const breakStartMinutes = breakStartHour * 60 + breakStartMinute
-    const breakEndMinutes = breakEndHour * 60 + breakEndMinute
-    
-    // Check if job overlaps with break time
-    const overlapsBreak = jobStartMinutes < breakEndMinutes && jobEndMinutes > breakStartMinutes
-    
-    if (overlapsBreak) {
-      // Calculate the break portion width and position
-      const breakStartInJob = Math.max(breakStartMinutes, jobStartMinutes)
-      const breakEndInJob = Math.min(breakEndMinutes, jobEndMinutes)
-      const breakDuration = breakEndInJob - breakStartInJob
-      const totalJobDuration = jobEndMinutes - jobStartMinutes
-      const breakWidthPercent = (breakDuration / totalJobDuration) * 100
-      const breakLeftPercent = ((breakStartInJob - jobStartMinutes) / totalJobDuration) * 100
-      
-      return {
-        position: 'relative' as const,
-        '--break-start': `${breakLeftPercent}%`,
-        '--break-end': `${breakLeftPercent + breakWidthPercent}%`,
-        '--break-width': `${breakWidthPercent}%`
-      }
-    }
-    return {}
-  }
-
-  const breakTimeStyle = getBreakTimeStyle()
 
   return (
     <button
@@ -71,8 +34,7 @@ const JobBlock = memo(({ job, highlightedJobId, breakStart, breakEnd, onClick }:
         maxWidth: 'none',
         overflow: 'visible',
         isolation: 'isolate',
-        height: '100%',
-        ...breakTimeStyle
+        height: '100%'
       }}
       title={`${job.jobNumber} - ${job.plateNumber} (${progress.toFixed(0)}% complete) - ${formatTime(job.timeRange.start)} to ${formatTime(job.timeRange.end)}`}
     >
@@ -108,17 +70,6 @@ const JobBlock = memo(({ job, highlightedJobId, breakStart, breakEnd, onClick }:
             />
           </div>
         </div>
-      )}
-      {/* Break time indicator */}
-      {Object.keys(breakTimeStyle).length > 0 && (
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            left: breakTimeStyle['--break-start'],
-            width: breakTimeStyle['--break-width'],
-            backgroundColor: 'rgba(0, 0, 0, 0.1)'
-          }}
-        />
       )}
     </button>
   )

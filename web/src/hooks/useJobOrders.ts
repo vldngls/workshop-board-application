@@ -91,7 +91,10 @@ export function useUsers(filters?: { role?: string }) {
   return useQuery({
     queryKey: userKeys.list(filters),
     queryFn: async () => {
-      const response = await fetch('/api/users', {
+      const searchParams = new URLSearchParams()
+      if (filters?.role) searchParams.append('role', filters.role)
+      
+      const response = await fetch(`/api/users?${searchParams.toString()}`, {
         credentials: 'include',
       })
       
@@ -100,13 +103,6 @@ export function useUsers(filters?: { role?: string }) {
       }
       
       const data = await response.json()
-      
-      if (filters?.role) {
-        return {
-          users: data.users?.filter((user: any) => user.role === filters.role) || []
-        }
-      }
-      
       return data
     },
     staleTime: 10 * 60 * 1000, // Technicians don't change often, cache for 10 minutes

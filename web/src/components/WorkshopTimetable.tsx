@@ -8,6 +8,8 @@ import type { Role } from '@/types/auth'
 import type { JobOrderWithDetails } from '@/utils/timetableUtils'
 import { useWorkshopData } from '@/hooks/useWorkshopData'
 import { useJobActions } from '@/hooks/useJobActions'
+import { useUsers } from '@/hooks/useJobOrders'
+import { hasBreakTimeOverlap } from '@/utils/breakTimeUtils'
 import TimetableHeader from './timetable/TimetableHeader'
 import TimetableGrid from './timetable/TimetableGrid'
 import JobStatusSections from './status-sections/JobStatusSections'
@@ -97,52 +99,49 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
   const [showCarryOverReassignModal, setShowCarryOverReassignModal] = useState(false)
   const [selectedCarryOverJob, setSelectedCarryOverJob] = useState<JobOrderWithDetails | null>(null)
   
-  // Break time settings
-  const [breakStart, setBreakStart] = useState('12:00')
-  const [breakEnd, setBreakEnd] = useState('13:00')
-
-  // Load break settings from localStorage
-  useEffect(() => {
-    const savedBreakStart = localStorage.getItem('breakStart')
-    const savedBreakEnd = localStorage.getItem('breakEnd')
-    if (savedBreakStart) setBreakStart(savedBreakStart)
-    if (savedBreakEnd) setBreakEnd(savedBreakEnd)
-  }, [])
+  // Get technicians with their break times for break time calculations
+  const { data: techniciansData } = useUsers({ role: 'technician' })
+  const techniciansWithBreakTimes = techniciansData?.users || []
 
   // Calculate end time from start time and duration, accounting for lunch break
-  const calculateEndTime = (startTime: string, durationMinutes: number): string => {
+  const calculateEndTime = (startTime: string, durationMinutes: number, technicianId?: string): string => {
     const [startHour, startMinute] = startTime.split(':').map(Number)
     const startDate = new Date()
     startDate.setHours(startHour, startMinute, 0, 0)
     
-    const [breakStartHour, breakStartMinute] = breakStart.split(':').map(Number)
-    const [breakEndHour, breakEndMinute] = breakEnd.split(':').map(Number)
+    // Calculate initial end time without breaks
+    let endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
     
-    const breakStartDate = new Date()
-    breakStartDate.setHours(breakStartHour, breakStartMinute, 0, 0)
-    
-    const breakEndDate = new Date()
-    breakEndDate.setHours(breakEndHour, breakEndMinute, 0, 0)
-    
-    const breakDuration = (breakEndDate.getTime() - breakStartDate.getTime()) / (1000 * 60)
-    
-    // Calculate initial end time without break
-    const initialEndDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
-    
-    // Check if work period overlaps with break
-    // Work overlaps if: start < breakEnd AND initialEnd > breakStart
-    if (startDate < breakEndDate && initialEndDate > breakStartDate) {
-      // The break falls within the work period - add break duration to skip it
-      const endDate = new Date(initialEndDate.getTime() + breakDuration * 60 * 1000)
+    // Get technician's break times if technicianId is provided
+    if (technicianId && techniciansWithBreakTimes && Array.isArray(techniciansWithBreakTimes)) {
+      const technician = techniciansWithBreakTimes.find((t: any) => t._id === technicianId)
+      const breakTimes = technician?.breakTimes || []
       
-      const endHour = String(endDate.getHours()).padStart(2, '0')
-      const endMinute = String(endDate.getMinutes()).padStart(2, '0')
-      return `${endHour}:${endMinute}`
+      // Check if the time range crosses any break time
+      for (const breakTime of breakTimes) {
+        const [breakStartHour, breakStartMinute] = breakTime.startTime.split(':').map(Number)
+        const [breakEndHour, breakEndMinute] = breakTime.endTime.split(':').map(Number)
+        
+        const breakStartDate = new Date()
+        breakStartDate.setHours(breakStartHour, breakStartMinute, 0, 0)
+        
+        const breakEndDate = new Date()
+        breakEndDate.setHours(breakEndHour, breakEndMinute, 0, 0)
+        
+        const breakDuration = (breakEndDate.getTime() - breakStartDate.getTime()) / (1000 * 60)
+        
+        // Check if work period overlaps with this break
+        // Work overlaps if: start < breakEnd AND initialEnd > breakStart
+        if (startDate < breakEndDate && endDate > breakStartDate) {
+          // The break falls within the work period - add break duration to skip it
+          endDate = new Date(endDate.getTime() + breakDuration * 60 * 1000)
+        }
+      }
     }
     
-    // No overlap with break, return initial calculation
-    const endHour = String(initialEndDate.getHours()).padStart(2, '0')
-    const endMinute = String(initialEndDate.getMinutes()).padStart(2, '0')
+    // Return the calculated end time
+    const endHour = String(endDate.getHours()).padStart(2, '0')
+    const endMinute = String(endDate.getMinutes()).padStart(2, '0')
     return `${endHour}:${endMinute}`
   }
 
@@ -340,8 +339,6 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         jobOrders={jobOrders}
         appointments={appointments}
         highlightedJobId={highlightedJobId}
-        breakStart={breakStart}
-        breakEnd={breakEnd}
         onJobClick={handleCellClick}
         onAppointmentClick={handleAppointmentClick}
         onDeleteAppointment={userRole === 'technician' ? undefined : handleDeleteAppointment}
@@ -373,8 +370,6 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         isOpen={showModal}
         job={selectedJob}
         updating={updating}
-        breakStart={breakStart}
-        breakEnd={breakEnd}
         onClose={() => setShowModal(false)}
         onToggleImportant={userRole === 'technician' ? undefined : toggleImportant}
         onUpdateJobStatus={userRole === 'technician' ? undefined : updateJobStatus}
@@ -506,8 +501,6 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
       {showCarryOverReassignModal && selectedCarryOverJob && (
         <ReassignmentModal
           job={selectedCarryOverJob}
-          breakStart={breakStart}
-          breakEnd={breakEnd}
           calculateEndTime={calculateEndTime}
           onClose={() => {
             setShowCarryOverReassignModal(false)

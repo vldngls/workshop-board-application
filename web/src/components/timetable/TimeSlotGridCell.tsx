@@ -4,6 +4,7 @@ import AppointmentBlock from './AppointmentBlock'
 import { getJobAtTime, getAppointmentAtTime, getJobStartSlot, getAppointmentStartSlot } from '@/utils/timetableUtils'
 import type { TimeSlot, JobOrderWithDetails, Technician } from '@/utils/timetableUtils'
 import type { Appointment } from '@/types/appointment'
+import { hasBreakTimeOverlap } from '@/utils/breakTimeUtils'
 
 interface TimeSlotGridCellProps {
   technician: Technician
@@ -13,8 +14,6 @@ interface TimeSlotGridCellProps {
   jobOrders: JobOrderWithDetails[]
   appointments: Appointment[]
   highlightedJobId: string | null
-  breakStart: string
-  breakEnd: string
   onJobClick: (job: JobOrderWithDetails) => void
   onAppointmentClick: (appointment: Appointment) => void
   onDeleteAppointment?: (appointmentId: string) => void
@@ -28,8 +27,6 @@ const TimeSlotGridCell = memo(({
   jobOrders,
   appointments,
   highlightedJobId,
-  breakStart,
-  breakEnd,
   onJobClick,
   onAppointmentClick,
   onDeleteAppointment
@@ -39,6 +36,33 @@ const TimeSlotGridCell = memo(({
   
   const appointment = getAppointmentAtTime(technician._id, timeSlot, appointments)
   const isAppointmentStart = appointment && getAppointmentStartSlot(appointment) === slotIndex
+  
+  // Check if this time slot is during a break time
+  const breakTimes = (technician as any).breakTimes || []
+  const isBreakTime = breakTimes.some((breakTime: any) => {
+    const [hour, minute] = timeSlot.time.split(':').map(Number)
+    const [breakStartHour, breakStartMinute] = breakTime.startTime.split(':').map(Number)
+    const [breakEndHour, breakEndMinute] = breakTime.endTime.split(':').map(Number)
+    
+    const slotMinutes = hour * 60 + minute
+    const breakStartMinutes = breakStartHour * 60 + breakStartMinute
+    const breakEndMinutes = breakEndHour * 60 + breakEndMinute
+    
+    return slotMinutes >= breakStartMinutes && slotMinutes < breakEndMinutes
+  })
+  
+  // Find which break time this slot belongs to
+  const currentBreakTime = breakTimes.find((breakTime: any) => {
+    const [hour, minute] = timeSlot.time.split(':').map(Number)
+    const [breakStartHour, breakStartMinute] = breakTime.startTime.split(':').map(Number)
+    const [breakEndHour, breakEndMinute] = breakTime.endTime.split(':').map(Number)
+    
+    const slotMinutes = hour * 60 + minute
+    const breakStartMinutes = breakStartHour * 60 + breakStartMinute
+    const breakEndMinutes = breakEndHour * 60 + breakEndMinute
+    
+    return slotMinutes >= breakStartMinutes && slotMinutes < breakEndMinutes
+  })
 
   return (
     <div
@@ -51,7 +75,14 @@ const TimeSlotGridCell = memo(({
         borderRight: '1px solid #d1d5db'
       }}
     >
-      {isAppointmentStart && !job ? (
+      {isBreakTime ? (
+        // Show break time
+        <div className="w-full h-full bg-orange-100 border-l-4 border-orange-400 flex items-center justify-center">
+          <div className="text-xs text-orange-700 font-medium text-center px-1">
+            {currentBreakTime?.description || 'Break'}
+          </div>
+        </div>
+      ) : isAppointmentStart && !job ? (
         <AppointmentBlock
           appointment={appointment}
           onClick={onAppointmentClick}
@@ -61,8 +92,6 @@ const TimeSlotGridCell = memo(({
         <JobBlock
           job={job}
           highlightedJobId={highlightedJobId}
-          breakStart={breakStart}
-          breakEnd={breakEnd}
           onClick={onJobClick}
         />
       ) : job ? (
