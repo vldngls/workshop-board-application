@@ -3,6 +3,7 @@ const { z } = require('zod')
 const { connectToMongo } = require('../config/mongo.js')
 const { JobOrder } = require('../models/JobOrder.js')
 const { User } = require('../models/User.js')
+const { Appointment } = require('../models/Appointment.js')
 const { verifyToken, requireRole } = require('../middleware/auth.js')
 
 const router = Router()
@@ -121,6 +122,192 @@ router.get('/technicians/available', verifyToken, async (req, res) => {
     return res.json({ technicians: availableTechnicians })
   } catch (error) {
     console.error('Error fetching available technicians:', error)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Get available time slots for walk-ins
+router.get('/walk-in-slots', verifyToken, async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const { date, duration } = req.query
+    
+    if (!date || !duration) {
+      return res.status(400).json({ error: 'Date and duration are required' })
+    }
+    
+    const jobDate = new Date(date as string)
+    const durationMinutes = parseInt(duration as string)
+    
+    // Get all technicians
+    const technicians = await User.find({ role: 'technician' }).select('name email level breakTimes').lean()
+    
+    // Get all job orders and appointments for the date
+    const jobOrders = await JobOrder.find({
+      date: {
+        $gte: new Date(jobDate.toISOString().split('T')[0] || ''),
+        $lt: new Date(new Date(jobDate).setDate(jobDate.getDate() + 1))
+      }
+    }).select('assignedTechnician timeRange').lean()
+    
+    const appointments = await Appointment.find({
+      date: {
+        $gte: new Date(jobDate.toISOString().split('T')[0] || ''),
+        $lt: new Date(new Date(jobDate).setDate(jobDate.getDate() + 1))
+      }
+    }).select('assignedTechnician timeRange').lean()
+    
+    // Generate time slots from 7:00 AM to 6:00 PM (30-minute intervals)
+    const generateTimeSlots = () => {
+      const slots = []
+      for (let hour = 7; hour <= 18; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+          slots.push(timeStr)
+        }
+      }
+      return slots
+    }
+    
+    const timeSlots = generateTimeSlots()
+    
+    // Helper function to calculate end time accounting for break times
+    const calculateEndTimeWithBreaks = (startTime: string, durationMinutes: number, breakTimes: any[]): string => {
+      const [startHour, startMinute] = startTime.split(':').map(Number)
+      const startDate = new Date()
+      startDate.setHours(startHour, startMinute, 0, 0)
+      
+      // Calculate initial end time without breaks
+      let endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
+      
+      // Check if the time range crosses any break time
+      for (const breakTime of breakTimes) {
+        const [breakStartHour, breakStartMinute] = breakTime.startTime.split(':').map(Number)
+        const [breakEndHour, breakEndMinute] = breakTime.endTime.split(':').map(Number)
+        
+        const breakStartDate = new Date()
+        breakStartDate.setHours(breakStartHour, breakStartMinute, 0, 0)
+        
+        const breakEndDate = new Date()
+        breakEndDate.setHours(breakEndHour, breakEndMinute, 0, 0)
+        
+        const breakDuration = (breakEndDate.getTime() - breakStartDate.getTime()) / (1000 * 60)
+        
+        // Work overlaps if: start < breakEnd AND initialEnd > breakStart
+        if (startDate < breakEndDate && endDate > breakStartDate) {
+          // The break falls within the work period - add break duration to skip it
+          endDate = new Date(endDate.getTime() + breakDuration * 60 * 1000)
+        }
+      }
+      
+      const endHour = String(endDate.getHours()).padStart(2, '0')
+      const endMinute = String(endDate.getMinutes()).padStart(2, '0')
+      return `${endHour}:${endMinute}`
+    }
+    
+    // Helper function to check if a time is within a range
+    const isTimeInRange = (time: string, start: string, end: string): boolean => {
+      const [tHour, tMin] = time.split(':').map(Number)
+      const [sHour, sMin] = start.split(':').map(Number)
+      const [eHour, eMin] = end.split(':').map(Number)
+      
+      const tMinutes = tHour * 60 + tMin
+      const sMinutes = sHour * 60 + sMin
+      const eMinutes = eHour * 60 + eMin
+      
+      return tMinutes >= sMinutes && tMinutes < eMinutes
+    }
+    
+    // Helper function to check if technician has break time during slot
+    const hasBreakTimeOverlap = (startTime: string, durationMinutes: number, breakTimes: any[]): boolean => {
+      const [startHour, startMinute] = startTime.split(':').map(Number)
+      const startMinutes = startHour * 60 + startMinute
+      const endMinutes = startMinutes + durationMinutes
+      
+      return breakTimes.some((breakTime: any) => {
+        const [breakStartHour, breakStartMinute] = breakTime.startTime.split(':').map(Number)
+        const [breakEndHour, breakEndMinute] = breakTime.endTime.split(':').map(Number)
+        
+        const breakStartMinutes = breakStartHour * 60 + breakStartMinute
+        const breakEndMinutes = breakEndHour * 60 + breakEndMinute
+        
+        // Check if appointment overlaps with break time
+        return startMinutes < breakEndMinutes && endMinutes > breakStartMinutes
+      })
+    }
+    
+    // Calculate available slots for each technician
+    const technicianSlots = technicians.map(technician => {
+      const technicianJobs = jobOrders.filter(job => job.assignedTechnician?.toString() === technician._id.toString())
+      const technicianAppointments = appointments.filter(appt => appt.assignedTechnician?.toString() === technician._id.toString())
+      
+      // Calculate daily hours for this technician
+      let totalHours = 0
+      for (const job of technicianJobs) {
+        const [startHour, startMinute] = job.timeRange.start.split(':').map(Number)
+        const [endHour, endMinute] = job.timeRange.end.split(':').map(Number)
+        const startMinutes = startHour * 60 + startMinute
+        const endMinutes = endHour * 60 + endMinute
+        totalHours += (endMinutes - startMinutes) / 60
+      }
+      
+      const availableSlots = []
+      
+      for (const startTime of timeSlots) {
+        // Calculate end time accounting for break times
+        const endTime = calculateEndTimeWithBreaks(startTime, durationMinutes, technician.breakTimes || [])
+        
+        // Check if this slot conflicts with any existing jobs
+        const hasJobConflict = technicianJobs.some(job => {
+          return isTimeInRange(startTime, job.timeRange.start, job.timeRange.end) ||
+                 isTimeInRange(endTime, job.timeRange.start, job.timeRange.end) ||
+                 (startTime <= job.timeRange.start && endTime >= job.timeRange.end)
+        })
+        
+        // Check if this slot conflicts with any appointments
+        const hasAppointmentConflict = technicianAppointments.some(appt => {
+          return isTimeInRange(startTime, appt.timeRange.start, appt.timeRange.end) ||
+                 isTimeInRange(endTime, appt.timeRange.start, appt.timeRange.end) ||
+                 (startTime <= appt.timeRange.start && endTime >= appt.timeRange.end)
+        })
+        
+        // Check if this slot overlaps with break times
+        const hasBreakOverlap = hasBreakTimeOverlap(startTime, durationMinutes, technician.breakTimes || [])
+        
+        // Check if adding this job would exceed daily limit
+        const jobHours = durationMinutes / 60
+        const wouldExceedLimit = totalHours + jobHours > 7.5
+        
+        // Check if end time is within working hours (before 6:00 PM)
+        const [endHour, endMinute] = endTime.split(':').map(Number)
+        const isWithinWorkingHours = endHour < 18 || (endHour === 18 && endMinute === 0)
+        
+        if (!hasJobConflict && !hasAppointmentConflict && !hasBreakOverlap && !wouldExceedLimit && isWithinWorkingHours) {
+          availableSlots.push({
+            startTime,
+            endTime,
+            durationHighlight: `${durationMinutes} min`,
+            dailyHoursRemaining: Math.max(0, 7.5 - totalHours)
+          })
+        }
+      }
+      
+      return {
+        technician: {
+          _id: technician._id,
+          name: technician.name,
+          level: technician.level
+        },
+        availableSlots,
+        currentDailyHours: totalHours,
+        dailyHoursRemaining: Math.max(0, 7.5 - totalHours)
+      }
+    })
+    
+    return res.json({ technicianSlots })
+  } catch (error) {
+    console.error('Error fetching walk-in slots:', error)
     return res.status(500).json({ error: 'Internal server error' })
   }
 })

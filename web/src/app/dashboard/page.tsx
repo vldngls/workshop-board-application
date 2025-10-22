@@ -15,11 +15,12 @@ import {
   FiRefreshCw, 
   FiStar, 
   FiSearch, 
-  FiPackage,
+  FiPackage, 
   FiBarChart,
   FiAlertTriangle,
   FiUsers,
-  FiSettings as FiWrench
+  FiSettings as FiWrench,
+  FiUserPlus
 } from 'react-icons/fi'
 import type { JobOrder } from '@/types/jobOrder'
 import SkeletonLoader from '@/components/SkeletonLoader'
@@ -860,6 +861,18 @@ export default function MainDashboard() {
             <div className="flex-1">
               <h3 className="font-bold text-lg text-slate-900 mb-1">Job Control Board</h3>
               <p className="text-sm text-slate-600 font-medium">View timetable & schedule</p>
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/dashboard/walk-in" className="group ios-card p-6 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-200">
+              <FiUserPlus size={20} color="#475569" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-lg text-slate-900 mb-1">Walk-In System</h3>
+              <p className="text-sm text-slate-600 font-medium">Create walk-in job orders</p>
             </div>
           </div>
         </Link>

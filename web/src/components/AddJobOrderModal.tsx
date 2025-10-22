@@ -9,9 +9,10 @@ import TechnicianScheduleView from './TechnicianScheduleView'
 interface AddJobOrderModalProps {
   onClose: () => void
   onSuccess: () => void
+  prefilledData?: Partial<CreateJobOrderRequest>
 }
 
-export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModalProps) {
+export default function AddJobOrderModal({ onClose, onSuccess, prefilledData }: AddJobOrderModalProps) {
   const [formData, setFormData] = useState<CreateJobOrderRequest>({
     jobNumber: '',
     assignedTechnician: '',
@@ -22,7 +23,8 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
     jobList: [{ description: '', status: 'Unfinished' }],
     parts: [],
     date: new Date().toISOString().split('T')[0],
-    status: 'OG'
+    status: 'OG',
+    ...prefilledData
   })
   
   const [durationHours, setDurationHours] = useState<number>(2) // Default 2 hours
@@ -39,6 +41,15 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
   const { data: serviceAdvisorsData, isLoading: loadingServiceAdvisors } = useUsers({ role: 'service-advisor' })
   const serviceAdvisors = serviceAdvisorsData?.users || []
 
+  // Calculate duration from prefilled time range
+  useEffect(() => {
+    if (prefilledData?.timeRange?.start && prefilledData?.timeRange?.end) {
+      const startTime = new Date(`2000-01-01T${prefilledData.timeRange.start}:00`)
+      const endTime = new Date(`2000-01-01T${prefilledData.timeRange.end}:00`)
+      const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
+      setDurationHours(durationMinutes / 60)
+    }
+  }, [prefilledData])
 
   // Calculate end time when start time, duration, or technician changes
   useEffect(() => {
