@@ -329,9 +329,24 @@ export function useJobActions({
   }, [fetchData, setUpdating])
 
   const completeJob = useCallback(async (jobId: string) => {
+    // Show claimed/unclaimed prompt
+    const isClaimed = window.confirm('Is this job claimed by the customer?')
+    
     try {
       setUpdating(true)
-      const response = await fetch(`/api/job-orders/${jobId}/complete`, {
+      
+      let endpoint, successMessage
+      if (isClaimed) {
+        // If claimed, mark as complete (final status)
+        endpoint = `/api/job-orders/${jobId}/mark-complete`
+        successMessage = 'Job marked as Complete and released to customer'
+      } else {
+        // If not claimed, mark as finished unclaimed
+        endpoint = `/api/job-orders/${jobId}/complete`
+        successMessage = 'Job marked as Finished Unclaimed'
+      }
+      
+      const response = await fetch(endpoint, {
         method: 'PATCH'
       })
       if (!response.ok) throw new Error('Failed to complete job')
@@ -340,7 +355,7 @@ export function useJobActions({
       updateForReleaseJobs(prev => prev.filter(job => job._id !== jobId))
       
       await fetchData()
-      toast.success('Job marked as Finished Unclaimed')
+      toast.success(successMessage)
     } catch (error) {
       console.error('Error completing job:', error)
       toast.error('Failed to complete job')

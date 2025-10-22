@@ -187,6 +187,61 @@ router.get('/available-for-slot', verifyToken, async (req, res) => {
   }
 })
 
+// Dashboard endpoint - get stats and categorized jobs
+router.get('/dashboard', verifyToken, async (req, res) => {
+  try {
+    console.log('🔄 SERVER - Dashboard API called')
+    await connectToMongo()
+    
+    // Get all job orders with populated fields
+    const allJobs = await JobOrder.find({})
+      .populate('createdBy', 'name email')
+      .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
+      .sort({ createdAt: -1 })
+      .lean()
+    
+    console.log('📊 Total jobs found:', allJobs.length)
+    
+    // Calculate statistics
+    const stats = {
+      total: allJobs.length,
+      onGoing: allJobs.filter(job => job.status === 'OG').length,
+      forRelease: allJobs.filter(job => job.status === 'FR').length,
+      onHold: allJobs.filter(job => ['HC', 'HW', 'HI', 'WP'].includes(job.status)).length,
+      carriedOver: allJobs.filter(job => job.carriedOver === true).length,
+      important: allJobs.filter(job => job.isImportant === true).length,
+      qualityInspection: allJobs.filter(job => job.status === 'QI').length,
+      finishedUnclaimed: allJobs.filter(job => ['FU', 'CP'].includes(job.status)).length
+    }
+    
+    // Categorize jobs
+    const carriedOverJobs = allJobs.filter(job => job.carriedOver === true)
+    const importantJobs = allJobs.filter(job => job.isImportant === true)
+    const anomalyJobs = allJobs.filter(job => 
+      ['HC', 'HW', 'HI', 'WP'].includes(job.status) || 
+      job.status === 'QI' || 
+      ['FU', 'CP'].includes(job.status)
+    )
+    
+    console.log('📈 Dashboard stats:', stats)
+    console.log('📋 Carried over jobs:', carriedOverJobs.length)
+    console.log('⭐ Important jobs:', importantJobs.length)
+    console.log('⚠️ Anomaly jobs:', anomalyJobs.length)
+    
+    return res.json({
+      stats,
+      carriedOverJobs,
+      importantJobs,
+      anomalyJobs,
+      allJobs
+    })
+  } catch (error) {
+    console.error('💥 Dashboard API error:', error)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // Get job order by ID or job number
 router.get('/:id', verifyToken, async (req, res) => {
   try {
@@ -406,6 +461,7 @@ const updateJobOrderSchema = z.object({
     availability: z.enum(['Available', 'Unavailable'])
   })).optional(),
   status: z.enum(['OG', 'WP', 'UA', 'QI', 'HC', 'HW', 'HI', 'HF', 'SU', 'FR', 'FU', 'CP']).optional(),
+  date: z.string().optional(), // Allow date updates for reassignment
   carriedOver: z.boolean().optional(),
   isImportant: z.boolean().optional(),
   qiStatus: z.enum(['pending', 'approved', 'rejected']).nullable().optional(),
@@ -415,12 +471,19 @@ const updateJobOrderSchema = z.object({
 
 router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
   try {
+    console.log('🔄 SERVER - Job Order Update Request')
+    console.log('📋 Job ID:', req.params.id)
+    console.log('📤 Update Data:', JSON.stringify(req.body, null, 2))
+    
     await connectToMongo()
     
     const parsed = updateJobOrderSchema.safeParse(req.body)
     if (!parsed.success) {
+      console.log('❌ SERVER - Validation failed:', parsed.error.issues)
       return res.status(400).json({ error: 'Invalid payload', details: parsed.error.issues })
     }
+    
+    console.log('✅ SERVER - Validation passed')
     
     // Check if the id is a MongoDB ObjectId or a job number
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(req.params.id)
@@ -428,17 +491,29 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
     
     if (isObjectId) {
       // Search by MongoDB _id
+      console.log('🔍 SERVER - Searching by MongoDB _id')
       jobOrder = await JobOrder.findById(req.params.id)
     } else {
       // Search by job number
+      console.log('🔍 SERVER - Searching by job number')
       jobOrder = await JobOrder.findOne({ jobNumber: req.params.id })
     }
     
     if (!jobOrder) {
+      console.log('❌ SERVER - Job order not found')
       return res.status(404).json({ error: 'Job order not found' })
     }
     
+    console.log('✅ SERVER - Job order found:', {
+      _id: jobOrder._id,
+      jobNumber: jobOrder.jobNumber,
+      status: jobOrder.status,
+      carriedOver: jobOrder.carriedOver
+    })
+    
     const updateData = parsed.data
+    
+    console.log('📅 SERVER - Update data after validation:', JSON.stringify(updateData, null, 2))
     
     // Validate status transition if status is being changed
     if (updateData.status && updateData.status !== jobOrder.status) {
@@ -491,21 +566,44 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
     
     // If updating technician, check availability (skip if setting to null)
     if (updateData.assignedTechnician !== undefined && updateData.assignedTechnician !== null) {
+      console.log('👤 Assigning technician to job:', updateData.assignedTechnician)
+      console.log('📋 Current job status:', jobOrder.status)
+      console.log('📋 Current job carriedOver:', jobOrder.carriedOver)
+      
       const technician = await User.findById(updateData.assignedTechnician)
       if (!technician || technician.role !== 'technician') {
+        console.log('❌ Invalid technician:', updateData.assignedTechnician)
         return res.status(400).json({ error: 'Invalid technician assigned' })
       }
+      console.log('✅ Technician found:', technician.name)
       
-      // If this is a carry-over job being replotted, maintain carry-over status and chain
-      if (jobOrder.carriedOver && jobOrder.sourceType === 'carry-over') {
-        updateData.carriedOver = true
-        updateData.sourceType = 'carry-over'
-        // Preserve original job ID and carry-over chain
+      // If assigning a technician and no explicit status is set, set to 'OG' (On Going)
+      if (!updateData.status && (jobOrder.status === 'UA' || jobOrder.carriedOver)) {
+        updateData.status = 'OG'
+        console.log('🔄 Setting status to OG for reassigned job (was:', jobOrder.status, ', carriedOver:', jobOrder.carriedOver, ')')
+      }
+      
+      // If this is a carry-over job being reassigned, preserve the carry-over chain
+      // but allow carriedOver to be set to false to remove from carry-over queue
+      if (jobOrder.carriedOver) {
+        console.log('🔄 Processing carry-over job reassignment')
+        
+        // Preserve original job ID and carry-over chain for tracking (to show 🔄 icon)
         if (jobOrder.originalJobId) {
           updateData.originalJobId = jobOrder.originalJobId
         }
         if (jobOrder.carryOverChain && jobOrder.carryOverChain.length > 0) {
           updateData.carryOverChain = jobOrder.carryOverChain
+        }
+        
+        // If carriedOver is explicitly set to false in the request, respect that
+        // This removes the job from carry-over queue while preserving the carry-over chain
+        if (updateData.carriedOver === false) {
+          console.log('🔄 Removing from carry-over queue (carriedOver set to false)')
+        } else {
+          // If not explicitly set, preserve the original carriedOver status
+          updateData.carriedOver = jobOrder.carriedOver
+          console.log('🔄 Preserving carriedOver flag:', jobOrder.carriedOver)
         }
       }
     }
@@ -572,6 +670,8 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
       }
     }
     
+    console.log('💾 SERVER - Final update data:', JSON.stringify(updateData, null, 2))
+    
     const updatedJobOrder = await JobOrder.findByIdAndUpdate(
       jobOrder._id,
       updateData,
@@ -581,6 +681,16 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
       .populate('assignedTechnician', 'name email')
       .populate('serviceAdvisor', 'name email')
       .lean()
+    
+    console.log('✅ SERVER - Job order updated successfully:', {
+      _id: updatedJobOrder?._id,
+      jobNumber: updatedJobOrder?.jobNumber,
+      status: updatedJobOrder?.status,
+      carriedOver: updatedJobOrder?.carriedOver,
+      assignedTechnician: updatedJobOrder?.assignedTechnician,
+      date: updatedJobOrder?.date,
+      originalCreatedDate: updatedJobOrder?.originalCreatedDate
+    })
     
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
@@ -747,7 +857,7 @@ router.patch('/:id/complete', verifyToken, requireRole(['administrator', 'job-co
       return res.status(400).json({ error: 'Job order is not marked for release' })
     }
     
-    jobOrder.status = 'FU'  // Finished Unclaimed - automatically marked when approved from For Release
+    jobOrder.status = 'FU'  // Finished Unclaimed - when customer hasn't claimed the job
     await jobOrder.save()
     
     const updatedJobOrder = await JobOrder.findById(jobOrder._id)
@@ -824,17 +934,14 @@ router.patch('/:id/redo', verifyToken, requireRole(['administrator', 'job-contro
   }
 })
 
-// Check and mark carry-over jobs from previous days
+// Check and mark carry-over jobs from all dates
 router.post('/check-carry-over', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
   try {
     await connectToMongo()
     
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    // Find all jobs from previous days that are not completed and not already marked as carried over
-    const previousDaysJobs = await JobOrder.find({
-      date: { $lt: today },
+    // Find ALL jobs that are not completed and not already marked as carried over
+    // This includes jobs from any date (today, yesterday, or any other date)
+    const unfinishedJobs = await JobOrder.find({
       status: { $nin: ['FR', 'FU', 'CP'] }, // Not completed statuses
       carriedOver: { $ne: true } // Not already marked as carried over
     })
@@ -844,7 +951,7 @@ router.post('/check-carry-over', verifyToken, requireRole(['administrator', 'job
       .lean()
     
     // Mark them as carried over and update their source type
-    const updates = previousDaysJobs.map((job: any) => 
+    const updates = unfinishedJobs.map((job: any) => 
       JobOrder.findByIdAndUpdate(
         job._id,
         { 
@@ -870,7 +977,7 @@ router.post('/check-carry-over', verifyToken, requireRole(['administrator', 'job
     const updatedJobs = await Promise.all(updates)
     
     return res.json({ 
-      message: 'Carry-over jobs processed successfully',
+      message: 'All unfinished jobs marked as carry-over successfully',
       count: updatedJobs.length,
       jobs: updatedJobs
     })

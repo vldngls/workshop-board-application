@@ -18,7 +18,7 @@ import ReassignTimeSlotModal from './ReassignTimeSlotModal'
 import ReplotJobOrderModal from './ReplotJobOrderModal'
 import CreateJobOrderFromAppointmentModal from './CreateJobOrderFromAppointmentModal'
 import ConfirmDialog from './ConfirmDialog'
-import ReassignmentModal from './ReassignmentModal'
+import JobReassignmentModal from './JobReassignmentModal'
 
 interface WorkshopTimetableProps {
   date: Date
@@ -508,9 +508,8 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
 
       {/* Carry-Over Reassignment Modal */}
       {showCarryOverReassignModal && selectedCarryOverJob && (
-        <ReassignmentModal
-          job={selectedCarryOverJob}
-          calculateEndTime={calculateEndTime}
+        <JobReassignmentModal
+          jobOrder={selectedCarryOverJob}
           onClose={() => {
             setShowCarryOverReassignModal(false)
             setSelectedCarryOverJob(null)

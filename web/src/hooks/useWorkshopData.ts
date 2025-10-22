@@ -113,13 +113,50 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
       const holdInsurance = hiData.jobOrders || []
       const finishedUnclaimed = fuData.jobOrders || []
       const carriedOver = (carriedOverData.jobOrders || []).filter((job: JobOrderWithDetails) => 
-        job.carriedOver && job.status !== 'FR' && job.status !== 'FU' && job.status !== 'CP'
+        job.carriedOver && 
+        job.status !== 'FR' && 
+        job.status !== 'FU' && 
+        job.status !== 'CP'
       )
 
       // Filter timetable jobs (exclude statuses that should only appear in sections below)
-      const timetableJobs = (jobOrdersData.jobOrders || []).filter((job: JobOrderWithDetails) => 
-        !['WP', 'HC', 'HW', 'HI', 'FU'].includes(job.status)
+      // Include jobs that are assigned to technicians and have proper time ranges
+      // Combine jobs from date-specific fetch and carry-over jobs that might be reassigned to this date
+      const allJobsForDate = [
+        ...(jobOrdersData.jobOrders || []),
+        ...(carriedOverData.jobOrders || []).filter((job: JobOrderWithDetails) => 
+          job.date === dateStr // Only include carry-over jobs that are scheduled for this date
+        )
+      ]
+      
+      // Debug logging
+      console.log('🔍 Timetable Debug for date:', dateStr)
+      console.log('📅 Date-specific jobs:', jobOrdersData.jobOrders?.length || 0)
+      console.log('🔄 Carry-over jobs:', carriedOverData.jobOrders?.length || 0)
+      console.log('📋 All jobs for date:', allJobsForDate.length)
+      console.log('📋 Jobs details:', allJobsForDate.map(job => ({
+        jobNumber: job.jobNumber,
+        date: job.date,
+        status: job.status,
+        technician: job.assignedTechnician?.name,
+        timeRange: job.timeRange
+      })))
+      
+      const timetableJobs = allJobsForDate.filter((job: JobOrderWithDetails) => 
+        !['WP', 'HC', 'HW', 'HI', 'FU'].includes(job.status) &&
+        job.assignedTechnician &&
+        job.timeRange.start !== '00:00' &&
+        job.timeRange.end !== '00:00'
       )
+      
+      console.log('⏰ Timetable jobs after filtering:', timetableJobs.length)
+      console.log('⏰ Timetable jobs details:', timetableJobs.map(job => ({
+        jobNumber: job.jobNumber,
+        date: job.date,
+        status: job.status,
+        technician: job.assignedTechnician?.name,
+        timeRange: job.timeRange
+      })))
 
       // Sort job orders - important ones first, then carried over, then by date
       const sortedJobs = timetableJobs.sort((a: JobOrderWithDetails, b: JobOrderWithDetails) => {

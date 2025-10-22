@@ -43,7 +43,7 @@ const JobBlock = memo(({ job, highlightedJobId, onClick }: JobBlockProps) => {
           <FiStar size={14} />
         </div>
       )}
-      {job.carriedOver && (
+      {(job.carriedOver || job.carryOverChain || job.originalJobId) && (
         <div className="absolute top-0 left-0 text-red-500">
           <FiRefreshCw size={12} />
         </div>

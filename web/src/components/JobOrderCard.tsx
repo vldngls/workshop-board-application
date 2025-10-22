@@ -20,19 +20,21 @@ import {
   FiTrash2,
   FiInfo,
   FiPlay,
-  FiSend
+  FiSend,
+  FiEye
 } from 'react-icons/fi'
 import type { JobOrder, JobStatus, JobItemStatus } from '@/types/jobOrder'
 import { 
   useUpdateJobOrderStatus, 
   useUpdateJobOrder, 
-  useToggleImportant,
-  useAvailableTechnicians 
+  useToggleImportant
 } from '@/hooks/useJobOrders'
+import JobReassignmentModal from './JobReassignmentModal'
 
 interface JobOrderCardProps {
   jobOrder: JobOrder
   onClick?: (jobOrder: JobOrder) => void
+  onViewIn?: (jobId: string, jobDate: string, status: string) => void
 }
 
 // Status mapping for display
@@ -81,7 +83,7 @@ const STATUS_ACCENT: Record<JobStatus, string> = {
   'CP': 'bg-emerald-500'
 }
 
-function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
+function JobOrderCard({ jobOrder, onViewIn }: JobOrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState('')
@@ -93,18 +95,12 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
   const [editingServiceAdvisor, setEditingServiceAdvisor] = useState(false)
   const [showStatusConfirm, setShowStatusConfirm] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<JobStatus | null>(null)
+  const [showReassignmentModal, setShowReassignmentModal] = useState(false)
 
   // TanStack Query mutations
   const updateStatusMutation = useUpdateJobOrderStatus()
   const updateJobMutation = useUpdateJobOrder()
   const toggleImportantMutation = useToggleImportant()
-
-  // Fetch available technicians when needed
-  const { data: availableTechnicians = [] } = useAvailableTechnicians(
-    jobOrder.date.split('T')[0],
-    jobOrder.timeRange.start,
-    jobOrder.timeRange.end
-  )
 
   const getStatusColor = useCallback((status: JobStatus) => {
     return STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'
@@ -198,16 +194,10 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
     )
   }, [jobOrder._id, jobOrder.parts, jobOrder.status, updateJobMutation])
 
-  const handleTechnicianReassign = useCallback(async (technicianId: string) => {
-    updateJobMutation.mutate(
-      { id: jobOrder._id, updates: { assignedTechnician: technicianId } },
-      {
-        onSuccess: () => {
-          setEditingField(null)
-        }
-      }
-    )
-  }, [jobOrder._id, updateJobMutation])
+  const handleReassignmentSuccess = useCallback(() => {
+    // The mutation will automatically refetch data and update the UI
+    toast.success('Job reassigned successfully!')
+  }, [])
 
   const handleFieldEdit = useCallback((field: string, currentValue: string) => {
     setEditingField(field)
@@ -217,7 +207,7 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
   const handleFieldSave = useCallback(async () => {
     if (!editingField) return
 
-    const updates: any = {}
+    const updates: Record<string, unknown> = {}
     
     switch (editingField) {
       case 'plateNumber':
@@ -278,7 +268,7 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
         status: pendingStatus
       })
       toast.success(`Status changed to ${STATUS_LABELS[pendingStatus]}`)
-    } catch (error) {
+    } catch {
       toast.error('Failed to update status')
     } finally {
       setShowStatusConfirm(false)
@@ -303,7 +293,7 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
       })
       setEditingTasks(false)
       toast.success('Tasks and parts updated successfully')
-    } catch (error) {
+    } catch {
       toast.error('Failed to update tasks and parts')
     }
   }, [jobOrder._id, tempJobList, tempParts, updateJobMutation])
@@ -346,7 +336,7 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
     try {
       await updateStatusMutation.mutateAsync({ id: jobOrder._id, status: 'QI' })
       toast.success('Job submitted for quality inspection')
-    } catch (error) {
+    } catch {
       toast.error('Failed to submit for quality inspection')
     }
   }, [jobOrder._id, updateStatusMutation])
@@ -358,16 +348,11 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
         updates: { carriedOver: true }
       })
       toast.success('Job marked as carry-over')
-    } catch (error) {
+    } catch {
       toast.error('Failed to mark as carry-over')
     }
   }, [jobOrder._id, updateJobMutation])
 
-  const handleReplotJob = useCallback(() => {
-    // This would typically open a modal or navigate to a replot interface
-    // For now, we'll just show a message
-    toast.info('Replot functionality - assign technician and time slot')
-  }, [])
 
   const handleServiceAdvisorUpdate = useCallback(async (serviceAdvisorId: string) => {
     try {
@@ -377,615 +362,681 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
       })
       setEditingServiceAdvisor(false)
       toast.success('Service advisor updated successfully')
-    } catch (error) {
+    } catch {
       toast.error('Failed to update service advisor')
     }
   }, [jobOrder._id, updateJobMutation])
 
   return (
     <div
-      className="floating-card p-2 relative group transition-all duration-300 hover:shadow-lg bg-white/90 hover:bg-white w-full"
+      className="relative group transition-all duration-200 hover:shadow-lg bg-white w-full rounded-lg border border-gray-200 overflow-hidden"
     >
-      {/* Left status accent bar */}
-      <div className={`absolute left-0 top-0 bottom-0 w-2 ${STATUS_ACCENT[jobOrder.status]} rounded-l-2xl`}></div>
+      {/* Status accent bar */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${STATUS_ACCENT[jobOrder.status]}`}></div>
       
-
-      {/* Source Type & Carried Over Badge */}
-      <div className="absolute top-2 right-2 flex gap-1">
-        {jobOrder.sourceType === 'appointment' && (
-          <div className="bg-blue-500/20 backdrop-blur-sm text-blue-700 px-1.5 py-0.5 rounded text-xs font-semibold flex items-center gap-1 border border-blue-300/30">
-            <FiCalendar size={10} />
-            <span>Appointment</span>
-          </div>
-        )}
-        {jobOrder.sourceType === 'carry-over' && (
-          <div className="bg-purple-500/20 backdrop-blur-sm text-purple-700 px-1.5 py-0.5 rounded text-xs font-semibold flex items-center gap-1 border border-purple-300/30">
-            <FiRefreshCw size={10} />
-            <span>Carry-over</span>
-          </div>
-        )}
-        {jobOrder.carriedOver && (
-          <div className="bg-red-500/20 backdrop-blur-sm text-red-700 px-1.5 py-0.5 rounded text-xs font-semibold flex items-center gap-1 border border-red-300/30">
-            <FiAlertTriangle size={10} />
-            <span>Carried</span>
-          </div>
-        )}
-      </div>
-
-      {/* Main Content - Enhanced Visual Hierarchy */}
-      <div className="flex items-start justify-between gap-6 mt-4 w-full">
-        {/* Column 1: Job Info - Expanded */}
-        <div className="flex flex-col min-w-0 flex-1 ml-2">
-          <div className="flex items-center gap-2 mb-2">
-            <button
-              onClick={(e) => { stop(e); toggleImportant() }}
-              disabled={toggleImportantMutation.isPending}
-              className={`text-xl transition-all duration-200 ${
-                jobOrder.isImportant 
-                  ? 'text-yellow-400 drop-shadow-lg' 
-                  : 'text-gray-300 hover:text-yellow-400'
-              } hover:scale-110 hover:drop-shadow-xl`}
-              title={jobOrder.isImportant ? 'Remove from important' : 'Mark as important'}
-            >
-              {jobOrder.isImportant ? '★' : '☆'}
-            </button>
-            <h3 className="text-xl font-black text-gray-900 tracking-tight leading-tight">{jobOrder.jobNumber}</h3>
-          </div>
-          <div className="h-0.5 w-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full mb-2"></div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-gray-700 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg border border-gray-200 min-h-[60px]">
-              <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
-                <FiClock size={12} className="text-blue-600" />
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-gray-900">{jobOrder.timeRange.start}–{jobOrder.timeRange.end}</div>
-                <div className="text-xs text-gray-500">Hours</div>
-              </div>
+      {/* Header with badges */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={(e) => { stop(e); toggleImportant() }}
+            disabled={toggleImportantMutation.isPending}
+            className={`text-lg transition-all duration-200 ${
+              jobOrder.isImportant 
+                ? 'text-yellow-500' 
+                : 'text-gray-300 hover:text-yellow-500'
+            } hover:scale-105`}
+            title={jobOrder.isImportant ? 'Remove from important' : 'Mark as important'}
+          >
+            {jobOrder.isImportant ? '★' : '☆'}
+          </button>
+          <div className="flex items-center gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 tracking-tight">{jobOrder.jobNumber}</h3>
+              <div className="text-xs text-gray-500">{formatDate(jobOrder.date)}</div>
             </div>
-            <div className="flex items-center gap-2 text-gray-700 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg border border-gray-200 min-h-[60px]">
-              <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
-                <FiCalendar size={12} className="text-green-600" />
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-gray-900">{formatDate(jobOrder.date)}</div>
-                <div className="text-xs text-gray-500">Created</div>
-              </div>
-            </div>
+            {/* View In button for ongoing jobs */}
+            {jobOrder.status === 'OG' && onViewIn && (
+              <button
+                onClick={(e) => { 
+                  stop(e); 
+                  onViewIn(jobOrder._id, jobOrder.date, jobOrder.status);
+                }}
+                className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors border border-blue-200 flex items-center gap-1.5"
+                title="View this job in the workshop timetable"
+              >
+                <FiEye size={12} />
+                View In
+              </button>
+            )}
           </div>
         </div>
+        
+        <div className="flex gap-1.5">
+          {jobOrder.sourceType === 'appointment' && (
+            <div className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-medium flex items-center gap-1 border border-blue-200">
+              <FiCalendar size={10} />
+              <span>Appointment</span>
+            </div>
+          )}
+          {jobOrder.sourceType === 'carry-over' && (
+            <div className="bg-purple-50 text-purple-700 px-2 py-1 rounded text-xs font-medium flex items-center gap-1 border border-purple-200">
+              <FiRefreshCw size={10} />
+              <span>Carry-over</span>
+            </div>
+          )}
+          {(jobOrder.carriedOver || jobOrder.carryOverChain || jobOrder.originalJobId) && (
+            <div className="bg-red-50 text-red-700 px-2 py-1 rounded text-xs font-medium flex items-center gap-1 border border-red-200">
+              <FiAlertTriangle size={10} />
+              <span>Carried</span>
+            </div>
+          )}
+        </div>
+      </div>
 
-        {/* Column 2: Personnel - Moved to Right */}
-        <div className="flex flex-col space-y-2 min-w-0 w-56">
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-2 shadow-sm border border-gray-200 min-h-[60px]">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Technician</div>
-            {editingField === 'technician' ? (
-              <div className="space-y-1">
-                {availableTechnicians.slice(0, 3).map((tech: any) => (
-                  <button
-                    key={tech._id}
-                    onClick={(e) => { stop(e); handleTechnicianReassign(tech._id) }}
-                    className="block w-full p-1.5 rounded text-xs font-semibold text-left bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all"
-                  >
-                    {tech.name}
-                  </button>
-                ))}
-                <button
-                  onClick={(e) => { stop(e); handleFieldCancel() }}
-                  className="block w-full p-1.5 rounded text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200"
-                >
-                  Cancel
-                </button>
+      {/* Main content grid */}
+      <div className="p-3">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-2">
+          
+          {/* Vehicle Information - Most Important */}
+          <div className="lg:col-span-2">
+            <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-4 h-4 bg-blue-500 rounded flex items-center justify-center">
+                  <FiTool className="text-white" size={10} />
+                </div>
+                <h4 className="text-xs font-semibold text-gray-700">Vehicle Details</h4>
               </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  {jobOrder.assignedTechnician ? (
-                    <div>
-                      <div className="text-sm font-bold text-gray-900 truncate">
-                        {jobOrder.assignedTechnician.name}
-                      </div>
-                      {jobOrder.assignedTechnician.level && (
-                        <div className="text-xs text-blue-600 font-medium">L{jobOrder.assignedTechnician.level}</div>
-                      )}
+              
+              <div className="space-y-1.5">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-0.5 block">Plate Number</label>
+                  {editingField === 'plateNumber' ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        className="flex-1 px-2 py-1 text-sm font-bold border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent bg-white"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleFieldSave()
+                          if (e.key === 'Escape') handleFieldCancel()
+                        }}
+                      />
+                      <button onClick={(e) => { stop(e); handleFieldSave() }} className="text-green-600 p-0.5 rounded hover:bg-green-50 transition-colors">
+                        <FiCheck size={10} />
+                      </button>
+                      <button onClick={(e) => { stop(e); handleFieldCancel() }} className="text-red-600 p-0.5 rounded hover:bg-red-50 transition-colors">
+                        <FiX size={10} />
+                      </button>
                     </div>
                   ) : (
-                    <div className="text-red-600 font-bold flex items-center gap-1">
-                      <FiAlertTriangle size={12} />
-                      <span className="text-xs">Unassigned</span>
+                    <div className="flex items-center gap-1">
+                      <div className="text-sm font-bold text-gray-900 tracking-wide bg-white px-2 py-1 rounded border border-gray-200 flex-1">
+                        {jobOrder.plateNumber}
+                      </div>
+                      <button
+                        onClick={(e) => { stop(e); handleFieldEdit('plateNumber', jobOrder.plateNumber) }}
+                        className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 rounded hover:bg-gray-100"
+                      >
+                        <FiEdit3 size={10} />
+                      </button>
                     </div>
                   )}
                 </div>
-                <button
-                  onClick={(e) => { stop(e); handleFieldEdit('technician', '') }}
-                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 rounded hover:bg-gray-100"
-                >
-                  <FiEdit3 size={14} />
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-2 shadow-sm border border-gray-200 min-h-[60px]">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Service Advisor</div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                {jobOrder.serviceAdvisor ? (
-                  <div>
-                    <div className="text-sm font-bold text-gray-900 truncate">{jobOrder.serviceAdvisor.name}</div>
-                    <div className="text-xs text-green-600 font-medium">Assigned</div>
-                  </div>
-                ) : (
-                  <div className="text-red-600 font-bold flex items-center gap-1">
-                    <FiAlertTriangle size={12} />
-                    <span className="text-xs">Required</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Column 3: Vehicle Info - Moved to Right */}
-        <div className="flex flex-col space-y-2 min-w-0 w-56">          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-2 shadow-sm border border-gray-200 min-h-[60px]">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Plate Number</div>
-            {editingField === 'plateNumber' ? (
-              <div className="flex items-center gap-1">
-                <input
-                  type="text"
-                  value={editingValue}
-                  onChange={(e) => setEditingValue(e.target.value)}
-                  className="w-full px-2 py-1 text-sm font-bold border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleFieldSave()
-                    if (e.key === 'Escape') handleFieldCancel()
-                  }}
-                />
-                <button onClick={(e) => { stop(e); handleFieldSave() }} className="text-green-600 p-0.5 rounded hover:bg-green-50">
-                  <FiCheck size={14} />
-                </button>
-                <button onClick={(e) => { stop(e); handleFieldCancel() }} className="text-red-600 p-0.5 rounded hover:bg-red-50">
-                  <FiX size={14} />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <div className="text-lg font-black text-gray-900 tracking-wide">{jobOrder.plateNumber}</div>
+                
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-0.5 block">VIN</label>
+                  {editingField === 'vin' ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        className="flex-1 px-2 py-1 text-xs font-bold border border-gray-300 rounded font-mono focus:ring-1 focus:ring-blue-500 focus:border-transparent bg-white"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleFieldSave()
+                          if (e.key === 'Escape') handleFieldCancel()
+                        }}
+                      />
+                      <button onClick={(e) => { stop(e); handleFieldSave() }} className="text-green-600 p-0.5 rounded hover:bg-green-50 transition-colors">
+                        <FiCheck size={10} />
+                      </button>
+                      <button onClick={(e) => { stop(e); handleFieldCancel() }} className="text-red-600 p-0.5 rounded hover:bg-red-50 transition-colors">
+                        <FiX size={10} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <div className="text-xs font-bold text-gray-900 font-mono tracking-wide bg-white px-2 py-1 rounded border border-gray-200 flex-1">
+                        {jobOrder.vin}
+                      </div>
+                      <button
+                        onClick={(e) => { stop(e); handleFieldEdit('vin', jobOrder.vin) }}
+                        className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 rounded hover:bg-gray-100"
+                      >
+                        <FiEdit3 size={10} />
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={(e) => { stop(e); handleFieldEdit('plateNumber', jobOrder.plateNumber) }}
-                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 rounded hover:bg-gray-100"
-                >
-                  <FiEdit3 size={14} />
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-2 shadow-sm border border-gray-200 min-h-[60px]">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">VIN</div>
-            {editingField === 'vin' ? (
-              <div className="flex items-center gap-1">
-                <input
-                  type="text"
-                  value={editingValue}
-                  onChange={(e) => setEditingValue(e.target.value)}
-                  className="w-full px-2 py-1 text-xs font-bold border border-gray-300 rounded font-mono focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleFieldSave()
-                    if (e.key === 'Escape') handleFieldCancel()
-                  }}
-                />
-                <button onClick={(e) => { stop(e); handleFieldSave() }} className="text-green-600 p-0.5 rounded hover:bg-green-50">
-                  <FiCheck size={14} />
-                </button>
-                <button onClick={(e) => { stop(e); handleFieldCancel() }} className="text-red-600 p-0.5 rounded hover:bg-red-50">
-                  <FiX size={14} />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <div className="text-sm font-bold text-gray-900 font-mono tracking-wide">{jobOrder.vin}</div>
-                </div>
-                <button
-                  onClick={(e) => { stop(e); handleFieldEdit('vin', jobOrder.vin) }}
-                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 rounded hover:bg-gray-100"
-                >
-                  <FiEdit3 size={14} />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Column 4: Progress & Parts - Moved to Right */}
-        <div className="flex flex-col space-y-2 min-w-0 w-56">
-          <div className="text-center bg-white/80 backdrop-blur-sm rounded-lg p-2 shadow-sm border border-gray-200 min-h-[60px]">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Progress</div>
-            <div className="w-28 h-3 bg-gray-200 rounded-full overflow-hidden mb-1 mx-auto">
-              <div
-                className="h-3 bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-700 shadow-sm"
-                style={{ width: `${totalTasks === 0 ? 0 : Math.round((finishedTasks / totalTasks) * 100)}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-center gap-2">
-              <div className="text-sm font-bold text-gray-900">{finishedTasks}/{totalTasks}</div>
-              <div className="text-xs text-gray-500 font-medium">
-                {totalTasks > 0 ? Math.round((finishedTasks / totalTasks) * 100) : 0}%
               </div>
             </div>
           </div>
 
-          <div className="text-center bg-white/80 backdrop-blur-sm rounded-lg p-2 shadow-sm border border-gray-200 min-h-[60px]">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Parts Status</div>
-            {partsTotal === 0 ? (
-              <div className="text-xs text-gray-500 font-medium bg-gray-50 px-2 py-1 rounded">No Parts Required</div>
-            ) : (
-              <>
-                <div className="w-28 h-3 bg-gray-200 rounded-full overflow-hidden mb-1 mx-auto">
-                  <div
-                    className="h-3 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full transition-all duration-700 shadow-sm"
-                    style={{ width: `${Math.round((partsAvailable / partsTotal) * 100)}%` }}
-                  />
+          {/* Personnel & Time */}
+          <div className="lg:col-span-2">
+            <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-4 h-4 bg-green-500 rounded flex items-center justify-center">
+                  <FiUser className="text-white" size={10} />
                 </div>
-                <div className="flex items-center justify-center gap-2">
-                  <div className="text-sm font-bold text-gray-900">{partsAvailable}/{partsTotal}</div>
-                  <div className="text-xs text-gray-500 font-medium">
-                    {Math.round((partsAvailable / partsTotal) * 100)}%
+                <h4 className="text-xs font-semibold text-gray-700">Personnel & Schedule</h4>
+              </div>
+              
+              <div className="space-y-1.5">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-0.5 block">Time Range</label>
+                  <div className="flex items-center gap-2 bg-white px-2 py-1 rounded border border-gray-200">
+                    <FiClock className="text-blue-600" size={10} />
+                    <span className="text-xs font-bold text-gray-900">{jobOrder.timeRange.start} – {jobOrder.timeRange.end}</span>
+                    <span className="text-xs text-gray-500 ml-auto">({calculateDuration(jobOrder.timeRange.start, jobOrder.timeRange.end)})</span>
                   </div>
                 </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Column 5: Unified Actions */}
-        <div className="flex flex-col items-center min-w-0 w-56">
-          {/* Status Display */}
-          <div className="text-center w-full mb-2">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Status</div>
-            <div className={`px-3 py-2 rounded-lg text-sm font-bold backdrop-blur-sm shadow-sm border-2 ${getStatusColor(jobOrder.status)} min-h-[60px] flex items-center justify-center`}>
-              {STATUS_LABELS[jobOrder.status]}
+                
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-0.5 block">Technician</label>
+                  <div className="flex items-center gap-1">
+                    <div className="flex-1 bg-white px-2 py-1 rounded border border-gray-200">
+                      {jobOrder.assignedTechnician ? (
+                        <div>
+                          <div className="text-xs font-bold text-gray-900 truncate">
+                            {jobOrder.assignedTechnician.name}
+                          </div>
+                          {jobOrder.assignedTechnician.level && (
+                            <div className="text-xs text-blue-600 font-medium">L{jobOrder.assignedTechnician.level}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-red-600 font-bold flex items-center gap-1">
+                          <FiAlertTriangle size={8} />
+                          <span className="text-xs">Unassigned</span>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => { stop(e); setShowReassignmentModal(true) }}
+                      className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 rounded hover:bg-gray-100"
+                      title="Reassign technician"
+                    >
+                      <FiEdit3 size={10} />
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-0.5 block">Service Advisor</label>
+                  <div className="bg-white px-2 py-1 rounded border border-gray-200">
+                    {jobOrder.serviceAdvisor ? (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-900 truncate">{jobOrder.serviceAdvisor.name}</span>
+                        <span className="px-1 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
+                          Assigned
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <span className="text-red-600 font-bold flex items-center gap-1">
+                          <FiAlertTriangle size={8} />
+                          <span className="text-xs">Required</span>
+                        </span>
+                        <span className="px-1 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium">
+                          Required
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col gap-2 w-full">
-            {/* More/Less Button */}
-            <button
-              onClick={(e) => { 
-                stop(e); 
-                setIsExpanded(!isExpanded);
-              }}
-              className="w-full px-3 py-2 bg-white/60 hover:bg-white/80 text-gray-600 rounded-lg text-xs font-semibold transition-all hover:shadow-md border border-gray-200 hover:border-gray-300 flex items-center justify-center gap-1"
-              title={isExpanded ? 'Collapse details' : 'Show details'}
-            >
-              {isExpanded ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
-              {isExpanded ? 'Less' : 'More'}
-            </button>
-            
+          {/* Status & Progress */}
+          <div className="lg:col-span-1">
+            <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-4 h-4 bg-purple-500 rounded flex items-center justify-center">
+                  <FiPlay className="text-white" size={10} />
+                </div>
+                <h4 className="text-xs font-semibold text-gray-700">Status</h4>
+              </div>
+              
+              <div className="text-center mb-2">
+                <div className={`px-2 py-1 rounded text-xs font-bold ${getStatusColor(jobOrder.status)}`}>
+                  {STATUS_LABELS[jobOrder.status]}
+                </div>
+              </div>
+              
+              <div className="space-y-1.5">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-0.5 block text-center">Progress</label>
+                  <div className="bg-white rounded p-1.5 border border-gray-200">
+                    <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden mb-1">
+                      <div
+                        className="h-1 bg-green-500 rounded-full transition-all duration-500"
+                        style={{ width: `${totalTasks === 0 ? 0 : Math.round((finishedTasks / totalTasks) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xs font-bold text-gray-900">{finishedTasks}/{totalTasks}</div>
+                      <div className="text-xs text-gray-500">
+                        {totalTasks > 0 ? Math.round((finishedTasks / totalTasks) * 100) : 0}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-0.5 block text-center">Parts</label>
+                  <div className="bg-white rounded p-1.5 border border-gray-200">
+                    {partsTotal === 0 ? (
+                      <div className="text-xs text-gray-400 text-center font-medium">-- NO PARTS NEEDED --</div>
+                    ) : (
+                      <>
+                        <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden mb-1">
+                          <div
+                            className="h-1 bg-blue-500 rounded-full transition-all duration-500"
+                            style={{ width: `${Math.round((partsAvailable / partsTotal) * 100)}%` }}
+                          />
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs font-bold text-gray-900">{partsAvailable}/{partsTotal}</div>
+                          <div className="text-xs text-gray-500">
+                            {Math.round((partsAvailable / partsTotal) * 100)}%
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Full-width More button */}
+      <div className="px-3 pb-3">
+        <button
+          onClick={(e) => { 
+            stop(e); 
+            setIsExpanded(!isExpanded);
+          }}
+          className="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-medium transition-all border border-gray-200 hover:border-gray-300 flex items-center justify-center gap-1"
+          title={isExpanded ? 'Collapse details' : 'Show details'}
+        >
+          {isExpanded ? <FiChevronUp size={12} /> : <FiChevronDown size={12} />}
+          {isExpanded ? 'Show Less Details' : 'Show More Details'}
+        </button>
+      </div>
 
-      {/* Expandable Details - Optimized Horizontal Layout */}
+
+      {/* Expandable Details - Compact Layout */}
       {isExpanded && (
-        <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
-          {/* Status Management & Actions */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-200">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                <FiPlay size={16} />
-                Status & Actions
-              </h4>
-              <div className="text-xs text-gray-500">Current: {STATUS_LABELS[jobOrder.status]}</div>
-            </div>
-            
-            <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-xs text-blue-700 font-medium">
-                💡 Click any status button below to change the job status. You'll be asked to confirm the change.
-              </p>
-            </div>
-            
-            {/* Compact Status Changes */}
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              {[
-                { value: 'UA', label: 'Unassigned', color: 'bg-cyan-100 text-cyan-800' },
-                { value: 'HC', label: 'Hold Customer', color: 'bg-yellow-100 text-yellow-800' },
-                { value: 'HW', label: 'Hold Warranty', color: 'bg-red-100 text-red-800' },
-                { value: 'HI', label: 'Hold Insurance', color: 'bg-indigo-100 text-indigo-800' },
-                { value: 'HF', label: 'Hold Ford', color: 'bg-pink-100 text-pink-800' },
-                { value: 'SU', label: 'Sublet', color: 'bg-violet-100 text-violet-800' },
-                { value: 'FU', label: 'Finished Unclaimed', color: 'bg-gray-100 text-gray-800' }
-              ].map(({ value, label, color }) => (
-                <button
-                  key={value}
-                  onClick={(e) => { stop(e); handleStatusChange(value as JobStatus) }}
-                  disabled={updateStatusMutation.isPending || value === jobOrder.status}
-                  className={`px-3 py-2 rounded text-xs font-semibold transition-all ${
-                    value === jobOrder.status
-                      ? `${color} cursor-not-allowed opacity-75`
-                      : `${color} hover:shadow-sm hover:scale-105 cursor-pointer`
-                  }`}
-                  title={`${value}: ${label} - Click to change status`}
-                >
-                  {value} - {label}
-                </button>
-              ))}
-            </div>
-
-            {/* Special Actions */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={(e) => { stop(e); handleCarryOver() }}
-                disabled={updateJobMutation.isPending}
-                className="px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
-                title="Mark this job as carried over to next day"
-              >
-                Carry Over
-              </button>
+        <div className="px-4 pb-4">
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            {/* Status Management & Actions */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <div className="w-4 h-4 bg-orange-500 rounded flex items-center justify-center">
+                    <FiPlay className="text-white" size={10} />
+                  </div>
+                  Status & Actions
+                </h4>
+                <div className="text-xs text-gray-600 bg-white px-2 py-1 rounded border border-gray-200">
+                  Current: <span className="font-medium">{STATUS_LABELS[jobOrder.status]}</span>
+                </div>
+              </div>
               
-              {/* Submit for QI */}
-              {jobOrder.status !== 'UA' && jobOrder.status !== 'QI' && jobOrder.status !== 'FR' && jobOrder.status !== 'FU' && jobOrder.status !== 'CP' && (
+              <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200">
+                <p className="text-xs text-blue-700 font-medium">
+                  Click any status button below to change the job status. You&apos;ll be asked to confirm the change.
+                </p>
+              </div>
+              
+              {/* Compact Status Changes */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
+                {[
+                  { value: 'UA', label: 'Unassigned', color: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
+                  { value: 'HC', label: 'Hold Customer', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+                  { value: 'HW', label: 'Hold Warranty', color: 'bg-red-100 text-red-800 border-red-200' },
+                  { value: 'HI', label: 'Hold Insurance', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+                  { value: 'HF', label: 'Hold Ford', color: 'bg-pink-100 text-pink-800 border-pink-200' },
+                  { value: 'SU', label: 'Sublet', color: 'bg-violet-100 text-violet-800 border-violet-200' },
+                  { value: 'FU', label: 'Finished Unclaimed', color: 'bg-gray-100 text-gray-800 border-gray-200' }
+                ].map(({ value, label, color }) => (
+                  <button
+                    key={value}
+                    onClick={(e) => { stop(e); handleStatusChange(value as JobStatus) }}
+                    disabled={updateStatusMutation.isPending || value === jobOrder.status}
+                    className={`p-2 rounded text-xs font-medium transition-all border ${
+                      value === jobOrder.status
+                        ? `${color} cursor-not-allowed opacity-75`
+                        : `${color} hover:shadow-sm cursor-pointer`
+                    }`}
+                    title={`${value}: ${label} - Click to change status`}
+                  >
+                    <div className="text-center">
+                      <div className="font-bold">{value}</div>
+                      <div className="text-xs opacity-80">{label}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Special Actions */}
+              <div className="flex flex-wrap gap-2">
+                {/* Reassign button for Carried Over and Unassigned jobs */}
+                {(jobOrder.status === 'UA' || jobOrder.carriedOver) && (
+                  <button
+                    onClick={(e) => { stop(e); setShowReassignmentModal(true) }}
+                    className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors border border-blue-200 flex items-center gap-1"
+                    title="Reassign job to technician and schedule"
+                  >
+                    <FiUser size={10} />
+                    Reassign
+                  </button>
+                )}
+                
                 <button
-                  onClick={(e) => { stop(e); handleSubmitForQI() }}
-                  disabled={
-                    updateStatusMutation.isPending || 
-                    jobOrder.jobList.some(task => task.status === 'Unfinished') ||
-                    jobOrder.parts.some(part => part.availability === 'Unavailable')
-                  }
-                  className="px-4 py-2 text-sm font-medium text-purple-700 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50 flex items-center gap-2"
-                  title="Submit job for Quality Inspection"
+                  onClick={(e) => { stop(e); handleCarryOver() }}
+                  disabled={updateJobMutation.isPending}
+                  className="px-3 py-1.5 text-xs font-medium text-orange-700 bg-orange-50 rounded hover:bg-orange-100 transition-colors disabled:opacity-50 border border-orange-200 flex items-center gap-1"
+                  title="Mark this job as carried over to next day"
                 >
-                  <FiSend size={14} />
-                  Submit QI
+                  <FiRefreshCw size={10} />
+                  Carry Over
                 </button>
+                
+                {/* Submit for QI */}
+                {jobOrder.status !== 'UA' && jobOrder.status !== 'QI' && jobOrder.status !== 'FR' && jobOrder.status !== 'FU' && jobOrder.status !== 'CP' && (
+                  <button
+                    onClick={(e) => { stop(e); handleSubmitForQI() }}
+                    disabled={
+                      updateStatusMutation.isPending || 
+                      jobOrder.jobList.some(task => task.status === 'Unfinished') ||
+                      jobOrder.parts.some(part => part.availability === 'Unavailable')
+                    }
+                    className="px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 rounded hover:bg-purple-100 transition-colors disabled:opacity-50 flex items-center gap-1 border border-purple-200"
+                    title="Submit job for Quality Inspection"
+                  >
+                    <FiSend size={10} />
+                    Submit QI
+                  </button>
+                )}
+              </div>
+              
+              {/* Validation Messages */}
+              {jobOrder.jobList.some(task => task.status === 'Unfinished') && (
+                <div className="mt-2 p-1.5 bg-red-50 rounded border border-red-200">
+                  <p className="text-xs text-red-600 flex items-center gap-1">
+                    <FiAlertTriangle size={10} />
+                    All tasks must be finished for QI
+                  </p>
+                </div>
               )}
-            </div>
-            
-            {/* Validation Messages */}
-            {jobOrder.jobList.some(task => task.status === 'Unfinished') && (
-              <p className="text-xs text-red-600 mt-2">⚠ All tasks must be finished for QI</p>
-            )}
-            {jobOrder.parts.some(part => part.availability === 'Unavailable') && (
-              <p className="text-xs text-red-600 mt-1">⚠ All parts must be available for QI</p>
-            )}
-          </div>
-
-          {/* Tasks and Parts Management */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Tasks Section */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-200">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                  <FiTool size={16} />
-                  Tasks
-                </h4>
-                <div className="flex items-center gap-2">
-                  <div className="text-sm text-gray-600 font-semibold">
-                    {finishedTasks}/{totalTasks} ({totalTasks > 0 ? Math.round((finishedTasks / totalTasks) * 100) : 0}%)
-                  </div>
-                  {!editingTasks && (
-                    <button
-                      onClick={(e) => { stop(e); handleEditTasks() }}
-                      className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-                    >
-                      <FiEdit3 size={12} />
-                    </button>
-                  )}
+              {jobOrder.parts.some(part => part.availability === 'Unavailable') && (
+                <div className="mt-1 p-1.5 bg-red-50 rounded border border-red-200">
+                  <p className="text-xs text-red-600 flex items-center gap-1">
+                    <FiAlertTriangle size={10} />
+                    All parts must be available for QI
+                  </p>
                 </div>
-              </div>
-
-              {editingTasks ? (
-                <div className="space-y-3">
-                  {tempJobList.map((task, index) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-white/50 rounded-lg">
-                      <input
-                        type="text"
-                        value={task.description}
-                        onChange={(e) => updateTask(index, 'description', e.target.value)}
-                        placeholder="Enter task description..."
-                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                      <select
-                        value={task.status}
-                        onChange={(e) => updateTask(index, 'status', e.target.value)}
-                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      >
-                        <option value="Unfinished">Unfinished</option>
-                        <option value="Finished">Finished</option>
-                      </select>
-                      <button
-                        onClick={(e) => { stop(e); removeTask(index) }}
-                        className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
-                      >
-                        <FiTrash2 size={12} />
-                      </button>
-                    </div>
-                  ))}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={(e) => { stop(e); addTask() }}
-                      className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                    >
-                      <FiPlus size={14} />
-                      Add Task
-                    </button>
-                    <button
-                      onClick={(e) => { stop(e); handleSaveTasks() }}
-                      disabled={updateJobMutation.isPending}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm"
-                    >
-                      {updateJobMutation.isPending ? 'Saving...' : 'Save'}
-                    </button>
-                    <button
-                      onClick={(e) => { stop(e); handleCancelEditTasks() }}
-                      className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-              <div className="space-y-3">
-                {jobOrder.jobList.map((task, index) => (
-                  <div key={index} className="p-3 bg-white/50 rounded-lg border border-white/30">
-                    <div className="mb-2">
-                      <span className="font-medium text-gray-800 text-sm">{task.description}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={(e) => { stop(e); handleJobTaskUpdate(index, 'Finished') }}
-                        disabled={updatingTaskIndex === index || task.status === 'Finished'}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                          task.status === 'Finished'
-                            ? 'bg-green-500 text-white shadow-sm cursor-not-allowed'
-                            : 'bg-green-500/20 text-green-700 hover:bg-green-500/30 hover:shadow-md'
-                        }`}
-                      >
-                        {updatingTaskIndex === index ? '...' : '✓ Finished'}
-                      </button>
-                      <button
-                        onClick={(e) => { stop(e); handleJobTaskUpdate(index, 'Unfinished') }}
-                        disabled={updatingTaskIndex === index || task.status === 'Unfinished'}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                          task.status === 'Unfinished'
-                            ? 'bg-red-500 text-white shadow-sm cursor-not-allowed'
-                            : 'bg-red-500/20 text-red-700 hover:bg-red-500/30 hover:shadow-md'
-                        }`}
-                      >
-                        {updatingTaskIndex === index ? '...' : '✗ Unfinished'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
               )}
             </div>
 
-            {/* Parts Section */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-200">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                  <FiPackage size={16} />
-                  Parts
-                </h4>
-                <div className="flex items-center gap-2">
-                  <div className="text-sm text-gray-600 font-semibold">
-                    {partsAvailable}/{partsTotal} ({partsTotal > 0 ? Math.round((partsAvailable / partsTotal) * 100) : 0}%)
-                  </div>
-                  {!editingTasks && (
-                    <button
-                      onClick={(e) => { stop(e); handleEditTasks() }}
-                      className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-                    >
-                      <FiEdit3 size={12} />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {editingTasks ? (
-                <div className="space-y-3">
-                  {tempParts.map((part, index) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-white/50 rounded-lg">
-                      <input
-                        type="text"
-                        value={part.name}
-                        onChange={(e) => updatePart(index, 'name', e.target.value)}
-                        placeholder="Enter part name..."
-                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                      <select
-                        value={part.availability}
-                        onChange={(e) => updatePart(index, 'availability', e.target.value)}
-                        className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      >
-                        <option value="Available">Available</option>
-                        <option value="Unavailable">Unavailable</option>
-                      </select>
+            {/* Tasks and Parts Management */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Tasks Section */}
+              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <div className="w-4 h-4 bg-blue-500 rounded flex items-center justify-center">
+                      <FiTool className="text-white" size={10} />
+                    </div>
+                    Tasks
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-gray-600 font-medium bg-gray-100 px-2 py-1 rounded">
+                      {finishedTasks}/{totalTasks} ({totalTasks > 0 ? Math.round((finishedTasks / totalTasks) * 100) : 0}%)
+                    </div>
+                    {!editingTasks && (
                       <button
-                        onClick={(e) => { stop(e); removePart(index) }}
-                        className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                        onClick={(e) => { stop(e); handleEditTasks() }}
+                        className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors border border-blue-200"
                       >
-                        <FiTrash2 size={12} />
+                        <FiEdit3 size={10} />
                       </button>
-                    </div>
-                  ))}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={(e) => { stop(e); addPart() }}
-                      className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                    >
-                      <FiPlus size={14} />
-                      Add Part
-                    </button>
-                    <button
-                      onClick={(e) => { stop(e); handleSaveTasks() }}
-                      disabled={updateJobMutation.isPending}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm"
-                    >
-                      {updateJobMutation.isPending ? 'Saving...' : 'Save'}
-                    </button>
-                    <button
-                      onClick={(e) => { stop(e); handleCancelEditTasks() }}
-                      className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
-                    >
-                      Cancel
-                    </button>
+                    )}
                   </div>
                 </div>
-              ) : (
-              <div className="space-y-3">
-                {jobOrder.parts.map((part, index) => (
-                  <div key={index} className="p-3 bg-white/50 rounded-lg border border-white/30">
-                    <div className="mb-2">
-                      <span className="font-medium text-gray-800 text-sm">{part.name}</span>
-                    </div>
+
+                {editingTasks ? (
+                  <div className="space-y-2">
+                    {tempJobList.map((task, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                        <input
+                          type="text"
+                          value={task.description}
+                          onChange={(e) => updateTask(index, 'description', e.target.value)}
+                          placeholder="Enter task description..."
+                          className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                        />
+                        <select
+                          value={task.status}
+                          onChange={(e) => updateTask(index, 'status', e.target.value)}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                        >
+                          <option value="Unfinished">Unfinished</option>
+                          <option value="Finished">Finished</option>
+                        </select>
+                        <button
+                          onClick={(e) => { stop(e); removeTask(index) }}
+                          className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                        >
+                          <FiTrash2 size={10} />
+                        </button>
+                      </div>
+                    ))}
                     <div className="flex gap-2">
                       <button
-                        onClick={(e) => { stop(e); handlePartAvailabilityUpdate(index, 'Available') }}
-                        disabled={updatingPartIndex === index || part.availability === 'Available'}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                          part.availability === 'Available'
-                            ? 'bg-green-500 text-white shadow-sm cursor-not-allowed'
-                            : 'bg-green-500/20 text-green-700 hover:bg-green-500/30 hover:shadow-md'
-                        }`}
+                        onClick={(e) => { stop(e); addTask() }}
+                        className="flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-xs font-medium"
                       >
-                        {updatingPartIndex === index ? '...' : '✓ Available'}
+                        <FiPlus size={10} />
+                        Add Task
                       </button>
                       <button
-                        onClick={(e) => { stop(e); handlePartAvailabilityUpdate(index, 'Unavailable') }}
-                        disabled={updatingPartIndex === index || part.availability === 'Unavailable'}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                          part.availability === 'Unavailable'
-                            ? 'bg-red-500 text-white shadow-sm cursor-not-allowed'
-                            : 'bg-red-500/20 text-red-700 hover:bg-red-500/30 hover:shadow-md'
-                        }`}
+                        onClick={(e) => { stop(e); handleSaveTasks() }}
+                        disabled={updateJobMutation.isPending}
+                        className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs font-medium"
                       >
-                        {updatingPartIndex === index ? '...' : '✗ Unavailable'}
+                        {updateJobMutation.isPending ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={(e) => { stop(e); handleCancelEditTasks() }}
+                        className="px-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors text-xs font-medium"
+                      >
+                        Cancel
                       </button>
                     </div>
                   </div>
-                ))}
+                ) : (
+                <div className="space-y-2">
+                  {jobOrder.jobList.map((task, index) => (
+                    <div key={index} className="p-2 bg-gray-50 rounded border border-gray-200">
+                      <div className="mb-2">
+                        <span className="font-medium text-gray-800 text-xs">{task.description}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={(e) => { stop(e); handleJobTaskUpdate(index, 'Finished') }}
+                          disabled={updatingTaskIndex === index || task.status === 'Finished'}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                            task.status === 'Finished'
+                              ? 'bg-green-500 text-white cursor-not-allowed'
+                              : 'bg-green-500/20 text-green-700 hover:bg-green-500/30 border border-green-200'
+                          }`}
+                        >
+                          {updatingTaskIndex === index ? '...' : '✓ Finished'}
+                        </button>
+                        <button
+                          onClick={(e) => { stop(e); handleJobTaskUpdate(index, 'Unfinished') }}
+                          disabled={updatingTaskIndex === index || task.status === 'Unfinished'}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                            task.status === 'Unfinished'
+                              ? 'bg-red-500 text-white cursor-not-allowed'
+                              : 'bg-red-500/20 text-red-700 hover:bg-red-500/30 border border-red-200'
+                          }`}
+                        >
+                          {updatingTaskIndex === index ? '...' : '✗ Unfinished'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                )}
               </div>
-              )}
+
+              {/* Parts Section */}
+              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <div className="w-4 h-4 bg-purple-500 rounded flex items-center justify-center">
+                      <FiPackage className="text-white" size={10} />
+                    </div>
+                    Parts
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-gray-600 font-medium bg-gray-100 px-2 py-1 rounded">
+                      {partsAvailable}/{partsTotal} ({partsTotal > 0 ? Math.round((partsAvailable / partsTotal) * 100) : 0}%)
+                    </div>
+                    {!editingTasks && (
+                      <button
+                        onClick={(e) => { stop(e); handleEditTasks() }}
+                        className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors border border-blue-200"
+                      >
+                        <FiEdit3 size={10} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {editingTasks ? (
+                  <div className="space-y-2">
+                    {tempParts.map((part, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                        <input
+                          type="text"
+                          value={part.name}
+                          onChange={(e) => updatePart(index, 'name', e.target.value)}
+                          placeholder="Enter part name..."
+                          className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                        />
+                        <select
+                          value={part.availability}
+                          onChange={(e) => updatePart(index, 'availability', e.target.value)}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                        >
+                          <option value="Available">Available</option>
+                          <option value="Unavailable">Unavailable</option>
+                        </select>
+                        <button
+                          onClick={(e) => { stop(e); removePart(index) }}
+                          className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                        >
+                          <FiTrash2 size={10} />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => { stop(e); addPart() }}
+                        className="flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-xs font-medium"
+                      >
+                        <FiPlus size={10} />
+                        Add Part
+                      </button>
+                      <button
+                        onClick={(e) => { stop(e); handleSaveTasks() }}
+                        disabled={updateJobMutation.isPending}
+                        className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors text-xs font-medium"
+                      >
+                        {updateJobMutation.isPending ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={(e) => { stop(e); handleCancelEditTasks() }}
+                        className="px-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors text-xs font-medium"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                <div className="space-y-2">
+                  {jobOrder.parts.map((part, index) => (
+                    <div key={index} className="p-2 bg-gray-50 rounded border border-gray-200">
+                      <div className="mb-2">
+                        <span className="font-medium text-gray-800 text-xs">{part.name}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={(e) => { stop(e); handlePartAvailabilityUpdate(index, 'Available') }}
+                          disabled={updatingPartIndex === index || part.availability === 'Available'}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                            part.availability === 'Available'
+                              ? 'bg-green-500 text-white cursor-not-allowed'
+                              : 'bg-green-500/20 text-green-700 hover:bg-green-500/30 border border-green-200'
+                          }`}
+                        >
+                          {updatingPartIndex === index ? '...' : '✓ Available'}
+                        </button>
+                        <button
+                          onClick={(e) => { stop(e); handlePartAvailabilityUpdate(index, 'Unavailable') }}
+                          disabled={updatingPartIndex === index || part.availability === 'Unavailable'}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                            part.availability === 'Unavailable'
+                              ? 'bg-red-500 text-white cursor-not-allowed'
+                              : 'bg-red-500/20 text-red-700 hover:bg-red-500/30 border border-red-200'
+                          }`}
+                        >
+                          {updatingPartIndex === index ? '...' : '✗ Unavailable'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                )}
+              </div>
+
             </div>
 
             {/* Service Advisor & Additional Info Section */}
-            <div className="space-y-3">
+            <div className="lg:col-span-2 space-y-3 mt-4">
               {/* Service Advisor */}
-              <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-200">
+              <div className="bg-white rounded-lg p-3 border border-gray-200">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                    <FiUser size={16} />
+                  <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-500 rounded flex items-center justify-center">
+                      <FiUser className="text-white" size={10} />
+                    </div>
                     Service Advisor
                   </h4>
                   <button
                     onClick={(e) => { stop(e); setEditingServiceAdvisor(!editingServiceAdvisor) }}
-                    className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                    className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors border border-blue-200"
                   >
                     {editingServiceAdvisor ? 'Cancel' : 'Edit'}
                   </button>
@@ -996,7 +1047,7 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
                     <select
                       value={jobOrder.serviceAdvisor?._id || ''}
                       onChange={(e) => handleServiceAdvisorUpdate(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                     >
                       <option value="">Select Service Advisor</option>
                       {/* This would be populated with actual service advisors from props or context */}
@@ -1005,18 +1056,24 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
                     </select>
                   </div>
                 ) : (
-                  <div className="text-sm">
+                  <div className="bg-gray-50 rounded p-2 border border-gray-200">
                     {jobOrder.serviceAdvisor ? (
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-gray-800">{jobOrder.serviceAdvisor.name}</span>
-                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">
+                        <div>
+                          <span className="font-bold text-gray-800 text-sm">{jobOrder.serviceAdvisor.name}</span>
+                          <div className="text-xs text-gray-600">Service Advisor</div>
+                        </div>
+                        <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium border border-green-200">
                           Assigned
                         </span>
                       </div>
                     ) : (
                       <div className="flex items-center justify-between">
-                        <span className="text-red-600 font-medium">No service advisor assigned</span>
-                        <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-semibold">
+                        <div>
+                          <span className="text-red-600 font-bold text-sm">No service advisor assigned</span>
+                          <div className="text-xs text-gray-600">Service Advisor</div>
+                        </div>
+                        <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium border border-red-200">
                           Required
                         </span>
                       </div>
@@ -1026,28 +1083,36 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
               </div>
 
               {/* Job Details Summary */}
-              <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-200">
-                <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2 mb-3">
-                  <FiInfo size={16} />
+              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+                  <div className="w-4 h-4 bg-gray-500 rounded flex items-center justify-center">
+                    <FiInfo className="text-white" size={10} />
+                  </div>
                   Job Summary
                 </h4>
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Source:</span>
-                    <span className="font-medium text-gray-800 capitalize">
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded border border-gray-200">
+                    <span className="text-gray-600 text-xs">Source:</span>
+                    <span className="font-bold text-gray-800 text-xs capitalize">
                       {jobOrder.sourceType?.replace('-', ' ') || 'Direct'}
                     </span>
                   </div>
                   {jobOrder.carriedOver && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-orange-700 font-medium">Carried Over:</span>
-                      <span className="font-medium text-orange-800">Yes</span>
+                    <div className="flex justify-between items-center p-2 bg-orange-50 rounded border border-orange-200">
+                      <span className="text-orange-700 text-xs font-medium">Carried Over:</span>
+                      <span className="font-bold text-orange-800 text-xs">Yes</span>
                     </div>
                   )}
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Updated:</span>
-                    <span className="font-medium text-gray-800">
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded border border-gray-200">
+                    <span className="text-gray-600 text-xs">Last Updated:</span>
+                    <span className="font-bold text-gray-800 text-xs">
                       {formatDate(jobOrder.updatedAt)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded border border-gray-200">
+                    <span className="text-gray-600 text-xs">Days in Workshop:</span>
+                    <span className="font-bold text-gray-800 text-xs">
+                      {calculateDaysInWorkshop()} days
                     </span>
                   </div>
                 </div>
@@ -1056,14 +1121,14 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
           </div>
           
           {/* Collapse Button */}
-          <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="mt-4 pt-3 border-t border-gray-200">
             <button
               onClick={(e) => { stop(e); setIsExpanded(false) }}
-              className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-all hover:shadow-md border border-gray-200 hover:border-gray-300 flex items-center justify-center gap-2"
+              className="w-full px-3 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded text-xs font-medium transition-all border border-gray-200 hover:border-gray-300 flex items-center justify-center gap-1"
               title="Collapse quick details"
             >
-              <FiChevronUp size={16} />
-              Less
+              <FiChevronUp size={12} />
+              Show Less Details
             </button>
           </div>
         </div>
@@ -1156,6 +1221,15 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Reassignment Modal */}
+      {showReassignmentModal && (
+        <JobReassignmentModal
+          jobOrder={jobOrder}
+          onClose={() => setShowReassignmentModal(false)}
+          onSuccess={handleReassignmentSuccess}
+        />
       )}
     </div>
   )

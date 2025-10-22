@@ -333,6 +333,7 @@ export default function JobOrdersPage() {
                 key={jobOrder._id}
                 jobOrder={jobOrder}
                 onClick={handleOpenDetails}
+                onViewIn={handleViewIn}
               />
             ))}
           </div>

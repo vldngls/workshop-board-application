@@ -28,8 +28,9 @@ const TimetableHeader = memo(({
     onDateChange(newDate)
   }
 
-  const formatDate = (dateVal: Date): string => {
-    return dateVal.toLocaleDateString('en-US', {
+  const formatDate = (dateVal: Date | string): string => {
+    const dateObj = typeof dateVal === 'string' ? new Date(dateVal) : dateVal
+    return dateObj.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',

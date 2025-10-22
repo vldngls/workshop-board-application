@@ -404,7 +404,7 @@ const JobDetailsModal = memo(({
               </div>
             </div>
 
-            {job.carriedOver && (
+            {(job.carriedOver || job.carryOverChain || job.originalJobId) && (
               <div className="bg-red-500/20 backdrop-blur-sm border border-red-300/30 rounded-xl p-3">
                 <div className="flex items-center gap-2 text-red-800">
                   <FiRefreshCw size={20} />

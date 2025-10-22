@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast, { Toaster } from 'react-hot-toast'
@@ -23,6 +23,7 @@ import {
 } from 'react-icons/fi'
 import type { JobOrder } from '@/types/jobOrder'
 import SkeletonLoader from '@/components/SkeletonLoader'
+import JobReassignmentModal from '@/components/JobReassignmentModal'
 
 interface DashboardStats {
   total: number
@@ -129,10 +130,7 @@ export default function MainDashboard() {
     if (userRole && userRole !== 'technician') {
       fetchDashboardData()
       
-      // Auto-check for carry-over jobs if user is admin or job-controller
-      if (userRole === 'administrator' || userRole === 'job-controller') {
-        handleCheckCarryOver()
-      }
+      // No longer auto-check for carry-over jobs - user must manually trigger
     }
   }, [userRole])
 
@@ -145,42 +143,6 @@ export default function MainDashboard() {
     return () => clearInterval(timer)
   }, [])
 
-  // Calculate end time from start time and duration, accounting for lunch break
-  const calculateEndTime = (startTime: string, durationMinutes: number): string => {
-    const [startHour, startMinute] = startTime.split(':').map(Number)
-    const startDate = new Date()
-    startDate.setHours(startHour, startMinute, 0, 0)
-    
-    const [breakStartHour, breakStartMinute] = breakStart.split(':').map(Number)
-    const [breakEndHour, breakEndMinute] = breakEnd.split(':').map(Number)
-    
-    const breakStartDate = new Date()
-    breakStartDate.setHours(breakStartHour, breakStartMinute, 0, 0)
-    
-    const breakEndDate = new Date()
-    breakEndDate.setHours(breakEndHour, breakEndMinute, 0, 0)
-    
-    const breakDuration = (breakEndDate.getTime() - breakStartDate.getTime()) / (1000 * 60)
-    
-    // Calculate initial end time without break
-    const initialEndDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000)
-    
-    // Check if work period overlaps with break
-    // Work overlaps if: start < breakEnd AND initialEnd > breakStart
-    if (startDate < breakEndDate && initialEndDate > breakStartDate) {
-      // The break falls within the work period - add break duration to skip it
-      const endDate = new Date(initialEndDate.getTime() + breakDuration * 60 * 1000)
-      
-      const endHour = String(endDate.getHours()).padStart(2, '0')
-      const endMinute = String(endDate.getMinutes()).padStart(2, '0')
-      return `${endHour}:${endMinute}`
-    }
-    
-    // No overlap with break, return initial calculation
-    const endHour = String(initialEndDate.getHours()).padStart(2, '0')
-    const endMinute = String(initialEndDate.getMinutes()).padStart(2, '0')
-    return `${endHour}:${endMinute}`
-  }
 
   const fetchDashboardData = async () => {
     try {
@@ -204,8 +166,13 @@ export default function MainDashboard() {
         finishedUnclaimed: allJobs.filter(job => job.status === 'FU' || job.status === 'CP').length
       }
 
-      // Filter carried over and important jobs (exclude completed jobs)
-      const carried = allJobs.filter(job => job.carriedOver && job.status !== 'FR' && job.status !== 'FU' && job.status !== 'CP')
+      // Filter carried over jobs that need reassignment (exclude completed jobs only)
+      const carried = allJobs.filter(job => 
+        job.carriedOver && 
+        job.status !== 'FR' && 
+        job.status !== 'FU' && 
+        job.status !== 'CP'
+      )
       const important = allJobs.filter(job => job.isImportant && job.status !== 'FR' && job.status !== 'FU' && job.status !== 'CP')
       
       // Identify pending job orders (mainly WP status or jobs needing attention)
@@ -243,15 +210,7 @@ export default function MainDashboard() {
     }
   }
 
-  const handleUpdateJobStatus = useCallback((jobId: string, status: string, remarks?: string) => {
-    // For now, just show a toast - in a real implementation, you'd call an API
-    console.log('Update job status:', { jobId, status, remarks })
-  }, [])
 
-  const handleCarryOver = useCallback((jobId: string) => {
-    // For now, just show a toast - in a real implementation, you'd call an API
-    console.log('Carry over job:', jobId)
-  }, [])
 
   const handleCheckCarryOver = async () => {
     if (isCheckingCarryOver) return
@@ -268,12 +227,12 @@ export default function MainDashboard() {
 
       if (response.ok) {
         const data = await response.json()
-        toast.success(`Found and processed ${data.count} carry-over job(s)`)
+        toast.success(`Marked ${data.count} unfinished job(s) as carry-over`)
         // Refresh dashboard data
         fetchDashboardData()
       } else {
         const errorData = await response.json()
-        toast.error(errorData.error || 'Failed to check carry-over jobs')
+        toast.error(errorData.error || 'Failed to mark jobs as carry-over')
       }
     } catch (error) {
       console.error('Error checking carry-over:', error)
@@ -943,9 +902,9 @@ export default function MainDashboard() {
               )}
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-lg text-slate-900 mb-1">Check Carry-Over</h3>
+              <h3 className="font-bold text-lg text-slate-900 mb-1">End of Day Carry-Over</h3>
               <p className="text-sm text-slate-600 font-medium">
-                {isCheckingCarryOver ? 'Checking...' : 'Process previous day jobs'}
+                {isCheckingCarryOver ? 'Processing...' : 'Mark ALL unfinished jobs as carry-over'}
               </p>
             </div>
           </div>
@@ -962,7 +921,7 @@ export default function MainDashboard() {
             </div>
             <div>
               <h3 className="font-bold text-lg text-slate-900">Performance Metrics</h3>
-              <p className="text-sm text-slate-600">Today's workshop efficiency</p>
+              <p className="text-sm text-slate-600">Today&apos;s workshop efficiency</p>
             </div>
           </div>
           
@@ -1083,9 +1042,8 @@ export default function MainDashboard() {
 
       {/* Reassignment Modal */}
       {showReassignModal && selectedJobForReassign && (
-        <ReassignmentModal
-          job={selectedJobForReassign}
-          calculateEndTime={calculateEndTime}
+        <JobReassignmentModal
+          jobOrder={selectedJobForReassign}
           onClose={() => {
             setShowReassignModal(false)
             setSelectedJobForReassign(null)
@@ -1102,7 +1060,6 @@ export default function MainDashboard() {
       {showJobDetailsModal && selectedJobForDetails && (
         <JobDetailsModal
           job={selectedJobForDetails}
-          calculateEndTime={calculateEndTime}
           onClose={() => {
             setShowJobDetailsModal(false)
             setSelectedJobForDetails(null)
@@ -1112,8 +1069,6 @@ export default function MainDashboard() {
             setSelectedJobForDetails(null)
             fetchDashboardData()
           }}
-          onUpdateJobStatus={handleUpdateJobStatus}
-          onCarryOver={handleCarryOver}
         />
       )}
 
@@ -1192,13 +1147,10 @@ export default function MainDashboard() {
 }
 
 // Job Details Modal Component
-function JobDetailsModal({ job, calculateEndTime, onClose, onSuccess, onUpdateJobStatus, onCarryOver }: {
-  job: any
-  calculateEndTime: (startTime: string, duration: number) => string
+function JobDetailsModal({ job, onClose, onSuccess }: {
+  job: JobOrderWithTechnician
   onClose: () => void
   onSuccess: () => void
-  onUpdateJobStatus?: (jobId: string, status: string, remarks?: string) => void
-  onCarryOver?: (jobId: string) => void
 }) {
   const [updating, setUpdating] = useState(false)
   const [showReassign, setShowReassign] = useState(false)
@@ -1262,7 +1214,7 @@ function JobDetailsModal({ job, calculateEndTime, onClose, onSuccess, onUpdateJo
     }
   }
 
-  const allPartsAvailable = localJob.parts.every((p: any) => p.availability === 'Available')
+  const allPartsAvailable = localJob.parts.every((p: { availability: string }) => p.availability === 'Available')
 
   return (
     <div className="modal-backdrop">
@@ -1305,11 +1257,11 @@ function JobDetailsModal({ job, calculateEndTime, onClose, onSuccess, onUpdateJo
               <div className="flex justify-between items-center mb-3">
                 <h4 className="font-semibold text-gray-900">Parts Required</h4>
                 <span className="text-xs text-gray-600">
-                  {localJob.parts.filter((p: any) => p.availability === 'Available').length}/{localJob.parts.length} available
+                  {localJob.parts.filter((p: { availability: string }) => p.availability === 'Available').length}/{localJob.parts.length} available
                 </span>
               </div>
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {localJob.parts.map((part: any, index: number) => (
+                {localJob.parts.map((part: { name: string; availability: string }, index: number) => (
                   <div key={index} className="bg-white/40 backdrop-blur-sm border border-white/40 rounded-xl p-3">
                     <div className="flex justify-between items-start mb-2">
                       <h5 className="font-medium text-gray-900 text-sm">{part.name}</h5>
@@ -1355,11 +1307,11 @@ function JobDetailsModal({ job, calculateEndTime, onClose, onSuccess, onUpdateJo
               <div className="flex justify-between items-center mb-3">
                 <h4 className="font-semibold text-gray-900">Job Tasks</h4>
                 <span className="text-xs text-gray-600">
-                  {localJob.jobList.filter((t: any) => t.status === 'Finished').length}/{localJob.jobList.length} finished
+                  {localJob.jobList.filter((t: { status: string }) => t.status === 'Finished').length}/{localJob.jobList.length} finished
                 </span>
               </div>
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {localJob.jobList.map((task: any, index: number) => (
+                {localJob.jobList.map((task: { description: string; status: string }, index: number) => (
                   <div key={index} className="bg-white/40 backdrop-blur-sm border border-white/40 rounded-xl p-3">
                     <div className="flex justify-between items-start mb-2">
                       <h5 className="font-medium text-gray-900 text-sm">{task.description}</h5>
@@ -1448,9 +1400,8 @@ function JobDetailsModal({ job, calculateEndTime, onClose, onSuccess, onUpdateJo
 
       {/* Nested Reassignment Modal */}
       {showReassign && (
-        <ReassignmentModal
-          job={localJob}
-          calculateEndTime={calculateEndTime}
+        <JobReassignmentModal
+          jobOrder={localJob}
           onClose={() => setShowReassign(false)}
           onSuccess={() => {
             setShowReassign(false)
@@ -1462,403 +1413,4 @@ function JobDetailsModal({ job, calculateEndTime, onClose, onSuccess, onUpdateJo
   )
 }
 
-// Reassignment Modal Component
-function ReassignmentModal({ job, calculateEndTime, onClose, onSuccess }: {
-  job: any
-  calculateEndTime: (startTime: string, duration: number) => string
-  onClose: () => void
-  onSuccess: () => void
-}) {
-  const [startTime, setStartTime] = useState(job.timeRange.start)
-  const [duration, setDuration] = useState(120) // Default 2 hours in minutes
-  const [endTime, setEndTime] = useState(calculateEndTime(job.timeRange.start, 120))
-  const [selectedTechnician, setSelectedTechnician] = useState('')
-  const [allTechnicians, setAllTechnicians] = useState<any[]>([])
-  const [technicianSchedule, setTechnicianSchedule] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
-
-  // Fetch all technicians on mount
-  useEffect(() => {
-    const fetchTechnicians = async () => {
-      try {
-        const response = await fetch('/api/users', { credentials: 'include' })
-        if (response.ok) {
-          const data = await response.json()
-          const techs = (data.users || []).filter((u: any) => u.role === 'technician')
-          setAllTechnicians(techs)
-        }
-      } catch (error) {
-        console.error('Error fetching technicians:', error)
-      }
-    }
-    fetchTechnicians()
-  }, [])
-
-  // Fetch selected technician's schedule
-  useEffect(() => {
-    const fetchSchedule = async () => {
-      if (!selectedTechnician) {
-        setTechnicianSchedule([])
-        return
-      }
-
-      setLoading(true)
-      try {
-        const response = await fetch(
-          `/api/job-orders?date=${selectedDate}&technician=${selectedTechnician}&limit=100`,
-          { credentials: 'include' }
-        )
-        if (response.ok) {
-          const data = await response.json()
-          // Filter out the current job being reassigned
-          const schedule = (data.jobOrders || []).filter((j: any) => j._id !== job._id)
-          setTechnicianSchedule(schedule)
-        }
-      } catch (error) {
-        console.error('Error fetching schedule:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    fetchSchedule()
-  }, [selectedTechnician, selectedDate, job._id])
-
-  // Recalculate end time when start time or duration changes
-  useEffect(() => {
-    if (startTime && duration) {
-      const calculated = calculateEndTime(startTime, duration)
-      setEndTime(calculated)
-    }
-  }, [startTime, duration, calculateEndTime])
-
-  // Generate time slots (7 AM to 6 PM in 30-min intervals)
-  const generateTimeSlots = () => {
-    const slots = []
-    for (let hour = 7; hour <= 18; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        if (hour === 18 && minute > 0) break // Stop at 6:00 PM
-        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-        slots.push(time)
-      }
-    }
-    return slots
-  }
-
-  const timeSlots = generateTimeSlots()
-
-  // Check if a time slot is occupied
-  const isSlotOccupied = (slotTime: string) => {
-    const [slotHour, slotMin] = slotTime.split(':').map(Number)
-    const slotMinutes = slotHour * 60 + slotMin
-
-    return technicianSchedule.some(job => {
-      const [startHour, startMin] = job.timeRange.start.split(':').map(Number)
-      const [endHour, endMin] = job.timeRange.end.split(':').map(Number)
-      const jobStart = startHour * 60 + startMin
-      const jobEnd = endHour * 60 + endMin
-      
-      return slotMinutes >= jobStart && slotMinutes < jobEnd
-    })
-  }
-
-  // Get job at specific time slot
-  const getJobAtSlot = (slotTime: string) => {
-    const [slotHour, slotMin] = slotTime.split(':').map(Number)
-    const slotMinutes = slotHour * 60 + slotMin
-
-    return technicianSchedule.find(job => {
-      const [startHour, startMin] = job.timeRange.start.split(':').map(Number)
-      const [endHour, endMin] = job.timeRange.end.split(':').map(Number)
-      const jobStart = startHour * 60 + startMin
-      const jobEnd = endHour * 60 + endMin
-      
-      return slotMinutes >= jobStart && slotMinutes < jobEnd
-    })
-  }
-
-  // Check if proposed time conflicts
-  const hasConflict = () => {
-    if (!startTime || !endTime) return false
-
-    const [startHour, startMin] = startTime.split(':').map(Number)
-    const [endHour, endMin] = endTime.split(':').map(Number)
-    const proposedStart = startHour * 60 + startMin
-    const proposedEnd = endHour * 60 + endMin
-
-    return technicianSchedule.some(job => {
-      const [jobStartHour, jobStartMin] = job.timeRange.start.split(':').map(Number)
-      const [jobEndHour, jobEndMin] = job.timeRange.end.split(':').map(Number)
-      const jobStart = jobStartHour * 60 + jobStartMin
-      const jobEnd = jobEndHour * 60 + jobEndMin
-      
-      return proposedStart < jobEnd && proposedEnd > jobStart
-    })
-  }
-
-  const handleSlotClick = (slotTime: string) => {
-    if (!isSlotOccupied(slotTime)) {
-      setStartTime(slotTime)
-    }
-  }
-
-  const handleSubmit = async () => {
-    if (!selectedTechnician) {
-      toast.error('Please select a technician')
-      return
-    }
-
-    if (hasConflict()) {
-      toast.error('Time slot conflicts with existing job')
-      return
-    }
-
-    setSubmitting(true)
-    try {
-      const response = await fetch(`/api/job-orders/${job._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          assignedTechnician: selectedTechnician,
-          timeRange: { start: startTime, end: endTime },
-          date: selectedDate,
-          carriedOver: false
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to reassign job')
-      }
-
-      toast.success('Job reassigned successfully!')
-      onSuccess()
-    } catch (error) {
-      console.error('Error reassigning job:', error)
-      if (error instanceof Error) {
-        toast.error(error.message)
-      } else {
-        toast.error('Failed to reassign job')
-      }
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="modal-backdrop">
-      <div className="floating-card max-w-6xl w-full max-h-[95vh] overflow-y-auto animate-fade-in">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-5">
-            <h3 className="text-xl font-bold text-gray-900">Reassign Job Order - Visual Schedule</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl leading-none transition-colors">
-              ×
-            </button>
-          </div>
-
-          {/* Job Info */}
-          <div className="bg-orange-500/20 backdrop-blur-sm border border-orange-300/30 rounded-xl p-4 mb-4">
-            <h4 className="font-bold text-orange-900">{job.jobNumber}</h4>
-            <p className="text-sm text-gray-700 font-medium">{job.plateNumber} - {job.vin}</p>
-            <p className="text-xs text-gray-600 mt-1 font-medium">
-              Current: {job.timeRange.start} - {job.timeRange.end} ({job.assignedTechnician ? job.assignedTechnician.name : 'Unassigned'})
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: Controls */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Select Technician
-                </label>
-                <select
-                  value={selectedTechnician}
-                  onChange={(e) => setSelectedTechnician(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Choose technician...</option>
-                  {allTechnicians.map((tech) => (
-                    <option key={tech._id} value={tech._id}>
-                      {tech.name} {tech.level && `(${tech.level})`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Duration (hours)</label>
-                <input
-                  type="number"
-                  min="0.5"
-                  step="0.5"
-                  value={duration / 60}
-                  onChange={(e) => setDuration(parseFloat(e.target.value) * 60)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                <input
-                  type="time"
-                  value={endTime}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-                />
-                <p className="text-xs text-gray-500 mt-1">Auto-calculated with break</p>
-              </div>
-
-              {hasConflict() && (
-                <div className="bg-red-500/20 backdrop-blur-sm border border-red-300/30 rounded-xl p-3">
-                  <p className="text-sm text-red-800 font-bold">⚠️ Time Conflict Detected</p>
-                  <p className="text-xs text-red-600 mt-1 font-medium">Selected time overlaps with existing job</p>
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-4">
-                <button
-                  onClick={onClose}
-                  className="flex-1 px-6 py-2.5 bg-white/50 hover:bg-white/70 rounded-xl font-semibold transition-all border border-white/50 hover:shadow-lg hover:-translate-y-0.5"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || !selectedTechnician || hasConflict()}
-                  className="flex-1 px-6 py-2.5 ford-gradient disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:hover:shadow-none"
-                >
-                  {submitting ? 'Assigning...' : 'Assign'}
-                </button>
-              </div>
-            </div>
-
-            {/* Right: Visual Timeline */}
-            <div className="lg:col-span-2">
-              <div className="bg-white/40 backdrop-blur-sm rounded-xl p-4 border border-white/40">
-                <h4 className="font-semibold mb-3">
-                  {selectedTechnician ? (
-                    <>Schedule for {allTechnicians.find(t => t._id === selectedTechnician)?.name}</>
-                  ) : (
-                    'Select a technician to view schedule'
-                  )}
-                </h4>
-
-                {loading ? (
-                  <div className="text-center py-8 text-gray-500">Loading schedule...</div>
-                ) : !selectedTechnician ? (
-                  <div className="text-center py-8 text-gray-400">
-                    <div className="text-4xl mb-2">👤</div>
-                    <p>Select a technician to see their availability</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Legend */}
-                    <div className="flex gap-4 mb-3 text-xs">
-                      <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 bg-green-200 border border-green-400 rounded"></div>
-                        <span>Available</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 bg-red-200 border border-red-400 rounded"></div>
-                        <span>Occupied</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 bg-blue-200 border-2 border-blue-600 rounded"></div>
-                        <span>Your Selection</span>
-                      </div>
-                    </div>
-
-                    {/* Timeline Grid */}
-                    <div className="grid grid-cols-4 gap-2 max-h-[500px] overflow-y-auto">
-                      {timeSlots.map((slot) => {
-                        const occupied = isSlotOccupied(slot)
-                        const jobAtSlot = getJobAtSlot(slot)
-                        const isSelected = slot === startTime
-                        const [slotHour, slotMin] = slot.split(':').map(Number)
-                        const slotMinutes = slotHour * 60 + slotMin
-                        const [startHour, startMin] = startTime.split(':').map(Number)
-                        const [endHour, endMin] = endTime.split(':').map(Number)
-                        const selectedStart = startHour * 60 + startMin
-                        const selectedEnd = endHour * 60 + endMin
-                        const isInSelectedRange = slotMinutes >= selectedStart && slotMinutes < selectedEnd
-
-                        return (
-                          <button
-                            key={slot}
-                            onClick={() => handleSlotClick(slot)}
-                            disabled={occupied}
-                            className={`
-                              p-2 text-xs rounded border-2 transition-all
-                              ${occupied 
-                                ? 'bg-red-100 border-red-300 text-red-800 cursor-not-allowed' 
-                                : isInSelectedRange
-                                  ? 'bg-blue-200 border-blue-600 text-blue-900 font-bold'
-                                  : 'bg-green-100 border-green-300 text-green-800 hover:bg-green-200'
-                              }
-                              ${isSelected ? 'ring-2 ring-blue-500' : ''}
-                            `}
-                            title={occupied ? `Occupied: ${jobAtSlot?.jobNumber}` : 'Available - Click to select'}
-                          >
-                            <div className="font-semibold">{slot}</div>
-                            {occupied && jobAtSlot && (
-                              <div className="text-[10px] truncate mt-1">
-                                {jobAtSlot.jobNumber}
-                              </div>
-                            )}
-                            {isSelected && (
-                              <div className="text-[10px] mt-1">START</div>
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    {/* Existing Jobs Summary */}
-                    {technicianSchedule.length > 0 && (
-                      <div className="mt-4 p-3 bg-white/60 backdrop-blur-sm rounded-xl border border-white/50">
-                        <h5 className="font-bold text-sm mb-2">Existing Jobs ({technicianSchedule.length})</h5>
-                        <div className="space-y-1 max-h-32 overflow-y-auto">
-                          {technicianSchedule.map((j: any) => (
-                            <div key={j._id} className="text-xs flex justify-between items-center p-2 bg-white/40 rounded-xl">
-                              <span className="font-bold">{j.jobNumber}</span>
-                              <span className="text-gray-700 font-medium">{j.timeRange.start} - {j.timeRange.end}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
