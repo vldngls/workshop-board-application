@@ -37,11 +37,13 @@ interface JobOrderCardProps {
 const STATUS_LABELS: Record<JobStatus, string> = {
   'OG': 'On Going',
   'WP': 'Waiting Parts',
-  'FP': 'For Plotting',
+  'UA': 'Unassigned',
   'QI': 'Quality Inspection',
   'HC': 'Hold Customer',
   'HW': 'Hold Warranty',
   'HI': 'Hold Insurance',
+  'HF': 'Hold Ford',
+  'SU': 'Sublet',
   'FR': 'For Release',
   'FU': 'Finished Unclaimed',
   'CP': 'Complete'
@@ -50,11 +52,13 @@ const STATUS_LABELS: Record<JobStatus, string> = {
 const STATUS_COLORS: Record<JobStatus, string> = {
   'OG': 'bg-blue-50 text-blue-700 border border-blue-200',
   'WP': 'bg-amber-50 text-amber-700 border border-amber-200',
-  'FP': 'bg-cyan-50 text-cyan-700 border border-cyan-200',
+  'UA': 'bg-cyan-50 text-cyan-700 border border-cyan-200',
   'QI': 'bg-purple-50 text-purple-700 border border-purple-200',
   'HC': 'bg-orange-50 text-orange-700 border border-orange-200',
   'HW': 'bg-red-50 text-red-700 border border-red-200',
   'HI': 'bg-pink-50 text-pink-700 border border-pink-200',
+  'HF': 'bg-pink-50 text-pink-700 border border-pink-200',
+  'SU': 'bg-violet-50 text-violet-700 border border-violet-200',
   'FR': 'bg-green-50 text-green-700 border border-green-200',
   'FU': 'bg-gray-50 text-gray-700 border border-gray-200',
   'CP': 'bg-emerald-50 text-emerald-700 border border-emerald-200'
@@ -63,11 +67,13 @@ const STATUS_COLORS: Record<JobStatus, string> = {
 const STATUS_ACCENT: Record<JobStatus, string> = {
   'OG': 'bg-blue-500',
   'WP': 'bg-amber-500',
-  'FP': 'bg-cyan-500',
+  'UA': 'bg-cyan-500',
   'QI': 'bg-purple-500',
   'HC': 'bg-orange-500',
   'HW': 'bg-red-500',
   'HI': 'bg-pink-500',
+  'HF': 'bg-pink-500',
+  'SU': 'bg-violet-500',
   'FR': 'bg-green-500',
   'FU': 'bg-gray-500',
   'CP': 'bg-emerald-500'
@@ -252,9 +258,6 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
   return (
     <div
       className="floating-card p-3 relative group transition-all duration-300 hover:shadow-lg hover:bg-white/80 w-full"
-      onClick={() => onClick?.(jobOrder)}
-      role={onClick ? 'button' : undefined}
-      aria-label={onClick ? `Open details for job ${jobOrder.jobNumber}` : undefined}
     >
       {/* Left status accent bar */}
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${STATUS_ACCENT[jobOrder.status]} rounded-l-2xl`}></div>
@@ -510,74 +513,44 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
           </div>
         </div>
 
-        {/* Column 5: Status & Expand */}
-        <div className="flex flex-col items-center gap-3 min-w-0 w-40">
+        {/* Column 5: Unified Actions */}
+        <div className="flex flex-col items-center gap-3 min-w-0 w-44">
+          {/* Status Display */}
           <div className="text-center w-full">
             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Status</div>
-            {editingField === 'status' ? (
-              createPortal(
-                <div 
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm"
-                  onClick={(e) => {
-                    if (e.target === e.currentTarget) {
-                      setEditingField(null)
-                    }
-                  }}
-                >
-                  <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-2xl max-w-md w-full mx-4">
-                    <div className="text-lg font-bold text-gray-800 mb-4 text-center">Select New Status for {jobOrder.jobNumber}</div>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      {Object.entries(STATUS_LABELS).map(([status, label]) => (
-                        <button
-                          key={status}
-                          onClick={(e) => { stop(e); handleStatusUpdate(status as JobStatus) }}
-                          disabled={updateStatusMutation.isPending || status === jobOrder.status}
-                          className={`p-4 rounded-xl text-sm font-semibold transition-all border-2 ${
-                            status === jobOrder.status
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
-                              : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 hover:border-blue-300 hover:shadow-lg hover:scale-105'
-                          }`}
-                        >
-                          <div className="text-center">
-                            <div className="font-bold text-base">{label}</div>
-                            <div className="text-xs opacity-75 mt-1">({status})</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      onClick={(e) => { stop(e); setEditingField(null) }}
-                      className="w-full p-3 text-sm text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all font-medium"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>,
-                document.body
-              )
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <button
-                  onClick={(e) => { stop(e); handleFieldEdit('status', jobOrder.status) }}
-                  className={`px-4 py-3 rounded-lg text-sm font-bold backdrop-blur-sm shadow-sm transition-all hover:shadow-md hover:scale-105 cursor-pointer border-2 border-transparent hover:border-white/30 ${getStatusColor(jobOrder.status)}`}
-                  title="Click to change status"
-                >
-                  {STATUS_LABELS[jobOrder.status]}
-                </button>
-                <div className="text-xs text-gray-500 text-center">
-                  Click status to change
-                </div>
-              </div>
-            )}
+            <div className={`px-4 py-3 rounded-lg text-sm font-bold backdrop-blur-sm shadow-sm border-2 ${getStatusColor(jobOrder.status)}`}>
+              {STATUS_LABELS[jobOrder.status]}
+            </div>
           </div>
 
-          <div className="text-center">
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-2 w-full">
+            {/* Status Change Button */}
+            <button
+              onClick={(e) => { stop(e); handleFieldEdit('status', jobOrder.status) }}
+              className="w-full px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold transition-all hover:shadow-md border border-blue-200 hover:border-blue-300"
+              title="Change job status"
+            >
+              Change Status
+            </button>
+
+            {/* Details Button */}
+            <button
+              onClick={(e) => { stop(e); onClick?.(jobOrder) }}
+              className="w-full px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-xs font-semibold transition-all hover:shadow-md border border-gray-200 hover:border-gray-300"
+              title="View full job details"
+            >
+              View Details
+            </button>
+
+            {/* Expand/Collapse Button */}
             <button
               onClick={(e) => { stop(e); setIsExpanded(!isExpanded) }}
-              className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-lg hover:bg-gray-100 bg-white/60 backdrop-blur-sm shadow-sm"
-              title={isExpanded ? 'Collapse details' : 'Expand details'}
+              className="w-full px-3 py-2 bg-white/60 hover:bg-white/80 text-gray-600 rounded-lg text-xs font-semibold transition-all hover:shadow-md border border-gray-200 hover:border-gray-300 flex items-center justify-center gap-1"
+              title={isExpanded ? 'Collapse quick details' : 'Show quick details'}
             >
-              {isExpanded ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
+              {isExpanded ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
+              {isExpanded ? 'Less' : 'More'}
             </button>
           </div>
         </div>
@@ -743,6 +716,48 @@ function JobOrderCard({ jobOrder, onClick }: JobOrderCardProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Status Change Modal */}
+      {editingField === 'status' && createPortal(
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setEditingField(null)
+            }
+          }}
+        >
+          <div className="bg-white rounded-2xl border-2 border-gray-200 p-6 shadow-2xl max-w-md w-full mx-4">
+            <div className="text-lg font-bold text-gray-800 mb-4 text-center">Select New Status for {jobOrder.jobNumber}</div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {Object.entries(STATUS_LABELS).map(([status, label]) => (
+                <button
+                  key={status}
+                  onClick={(e) => { stop(e); handleStatusUpdate(status as JobStatus) }}
+                  disabled={updateStatusMutation.isPending || status === jobOrder.status}
+                  className={`p-4 rounded-xl text-sm font-semibold transition-all border-2 ${
+                    status === jobOrder.status
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
+                      : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 hover:border-blue-300 hover:shadow-lg hover:scale-105'
+                  }`}
+                >
+                  <div className="text-center">
+                    <div className="font-bold text-base">{label}</div>
+                    <div className="text-xs opacity-75 mt-1">({status})</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={(e) => { stop(e); setEditingField(null) }}
+              className="w-full p-3 text-sm text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all font-medium"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )

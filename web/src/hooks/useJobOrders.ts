@@ -440,7 +440,7 @@ export function useRejectQI() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: jobOrderKeys.all })
-      toast.error('Job order rejected and sent to For Plotting')
+      toast.error('Job order rejected and sent to Unassigned')
     },
     onError: () => {
       toast.error('Failed to reject QI')

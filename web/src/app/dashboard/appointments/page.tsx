@@ -352,7 +352,7 @@ export default function AppointmentsPage() {
     // Refresh job orders data when conflicts are resolved
     queryClient.invalidateQueries({ queryKey: ['job-orders'] })
     queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
-    toast.success('Conflicts resolved - affected jobs moved to For Plotting')
+    toast.success('Conflicts resolved - affected jobs moved to Unassigned')
   }
 
   const handleTimeSlotSelect = (startTime: string) => {

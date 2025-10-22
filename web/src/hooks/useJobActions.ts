@@ -19,6 +19,9 @@ interface UseJobActionsProps {
   updateHoldCustomerJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
   updateHoldWarrantyJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
   updateHoldInsuranceJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
+  updateHoldFordJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
+  updateSubletJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
+  updateUnassignedJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
   updateFinishedUnclaimedJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
   setSelectedJob: (job: JobOrderWithDetails | null) => void
   fetchData: () => Promise<void>
@@ -36,6 +39,9 @@ export function useJobActions({
   updateHoldCustomerJobs,
   updateHoldWarrantyJobs,
   updateHoldInsuranceJobs,
+  updateHoldFordJobs,
+  updateSubletJobs,
+  updateUnassignedJobs,
   updateFinishedUnclaimedJobs,
   setSelectedJob,
   fetchData
@@ -79,14 +85,23 @@ export function useJobActions({
     }
   }, [jobOrders, selectedJob, updateJobOrders, setSelectedJob, fetchData, setUpdating])
 
-  const updateJobStatus = useCallback(async (jobId: string, status: string) => {
+  const updateJobStatus = useCallback(async (jobId: string, status: string, remarks?: string) => {
     try {
       setUpdating(true)
+      
+      const requestBody: any = { status }
+      if (remarks !== undefined) {
+        if (status === 'HC') {
+          requestBody.holdCustomerRemarks = remarks
+        } else if (status === 'SU') {
+          requestBody.subletRemarks = remarks
+        }
+      }
       
       const response = await fetch(`/api/job-orders/${jobId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify(requestBody)
       })
       
       if (!response.ok) {
@@ -97,8 +112,8 @@ export function useJobActions({
       const data = await response.json()
       const updatedJob = data.jobOrder
       
-      // Remove from timetable if status is WP, HC, HW, HI, or FU
-      if (['WP', 'HC', 'HW', 'HI', 'FU'].includes(status)) {
+      // Remove from timetable if status is WP, HC, HW, HI, HF, SU, FU, or UA
+      if (['WP', 'HC', 'HW', 'HI', 'HF', 'SU', 'FU', 'UA'].includes(status)) {
         updateJobOrders(prev => prev.filter(job => job._id !== jobId))
       } else {
         // Update in timetable for other statuses
@@ -141,6 +156,21 @@ export function useJobActions({
       updateHoldInsuranceJobs(prev => {
         const filtered = prev.filter(job => job._id !== jobId)
         return status === 'HI' ? [...filtered, updatedJob] : filtered
+      })
+      
+      updateHoldFordJobs(prev => {
+        const filtered = prev.filter(job => job._id !== jobId)
+        return status === 'HF' ? [...filtered, updatedJob] : filtered
+      })
+      
+      updateSubletJobs(prev => {
+        const filtered = prev.filter(job => job._id !== jobId)
+        return status === 'SU' ? [...filtered, updatedJob] : filtered
+      })
+      
+      updateUnassignedJobs(prev => {
+        const filtered = prev.filter(job => job._id !== jobId)
+        return status === 'UA' ? [...filtered, updatedJob] : filtered
       })
       
       updateFinishedUnclaimedJobs(prev => {
@@ -222,13 +252,13 @@ export function useJobActions({
       
       toast.success(`Part marked as ${availability.toLowerCase()}`)
       
-      // Check if all parts are now available and status changed to FP
+      // Check if all parts are now available and status changed to UA
       const allPartsAvailable = updatedParts.every(part => part.availability === 'Available')
       const wasWaitingParts = selectedJob.status === 'WP'
-      const nowForPlotting = updatedJobOrder.status === 'FP'
+      const nowUnassigned = updatedJobOrder.status === 'UA'
       
-      if (allPartsAvailable && wasWaitingParts && nowForPlotting) {
-        toast.success('All parts are now available! Status changed to "For Plotting". Use the Replot button to assign a technician and time slot.', { duration: 7000 })
+      if (allPartsAvailable && wasWaitingParts && nowUnassigned) {
+        toast.success('All parts are now available! Status changed to "Unassigned". Use the Replot button to assign a technician and time slot.', { duration: 7000 })
       }
       
       await fetchData()
@@ -289,7 +319,7 @@ export function useJobActions({
       })
       if (!response.ok) throw new Error('Failed to reject QI')
       await fetchData()
-      toast.error('Job order rejected and sent to For Plotting')
+      toast.error('Job order rejected and sent to Unassigned')
     } catch (error) {
       console.error('Error rejecting QI:', error)
       toast.error('Failed to reject QI')

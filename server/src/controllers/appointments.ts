@@ -398,7 +398,7 @@ router.post('/:id/check-conflicts', verifyToken, requireRole(['administrator', '
   }
 })
 
-// Resolve conflicts by marking conflicting jobs as "For Plotting"
+// Resolve conflicts by marking conflicting jobs as "Unassigned"
 const resolveConflictsSchema = z.object({
   conflictingJobIds: z.array(z.string())
 })
@@ -416,9 +416,9 @@ router.post('/:id/resolve-conflicts', verifyToken, requireRole(['administrator',
     
     console.log('Resolving conflicts for job IDs:', conflictingJobIds)
     
-    // Update conflicting jobs to "For Plotting" status and remove technician assignment
+    // Update conflicting jobs to "Unassigned" status and remove technician assignment
     const updatePromises = conflictingJobIds.map(async (jobId) => {
-      console.log(`Updating job ${jobId} to For Plotting status`)
+      console.log(`Updating job ${jobId} to Unassigned status`)
       
       // First, let's check if the job exists
       const existingJob = await JobOrder.findById(jobId)
@@ -432,7 +432,7 @@ router.post('/:id/resolve-conflicts', verifyToken, requireRole(['administrator',
       const updatedJob = await JobOrder.findByIdAndUpdate(
         jobId,
         { 
-          status: 'FP',
+          status: 'UA',
           assignedTechnician: null,
           timeRange: { start: '00:00', end: '00:00' }
         },

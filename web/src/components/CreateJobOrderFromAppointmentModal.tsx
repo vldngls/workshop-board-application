@@ -208,7 +208,7 @@ export default function CreateJobOrderFromAppointmentModal({
     if (!pendingSubmission) return
     
     try {
-      // Resolve conflicts by marking conflicting jobs as "For Plotting"
+      // Resolve conflicts by marking conflicting jobs as "Unassigned"
       const conflictingJobIds = conflicts.map(conflict => conflict._id)
       console.log('Resolving conflicts for job IDs:', conflictingJobIds)
       
@@ -454,7 +454,7 @@ export default function CreateJobOrderFromAppointmentModal({
                       ))}
                     </div>
                     <p className="text-xs text-red-600 mt-2 font-medium">
-                      These jobs will be marked as "For Plotting" if you proceed.
+                      These jobs will be marked as "Unassigned" if you proceed.
                     </p>
                   </div>
                 )}
@@ -599,7 +599,7 @@ export default function CreateJobOrderFromAppointmentModal({
               <div className="mb-6">
                 <p className="text-gray-700 mb-4">
                   The extended appointment duration will overlap with the following job orders. 
-                  These jobs will be marked as "For Plotting" and need to be reassigned.
+                  These jobs will be marked as "Unassigned" and need to be reassigned.
                 </p>
                 
                 <div className="space-y-3">
@@ -618,7 +618,7 @@ export default function CreateJobOrderFromAppointmentModal({
                           </p>
                         </div>
                         <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-xs font-medium">
-                          Will be marked as "For Plotting"
+                          Will be marked as "Unassigned"
                         </span>
                       </div>
                     </div>
@@ -635,7 +635,7 @@ export default function CreateJobOrderFromAppointmentModal({
                   <div className="space-y-1">
                     {resolvedJobs.map((job) => (
                       <p key={job._id} className="text-xs text-green-700">
-                        • {job.jobNumber} → Marked as "For Plotting"
+                        • {job.jobNumber} → Marked as "Unassigned"
                       </p>
                     ))}
                   </div>

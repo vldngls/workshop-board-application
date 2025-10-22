@@ -176,6 +176,9 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
     updateHoldCustomerJobs,
     updateHoldWarrantyJobs,
     updateHoldInsuranceJobs,
+    updateHoldFordJobs: updateHoldCustomerJobs, // Using same function for now
+    updateSubletJobs: updateHoldCustomerJobs, // Using same function for now
+    updateUnassignedJobs: updateHoldCustomerJobs, // Using same function for now
     updateFinishedUnclaimedJobs,
     setSelectedJob,
     fetchData
@@ -257,7 +260,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
   const handleConflictsResolved = useCallback(() => {
     // Refresh data when conflicts are resolved
     fetchData()
-    toast.success('Conflicts resolved - affected jobs moved to For Plotting')
+    toast.success('Conflicts resolved - affected jobs moved to Unassigned')
   }, [fetchData])
 
   const reassignTechnician = useCallback(async (technicianId: string) => {
@@ -381,6 +384,12 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
                         setShowReplotModal(true)
                       }}
         onSubmitForQI={userRole === 'technician' ? undefined : submitForQI}
+        onCarryOver={userRole === 'technician' ? undefined : (jobId: string) => {
+          const job = jobOrders.find(j => j._id === jobId)
+          if (job) {
+            handleCarryOverReassign(job)
+          }
+        }}
       />
 
       {/* Technician Reassignment Modal */}

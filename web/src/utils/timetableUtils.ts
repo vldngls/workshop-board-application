@@ -33,11 +33,13 @@ export const TIME_SLOTS = generateTimeSlots()
 export const STATUS_COLORS = {
   'OG': 'bg-blue-500/30 border-blue-400/50 text-blue-900',      // On going
   'WP': 'bg-orange-500/30 border-orange-400/50 text-orange-900', // Waiting Parts
-  'FP': 'bg-cyan-500/30 border-cyan-400/50 text-cyan-900',      // For Plotting
+  'UA': 'bg-cyan-500/30 border-cyan-400/50 text-cyan-900',      // Unassigned
   'QI': 'bg-purple-500/30 border-purple-400/50 text-purple-900', // Quality Inspection
   'HC': 'bg-yellow-500/30 border-yellow-400/50 text-yellow-900', // Hold Customer
   'HW': 'bg-red-500/30 border-red-400/50 text-red-900',         // Hold Warranty
   'HI': 'bg-indigo-500/30 border-indigo-400/50 text-indigo-900', // Hold Insurance
+  'HF': 'bg-pink-500/30 border-pink-400/50 text-pink-900',      // Hold Ford
+  'SU': 'bg-violet-500/30 border-violet-400/50 text-violet-900', // Sublet
   'FR': 'bg-green-500/30 border-green-400/50 text-green-900',   // For Release
   'FU': 'bg-gray-500/30 border-gray-400/50 text-gray-900',      // Finished Unclaimed
   'CP': 'bg-emerald-500/30 border-emerald-400/50 text-emerald-900' // Complete

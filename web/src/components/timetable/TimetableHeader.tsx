@@ -107,7 +107,7 @@ const TimetableHeader = memo(({
           </div>
           <div className="flex items-center space-x-1">
             <div className="w-2 h-2 bg-cyan-100 border border-cyan-300 rounded flex-shrink-0"></div>
-            <span>FP</span>
+            <span>UA</span>
           </div>
           <div className="flex items-center space-x-1">
             <div className="w-2 h-2 bg-purple-100 border border-purple-300 rounded flex-shrink-0"></div>

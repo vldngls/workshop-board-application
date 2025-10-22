@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 const { Schema } = mongoose
 
-type JobStatus = 'OG' | 'WP' | 'FP' | 'QI' | 'HC' | 'HW' | 'HI' | 'FR' | 'FU' | 'CP'
+type JobStatus = 'OG' | 'WP' | 'UA' | 'QI' | 'HC' | 'HW' | 'HI' | 'HF' | 'SU' | 'FR' | 'FU' | 'CP'
 type JobItemStatus = 'Finished' | 'Unfinished'
 type QIStatus = 'pending' | 'approved' | 'rejected' | null
 
@@ -37,6 +37,8 @@ interface JobOrderDoc {
   carriedOver?: boolean
   isImportant?: boolean
   qiStatus?: QIStatus
+  holdCustomerRemarks?: string  // Remarks when status is changed to Hold Customer
+  subletRemarks?: string  // Remarks when status is changed to Sublet
   createdAt?: Date
   updatedAt?: Date
 }
@@ -99,7 +101,7 @@ const jobOrderSchema = new Schema({
   }],
   status: { 
     type: String, 
-    enum: ['OG', 'WP', 'FP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU', 'CP'], 
+    enum: ['OG', 'WP', 'UA', 'QI', 'HC', 'HW', 'HI', 'HF', 'SU', 'FR', 'FU', 'CP'], 
     required: true,
     default: 'OG'
   },
@@ -130,6 +132,14 @@ const jobOrderSchema = new Schema({
     type: String,
     enum: ['pending', 'approved', 'rejected', null],
     default: null
+  },
+  holdCustomerRemarks: {
+    type: String,
+    required: false
+  },
+  subletRemarks: {
+    type: String,
+    required: false
   }
 }, { timestamps: true })
 

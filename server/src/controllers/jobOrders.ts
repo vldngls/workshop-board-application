@@ -141,7 +141,7 @@ router.get('/available-for-slot', verifyToken, async (req, res) => {
     const [endHour, endMinute] = (endTime as string).split(':').map(Number)
     const availableMinutes = ((endHour || 0) * 60 + (endMinute || 0)) - ((startHour || 0) * 60 + (startMinute || 0))
     
-    // Find unassigned jobs (no technician or in FP status - for plotting)
+    // Find unassigned jobs (no technician or in UA status - unassigned)
     // that could fit in this time slot
     const availableJobs = await JobOrder.find({
       $and: [
@@ -149,8 +149,8 @@ router.get('/available-for-slot', verifyToken, async (req, res) => {
           $or: [
             // Jobs without technician assignment  
             { assignedTechnician: null, status: { $nin: ['CP', 'FR', 'FU', 'QI'] } },
-            // Jobs in FP status (for plotting - parts are available)
-            { status: 'FP' }
+            // Jobs in UA status (unassigned - parts are available)
+            { status: 'UA' }
           ]
         }
       ]
@@ -243,7 +243,7 @@ const createJobOrderSchema = z.object({
     availability: z.enum(['Available', 'Unavailable'])
   })).optional(),
   date: z.string().optional(),
-  status: z.enum(['OG', 'WP', 'FP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU', 'CP']).optional()
+  status: z.enum(['OG', 'WP', 'UA', 'QI', 'HC', 'HW', 'HI', 'HF', 'SU', 'FR', 'FU', 'CP']).optional()
 })
 
 router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
@@ -344,13 +344,15 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
 
 // Status transition validation rules
 const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
-  'OG': ['WP', 'FP', 'QI', 'HC', 'HW', 'HI', 'OG'], // Can stay OG or move to other statuses
-  'WP': ['FP', 'OG', 'HC', 'HW', 'HI', 'WP'], // Waiting parts can go to for plotting or other statuses
-  'FP': ['OG', 'WP', 'FP'], // For plotting can be plotted to ongoing or back to WP
-  'QI': ['FR', 'FP', 'QI'], // QI can approve to release or reject to for plotting
-  'HC': ['OG', 'WP', 'FP', 'HC'], // Hold customer can resume
-  'HW': ['OG', 'WP', 'FP', 'HW'], // Hold warranty can resume
-  'HI': ['OG', 'WP', 'FP', 'HI'], // Hold insurance can resume
+  'OG': ['WP', 'UA', 'QI', 'HC', 'HW', 'HI', 'HF', 'SU', 'OG'], // Can stay OG or move to other statuses
+  'WP': ['UA', 'OG', 'HC', 'HW', 'HI', 'HF', 'SU', 'WP'], // Waiting parts can go to unassigned or other statuses
+  'UA': ['OG', 'WP', 'UA'], // Unassigned can be assigned to ongoing or back to WP
+  'QI': ['FR', 'UA', 'QI'], // QI can approve to release or reject to unassigned
+  'HC': ['OG', 'WP', 'UA', 'HC'], // Hold customer can resume
+  'HW': ['OG', 'WP', 'UA', 'HW'], // Hold warranty can resume
+  'HI': ['OG', 'WP', 'UA', 'HI'], // Hold insurance can resume
+  'HF': ['OG', 'WP', 'UA', 'HF'], // Hold Ford can resume
+  'SU': ['OG', 'WP', 'UA', 'SU'], // Sublet can resume
   'FR': ['FU', 'CP', 'QI', 'FR'], // For release can complete, finish unclaimed, or redo back to QI
   'FU': ['CP', 'FU'], // Finished unclaimed can be marked complete
   'CP': ['CP'] // Complete is final state
@@ -375,10 +377,12 @@ const updateJobOrderSchema = z.object({
     name: z.string().min(1),
     availability: z.enum(['Available', 'Unavailable'])
   })).optional(),
-  status: z.enum(['OG', 'WP', 'FP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU', 'CP']).optional(),
+  status: z.enum(['OG', 'WP', 'UA', 'QI', 'HC', 'HW', 'HI', 'HF', 'SU', 'FR', 'FU', 'CP']).optional(),
   carriedOver: z.boolean().optional(),
   isImportant: z.boolean().optional(),
-  qiStatus: z.enum(['pending', 'approved', 'rejected']).nullable().optional()
+  qiStatus: z.enum(['pending', 'approved', 'rejected']).nullable().optional(),
+  holdCustomerRemarks: z.string().optional(),
+  subletRemarks: z.string().optional()
 })
 
 router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
@@ -438,15 +442,22 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
           updateData.timeRange = { start: '00:00', end: '00:00' }
         }
         
-        // If all parts become available and job is in WP status, change to FP (For Plotting)
+        // If all parts become available and job is in WP status, change to UA (Unassigned)
         if (allPartsAvailable && jobOrder.status === 'WP' && !updateData.status) {
-          updateData.status = 'FP'
+          updateData.status = 'UA'
         }
-      } else {
-        // If parts array is empty, ensure job can proceed (no parts dependency)
-        if (jobOrder.status === 'WP' && !updateData.status) {
-          updateData.status = 'FP'
-        }
+      }
+      
+      // If status is being changed to UA (Unassigned), remove technician assignment and reset time range
+      if (updateData.status === 'UA') {
+        updateData.assignedTechnician = null
+        // Reset time range to default placeholder values
+        updateData.timeRange = { start: '00:00', end: '00:00' }
+      }
+    } else {
+      // If parts array is empty, ensure job can proceed (no parts dependency)
+      if (jobOrder.status === 'WP' && !updateData.status) {
+        updateData.status = 'UA'
       }
     }
     
@@ -633,7 +644,7 @@ router.patch('/:id/reject-qi', verifyToken, requireRole(['administrator', 'job-c
       return res.status(400).json({ error: 'Job order is not pending QI' })
     }
     
-    jobOrder.status = 'FP'
+    jobOrder.status = 'UA'
     jobOrder.qiStatus = 'rejected'
     await jobOrder.save()
     

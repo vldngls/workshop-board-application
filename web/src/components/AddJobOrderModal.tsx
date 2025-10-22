@@ -201,7 +201,7 @@ export default function AddJobOrderModal({ onClose, onSuccess }: AddJobOrderModa
                 >
                   <option value="OG">OG - On Going</option>
                   <option value="WP">WP - Waiting Parts</option>
-                  <option value="FP">FP - For Plotting</option>
+                  <option value="UA">UA - Unassigned</option>
                   <option value="QI">QI - Quality Inspection</option>
                   <option value="HC">HC - Hold Customer</option>
                   <option value="HW">HW - Hold Warranty</option>

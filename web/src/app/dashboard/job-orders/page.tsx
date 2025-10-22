@@ -17,11 +17,13 @@ const STATUS_LABELS: Record<JobStatus | 'all' | 'hold' | 'carried' | 'important'
   'all': 'All Statuses',
   'OG': 'On Going',
   'WP': 'Waiting Parts',
-  'FP': 'For Plotting',
+  'UA': 'Unassigned',
   'QI': 'Quality Inspection',
   'HC': 'Hold Customer',
   'HW': 'Hold Warranty',
   'HI': 'Hold Insurance',
+  'HF': 'Hold Ford',
+  'SU': 'Sublet',
   'FR': 'For Release',
   'FU': 'Finished Unclaimed',
   'CP': 'Complete',
@@ -165,6 +167,16 @@ export default function JobOrdersPage() {
   const handleJobOrderCreated = useCallback(() => {
     setShowAddModal(false)
     // TanStack Query will automatically refetch due to cache invalidation
+  }, [])
+
+  const handleUpdateJobStatus = useCallback((jobId: string, status: string, remarks?: string) => {
+    // For now, just show a toast - in a real implementation, you'd call an API
+    console.log('Update job status:', { jobId, status, remarks })
+  }, [])
+
+  const handleCarryOver = useCallback((jobId: string) => {
+    // For now, just show a toast - in a real implementation, you'd call an API
+    console.log('Carry over job:', jobId)
   }, [])
 
   if (error) {
@@ -397,6 +409,8 @@ export default function JobOrdersPage() {
           onClose={handleCloseDetails}
           onUpdateJob={handleUpdateJob}
           onViewIn={handleViewIn}
+          onUpdateJobStatus={handleUpdateJobStatus}
+          onCarryOver={handleCarryOver}
         />
       )}
       </div>

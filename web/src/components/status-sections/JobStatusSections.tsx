@@ -191,9 +191,9 @@ const JobStatusSections = memo(({
             }
           />
 
-          {/* For Plotting Section */}
+          {/* Unassigned Section */}
           <JobStatusSection
-            title="For Plotting"
+            title="Unassigned"
             icon="📍"
             jobs={forPlottingJobs}
             bgColor="bg-cyan-500/20 backdrop-blur-sm border-2 border-cyan-400/30"

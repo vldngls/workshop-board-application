@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast, { Toaster } from 'react-hot-toast'
@@ -242,6 +242,16 @@ export default function MainDashboard() {
       setLoading(false)
     }
   }
+
+  const handleUpdateJobStatus = useCallback((jobId: string, status: string, remarks?: string) => {
+    // For now, just show a toast - in a real implementation, you'd call an API
+    console.log('Update job status:', { jobId, status, remarks })
+  }, [])
+
+  const handleCarryOver = useCallback((jobId: string) => {
+    // For now, just show a toast - in a real implementation, you'd call an API
+    console.log('Carry over job:', jobId)
+  }, [])
 
   const handleCheckCarryOver = async () => {
     if (isCheckingCarryOver) return
@@ -1075,8 +1085,6 @@ export default function MainDashboard() {
       {showReassignModal && selectedJobForReassign && (
         <ReassignmentModal
           job={selectedJobForReassign}
-          breakStart={breakStart}
-          breakEnd={breakEnd}
           calculateEndTime={calculateEndTime}
           onClose={() => {
             setShowReassignModal(false)
@@ -1094,8 +1102,6 @@ export default function MainDashboard() {
       {showJobDetailsModal && selectedJobForDetails && (
         <JobDetailsModal
           job={selectedJobForDetails}
-          breakStart={breakStart}
-          breakEnd={breakEnd}
           calculateEndTime={calculateEndTime}
           onClose={() => {
             setShowJobDetailsModal(false)
@@ -1106,6 +1112,8 @@ export default function MainDashboard() {
             setSelectedJobForDetails(null)
             fetchDashboardData()
           }}
+          onUpdateJobStatus={handleUpdateJobStatus}
+          onCarryOver={handleCarryOver}
         />
       )}
 
@@ -1184,13 +1192,13 @@ export default function MainDashboard() {
 }
 
 // Job Details Modal Component
-function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose, onSuccess }: {
+function JobDetailsModal({ job, calculateEndTime, onClose, onSuccess, onUpdateJobStatus, onCarryOver }: {
   job: any
-  breakStart: string
-  breakEnd: string
   calculateEndTime: (startTime: string, duration: number) => string
   onClose: () => void
   onSuccess: () => void
+  onUpdateJobStatus?: (jobId: string, status: string, remarks?: string) => void
+  onCarryOver?: (jobId: string) => void
 }) {
   const [updating, setUpdating] = useState(false)
   const [showReassign, setShowReassign] = useState(false)
@@ -1442,8 +1450,6 @@ function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose,
       {showReassign && (
         <ReassignmentModal
           job={localJob}
-          breakStart={breakStart}
-          breakEnd={breakEnd}
           calculateEndTime={calculateEndTime}
           onClose={() => setShowReassign(false)}
           onSuccess={() => {
@@ -1457,10 +1463,8 @@ function JobDetailsModal({ job, breakStart, breakEnd, calculateEndTime, onClose,
 }
 
 // Reassignment Modal Component
-function ReassignmentModal({ job, breakStart, breakEnd, calculateEndTime, onClose, onSuccess }: {
+function ReassignmentModal({ job, calculateEndTime, onClose, onSuccess }: {
   job: any
-  breakStart: string
-  breakEnd: string
   calculateEndTime: (startTime: string, duration: number) => string
   onClose: () => void
   onSuccess: () => void

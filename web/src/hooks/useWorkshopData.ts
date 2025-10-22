@@ -81,7 +81,7 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
         fetch('/api/job-orders?status=QI'),
         fetch('/api/job-orders?status=FR'),
         fetch('/api/job-orders?status=WP'),
-        fetch('/api/job-orders?status=FP'),
+        fetch('/api/job-orders?status=UA'),
         fetch('/api/job-orders?status=HC'),
         fetch('/api/job-orders?status=HW'),
         fetch('/api/job-orders?status=HI'),

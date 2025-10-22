@@ -1,4 +1,4 @@
-export type JobStatus = 'OG' | 'WP' | 'FP' | 'QI' | 'HC' | 'HW' | 'HI' | 'FR' | 'FU' | 'CP'
+export type JobStatus = 'OG' | 'WP' | 'UA' | 'QI' | 'HC' | 'HW' | 'HI' | 'HF' | 'SU' | 'FR' | 'FU' | 'CP'
 export type JobItemStatus = 'Finished' | 'Unfinished'
 export type PartAvailability = 'Available' | 'Unavailable'
 export type QIStatus = 'pending' | 'approved' | 'rejected' | null
@@ -44,6 +44,8 @@ export interface JobOrder {
   carriedOver?: boolean
   isImportant?: boolean
   qiStatus?: QIStatus
+  holdCustomerRemarks?: string  // Remarks when status is changed to Hold Customer
+  subletRemarks?: string  // Remarks when status is changed to Sublet
   createdAt: string
   updatedAt: string
 }
@@ -74,6 +76,8 @@ export interface UpdateJobOrderRequest {
   carriedOver?: boolean
   isImportant?: boolean
   qiStatus?: QIStatus
+  holdCustomerRemarks?: string
+  subletRemarks?: string
 }
 
 export interface Technician {
