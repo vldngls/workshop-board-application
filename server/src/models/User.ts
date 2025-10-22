@@ -25,6 +25,7 @@ const userSchema = new Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, index: true },
   username: { type: String, unique: true, sparse: true, index: true },
+  phone: { type: String },
   passwordHash: { type: String, required: true },
   role: { type: String, required: true, enum: ['administrator', 'job-controller', 'technician', 'service-advisor'] },
   pictureUrl: String,

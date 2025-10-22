@@ -298,6 +298,34 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
       return res.status(409).json({ error: 'Technician is not available during the specified time range' })
     }
     
+    // Check daily hour limit (7.5 hours)
+    const existingJobs = await JobOrder.find({
+      assignedTechnician,
+      date: {
+        $gte: new Date(jobDate.toISOString().split('T')[0] || ''),
+        $lt: new Date(new Date(jobDate).setDate(jobDate.getDate() + 1))
+      }
+    })
+    
+    // Calculate total hours for the day
+    let totalHours = 0
+    for (const job of existingJobs) {
+      const start = new Date(`${jobDate.toISOString().split('T')[0]}T${job.timeRange.start}:00`)
+      const end = new Date(`${jobDate.toISOString().split('T')[0]}T${job.timeRange.end}:00`)
+      const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+      totalHours += hours
+    }
+    
+    // Add the new job hours
+    const newJobHours = (endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60 * 60)
+    const totalWithNewJob = totalHours + newJobHours
+    
+    if (totalWithNewJob > 7.5) {
+      return res.status(409).json({ 
+        error: `Technician daily limit exceeded. Current: ${totalHours.toFixed(1)}h, New job: ${newJobHours.toFixed(1)}h, Total: ${totalWithNewJob.toFixed(1)}h (Limit: 7.5h)` 
+      })
+    }
+    
     // Get user ID from JWT token
     const userId = req.user?.userId
     if (!userId) {
@@ -467,6 +495,19 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
       if (!technician || technician.role !== 'technician') {
         return res.status(400).json({ error: 'Invalid technician assigned' })
       }
+      
+      // If this is a carry-over job being replotted, maintain carry-over status and chain
+      if (jobOrder.carriedOver && jobOrder.sourceType === 'carry-over') {
+        updateData.carriedOver = true
+        updateData.sourceType = 'carry-over'
+        // Preserve original job ID and carry-over chain
+        if (jobOrder.originalJobId) {
+          updateData.originalJobId = jobOrder.originalJobId
+        }
+        if (jobOrder.carryOverChain && jobOrder.carryOverChain.length > 0) {
+          updateData.carryOverChain = jobOrder.carryOverChain
+        }
+      }
     }
     
     // If updating service advisor, verify they exist and have service-advisor role
@@ -497,6 +538,37 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
       
       if (conflictingJob) {
         return res.status(409).json({ error: 'Technician is not available during the specified time range' })
+      }
+      
+      // Check daily hour limit (7.5 hours) for the new technician
+      const existingJobs = await JobOrder.find({
+        _id: { $ne: jobOrder._id },
+        assignedTechnician: updateData.assignedTechnician,
+        date: {
+          $gte: new Date(jobOrder.date.toISOString().split('T')[0]),
+          $lt: new Date(new Date(jobOrder.date).setDate(jobOrder.date.getDate() + 1))
+        }
+      })
+      
+      // Calculate total hours for the day
+      let totalHours = 0
+      for (const job of existingJobs) {
+        const start = new Date(`${jobOrder.date.toISOString().split('T')[0]}T${job.timeRange.start}:00`)
+        const end = new Date(`${jobOrder.date.toISOString().split('T')[0]}T${job.timeRange.end}:00`)
+        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+        totalHours += hours
+      }
+      
+      // Add the current job hours (with updated time range if provided)
+      const currentJobStart = new Date(`${jobOrder.date.toISOString().split('T')[0]}T${timeRange.start}:00`)
+      const currentJobEnd = new Date(`${jobOrder.date.toISOString().split('T')[0]}T${timeRange.end}:00`)
+      const currentJobHours = (currentJobEnd.getTime() - currentJobStart.getTime()) / (1000 * 60 * 60)
+      const totalWithCurrentJob = totalHours + currentJobHours
+      
+      if (totalWithCurrentJob > 7.5) {
+        return res.status(409).json({ 
+          error: `Technician daily limit exceeded. Current: ${totalHours.toFixed(1)}h, This job: ${currentJobHours.toFixed(1)}h, Total: ${totalWithCurrentJob.toFixed(1)}h (Limit: 7.5h)` 
+        })
       }
     }
     
@@ -779,7 +851,17 @@ router.post('/check-carry-over', verifyToken, requireRole(['administrator', 'job
           carriedOver: true,
           sourceType: 'carry-over',
           assignedTechnician: null, // Remove technician assignment for replotting
-          timeRange: { start: '00:00', end: '00:00' } // Reset time range
+          timeRange: { start: '00:00', end: '00:00' }, // Reset time range
+          // If this job doesn't have an originalJobId, set it to itself (first in chain)
+          originalJobId: job.originalJobId || job._id,
+          // Add to carry-over chain
+          $push: {
+            carryOverChain: {
+              jobId: job._id,
+              date: job.date,
+              status: job.status
+            }
+          }
         },
         { new: true }
       )

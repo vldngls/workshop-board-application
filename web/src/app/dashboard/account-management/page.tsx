@@ -198,7 +198,9 @@ export default function AccountManagementPage() {
 function CreateUserForm({ apiBase, onCreated }: { apiBase: string; onCreated: () => void }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
+  const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [role, setRole] = useState<Role>("technician")
   const [level, setLevel] = useState<TechnicianLevel>("untrained")
@@ -213,12 +215,14 @@ function CreateUserForm({ apiBase, onCreated }: { apiBase: string; onCreated: ()
       const res = await fetch(apiBase, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role, level: role === 'technician' ? level : undefined }),
+        body: JSON.stringify({ name, username, email, phone, password, role, level: role === 'technician' ? level : undefined }),
       })
       if (!res.ok) throw new Error("Failed to create user")
       setOpen(false)
       setName("")
+      setUsername("")
       setEmail("")
+      setPhone("")
       setPassword("")
       setRole("technician")
       setLevel("untrained")
@@ -270,6 +274,17 @@ function CreateUserForm({ apiBase, onCreated }: { apiBase: string; onCreated: ()
                     />
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                      value={username} 
+                      onChange={(e) => setUsername(e.target.value)} 
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                     <input 
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
@@ -277,6 +292,15 @@ function CreateUserForm({ apiBase, onCreated }: { apiBase: string; onCreated: ()
                       value={email} 
                       onChange={(e) => setEmail(e.target.value)} 
                       required 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <input 
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                      type="tel" 
+                      value={phone} 
+                      onChange={(e) => setPhone(e.target.value)} 
                     />
                   </div>
                 </div>

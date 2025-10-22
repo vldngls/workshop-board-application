@@ -1,10 +1,11 @@
 import { memo, useMemo, useState, useCallback, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { FiAlertTriangle, FiRefreshCw } from 'react-icons/fi'
+import { FiAlertTriangle, FiRefreshCw, FiEdit3 } from 'react-icons/fi'
 import { calculateWorkDuration, formatTime } from '@/utils/timetableUtils'
 import type { JobOrderWithDetails } from '@/utils/timetableUtils'
 import HoldCustomerRemarksModal from '@/components/HoldCustomerRemarksModal'
 import SubletRemarksModal from '@/components/SubletRemarksModal'
+import EditJobTasksModal from '@/components/EditJobTasksModal'
 
 interface JobDetailsModalProps {
   isOpen: boolean
@@ -22,6 +23,8 @@ interface JobDetailsModalProps {
     plateNumber: string
     vin: string
     timeRange: { start: string, end: string }
+    jobList: Array<{ description: string; status: 'Finished' | 'Unfinished' }>
+    parts: Array<{ name: string; availability: 'Available' | 'Unavailable' }>
   }>) => void
   onViewIn?: (jobId: string, jobDate: string, status: string) => void
   onCarryOver?: (jobId: string) => void
@@ -50,11 +53,13 @@ const JobDetailsModal = memo(({
   const [editEnd, setEditEnd] = useState(job?.timeRange.end || '')
   const [showHoldCustomerModal, setShowHoldCustomerModal] = useState(false)
   const [showSubletModal, setShowSubletModal] = useState(false)
+  const [showEditTasksModal, setShowEditTasksModal] = useState(false)
 
   // Reset modal state when job changes
   useEffect(() => {
     setShowHoldCustomerModal(false)
     setShowSubletModal(false)
+    setShowEditTasksModal(false)
   }, [job?._id])
 
   const timeIsValid = useMemo(() => {
@@ -104,6 +109,15 @@ const JobDetailsModal = memo(({
   const handleCarryOver = useCallback((jobId: string) => {
     onCarryOver?.(jobId)
   }, [onCarryOver])
+
+  const handleEditTasks = useCallback(() => {
+    setShowEditTasksModal(true)
+  }, [])
+
+  const handleSaveTasks = useCallback((jobId: string, jobList: Array<{ description: string; status: 'Finished' | 'Unfinished' }>, parts: Array<{ name: string; availability: 'Available' | 'Unavailable' }>) => {
+    onUpdateJob?.(jobId, { jobList, parts })
+    setShowEditTasksModal(false)
+  }, [onUpdateJob])
 
   const getStatusLabel = (status: string) => {
     const statusLabels: { [key: string]: string } = {
@@ -424,7 +438,18 @@ const JobDetailsModal = memo(({
             )}
 
             <div>
-              <label className="text-sm font-medium text-gray-600 mb-2 block">Job Tasks</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-sm font-medium text-gray-600">Job Tasks</label>
+                {onUpdateJob && (
+                  <button
+                    onClick={handleEditTasks}
+                    className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
+                  >
+                    <FiEdit3 size={14} />
+                    Edit Tasks & Parts
+                  </button>
+                )}
+              </div>
               <div className="space-y-2">
                 {job.jobList.map((task, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-white rounded-xl border">
@@ -546,6 +571,14 @@ const JobDetailsModal = memo(({
         currentRemarks={job.subletRemarks}
         onConfirm={handleSubletConfirm}
         onCancel={handleSubletCancel}
+        updating={updating}
+      />
+      
+      <EditJobTasksModal
+        isOpen={showEditTasksModal}
+        job={job}
+        onClose={() => setShowEditTasksModal(false)}
+        onSave={handleSaveTasks}
         updating={updating}
       />
     </div>,

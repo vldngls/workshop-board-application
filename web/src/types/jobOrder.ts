@@ -46,6 +46,12 @@ export interface JobOrder {
   qiStatus?: QIStatus
   holdCustomerRemarks?: string  // Remarks when status is changed to Hold Customer
   subletRemarks?: string  // Remarks when status is changed to Sublet
+  originalJobId?: string  // Reference to the original job in carry-over chain
+  carryOverChain?: Array<{
+    jobId: string
+    date: string
+    status: string
+  }>  // Chain of carry-over jobs
   createdAt: string
   updatedAt: string
 }

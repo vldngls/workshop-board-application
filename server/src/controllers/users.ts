@@ -40,10 +40,12 @@ router.get('/', verifyToken, async (req, res) => {
 
 const createSchema = z.object({
   name: z.string().min(1),
+  username: z.string().min(1).optional(),
   email: z.string().email(),
+  phone: z.string().min(1).optional(),
   password: z.string().min(6),
-  role: z.enum(['administrator', 'job-controller', 'technician']),
-  level: z.enum(['Junior', 'Senior', 'Master', 'Lead']).optional(),
+  role: z.enum(['administrator', 'job-controller', 'technician', 'service-advisor']),
+  level: z.enum(['untrained', 'level-0', 'level-1', 'level-2', 'level-3']).optional(),
   pictureUrl: z.string().url().optional().or(z.literal('')),
 })
 
@@ -51,16 +53,25 @@ router.post('/', verifyToken, requireRole(['administrator']), async (req, res) =
   await connectToMongo()
   const parsed = createSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'Invalid payload' })
-  const { name, email, password, role, level, pictureUrl } = parsed.data
+  const { name, username, email, phone, password, role, level, pictureUrl } = parsed.data
   const exists = await User.findOne({ email })
   if (exists) return res.status(409).json({ error: 'Email already exists' })
+  
+  // Check if username is provided and unique
+  if (username) {
+    const usernameExists = await User.findOne({ username })
+    if (usernameExists) return res.status(409).json({ error: 'Username already exists' })
+  }
+  
   const passwordHash = await bcrypt.hash(password, 10)
   const user = await User.create({ 
     name, 
+    username: username || undefined,
     email, 
+    phone: phone || undefined,
     passwordHash, 
     role, 
-    level: role === 'technician' ? (level || 'Junior') : undefined,
+    level: role === 'technician' ? (level || 'untrained') : undefined,
     pictureUrl: pictureUrl || undefined 
   })
   return res.status(201).json({ id: user._id })

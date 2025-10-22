@@ -531,6 +531,36 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
     // Use provided timeRange or fall back to appointment timeRange
     const finalTimeRange = timeRange || appointment.timeRange
     
+    // Check daily hour limit (7.5 hours) for the technician
+    const existingJobs = await JobOrder.find({
+      assignedTechnician,
+      date: {
+        $gte: new Date(appointment.date.toISOString().split('T')[0]),
+        $lt: new Date(new Date(appointment.date).setDate(appointment.date.getDate() + 1))
+      }
+    })
+    
+    // Calculate total hours for the day
+    let totalHours = 0
+    for (const job of existingJobs) {
+      const start = new Date(`${appointment.date.toISOString().split('T')[0]}T${job.timeRange.start}:00`)
+      const end = new Date(`${appointment.date.toISOString().split('T')[0]}T${job.timeRange.end}:00`)
+      const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+      totalHours += hours
+    }
+    
+    // Add the new job hours
+    const newJobStart = new Date(`${appointment.date.toISOString().split('T')[0]}T${finalTimeRange.start}:00`)
+    const newJobEnd = new Date(`${appointment.date.toISOString().split('T')[0]}T${finalTimeRange.end}:00`)
+    const newJobHours = (newJobEnd.getTime() - newJobStart.getTime()) / (1000 * 60 * 60)
+    const totalWithNewJob = totalHours + newJobHours
+    
+    if (totalWithNewJob > 7.5) {
+      return res.status(409).json({ 
+        error: `Technician daily limit exceeded. Current: ${totalHours.toFixed(1)}h, New job: ${newJobHours.toFixed(1)}h, Total: ${totalWithNewJob.toFixed(1)}h (Limit: 7.5h)` 
+      })
+    }
+    
     console.log('Creating job order with time range:', finalTimeRange)
     console.log('Original appointment time range:', appointment.timeRange)
     console.log('Provided time range:', timeRange)

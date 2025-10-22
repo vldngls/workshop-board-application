@@ -140,7 +140,17 @@ const jobOrderSchema = new Schema({
   subletRemarks: {
     type: String,
     required: false
-  }
+  },
+  originalJobId: {
+    type: Schema.Types.ObjectId,
+    ref: 'JobOrder',
+    required: false
+  },
+  carryOverChain: [{
+    jobId: { type: Schema.Types.ObjectId, ref: 'JobOrder' },
+    date: { type: Date },
+    status: { type: String }
+  }]
 }, { timestamps: true })
 
 // Index for efficient queries
