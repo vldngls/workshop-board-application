@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, memo } from 'react'
 import toast, { Toaster } from 'react-hot-toast'
+import { FiCalendar } from 'react-icons/fi'
 import type { JobOrder } from '@/types/jobOrder'
 import type { Appointment } from '@/types/appointment'
 import type { Role } from '@/types/auth'
@@ -24,9 +25,11 @@ interface WorkshopTimetableProps {
   date: Date
   onDateChange: (date: Date) => void
   highlightJobId?: string
+  isHistorical?: boolean
+  historicalJobOrders?: JobOrderWithDetails[]
 }
 
-function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimetableProps) {
+function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = false, historicalJobOrders }: WorkshopTimetableProps) {
   const [userRole, setUserRole] = useState<Role | null>(null)
   
   // Get user role
@@ -51,6 +54,9 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
   }, [])
 
   // Use custom hooks for data and actions
+  const workshopData = useWorkshopData(date)
+  
+  // Override with historical data if in historical mode
   const {
     jobOrders,
     technicians,
@@ -76,7 +82,12 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
     updateHoldWarrantyJobs,
     updateHoldInsuranceJobs,
     updateFinishedUnclaimedJobs
-  } = useWorkshopData(date)
+  } = isHistorical && historicalJobOrders ? {
+    ...workshopData,
+    jobOrders: historicalJobOrders,
+    loading: false,
+    updating: false
+  } : workshopData
 
   // Modal and UI state
   const [selectedJob, setSelectedJob] = useState<any>(null)
@@ -324,6 +335,19 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
     <div className="space-y-6">
       <Toaster position="top-right" />
       
+      {/* Historical Mode Indicator */}
+      {isHistorical && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-amber-800">
+            <FiCalendar size={20} />
+            <span className="font-semibold">Historical View</span>
+          </div>
+          <p className="text-sm text-amber-700 mt-1">
+            You are viewing a historical snapshot of the workshop. This data is read-only and cannot be modified.
+          </p>
+        </div>
+      )}
+      
       {/* Header */}
       <TimetableHeader
         date={date}
@@ -374,21 +398,25 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId }: WorkshopTimet
         job={selectedJob}
         updating={updating}
         onClose={() => setShowModal(false)}
-        onToggleImportant={userRole === 'technician' ? undefined : toggleImportant}
-        onUpdateJobStatus={userRole === 'technician' ? undefined : updateJobStatus}
-        onUpdateTaskStatus={userRole === 'technician' ? undefined : updateTaskStatus}
-        onUpdatePartAvailability={userRole === 'technician' ? undefined : updatePartAvailability}
-        onReassignTechnician={userRole === 'technician' ? undefined : () => setShowTechnicianModal(true)}
-        onReplotJob={userRole === 'technician' ? undefined : () => {
+        onToggleImportant={isHistorical || userRole === 'technician' ? undefined : toggleImportant}
+        onUpdateJobStatus={isHistorical || userRole === 'technician' ? undefined : updateJobStatus}
+        onUpdateTaskStatus={isHistorical || userRole === 'technician' ? undefined : updateTaskStatus}
+        onUpdatePartAvailability={isHistorical || userRole === 'technician' ? undefined : updatePartAvailability}
+        onReassignTechnician={isHistorical || userRole === 'technician' ? undefined : () => setShowTechnicianModal(true)}
+        onReplotJob={isHistorical || userRole === 'technician' ? undefined : () => {
                         setShowModal(false)
                         setShowReplotModal(true)
                       }}
-        onSubmitForQI={userRole === 'technician' ? undefined : submitForQI}
-        onCarryOver={userRole === 'technician' ? undefined : (jobId: string) => {
+        onSubmitForQI={isHistorical || userRole === 'technician' ? undefined : submitForQI}
+        onCarryOver={isHistorical || userRole === 'technician' ? undefined : (jobId: string) => {
           const job = jobOrders.find(j => j._id === jobId)
           if (job) {
             handleCarryOverReassign(job)
           }
+        }}
+        onViewInJobOrders={(jobId: string) => {
+          // Navigate to job orders page with the specific job highlighted
+          window.location.href = `/dashboard/job-orders?highlight=${jobId}`
         }}
       />
 

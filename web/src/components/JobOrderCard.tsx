@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, memo, useCallback, MouseEvent } from 'react'
+import { useState, memo, useCallback, MouseEvent, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import { 
@@ -35,6 +35,7 @@ interface JobOrderCardProps {
   jobOrder: JobOrder
   onClick?: (jobOrder: JobOrder) => void
   onViewIn?: (jobId: string, jobDate: string, status: string) => void
+  highlighted?: boolean
 }
 
 // Status mapping for display
@@ -83,8 +84,20 @@ const STATUS_ACCENT: Record<JobStatus, string> = {
   'CP': 'bg-emerald-500'
 }
 
-function JobOrderCard({ jobOrder, onViewIn }: JobOrderCardProps) {
+function JobOrderCard({ jobOrder, onViewIn, highlighted = false, onClick }: JobOrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [isHighlighted, setIsHighlighted] = useState(highlighted)
+  
+  // Update internal highlight state when prop changes
+  useEffect(() => {
+    setIsHighlighted(highlighted)
+  }, [highlighted])
+  
+  // Handle click and clear highlight
+  const handleCardClick = useCallback(() => {
+    setIsHighlighted(false)
+    onClick?.(jobOrder)
+  }, [onClick, jobOrder])
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState('')
   const [updatingTaskIndex, setUpdatingTaskIndex] = useState<number | null>(null)
@@ -369,7 +382,13 @@ function JobOrderCard({ jobOrder, onViewIn }: JobOrderCardProps) {
 
   return (
     <div
-      className="relative group transition-all duration-200 hover:shadow-lg bg-white w-full rounded-lg border border-gray-200 overflow-hidden"
+      data-job-id={jobOrder._id}
+      onClick={handleCardClick}
+      className={`relative group transition-all duration-200 hover:shadow-lg w-full rounded-lg border overflow-hidden cursor-pointer ${
+        isHighlighted 
+          ? 'bg-yellow-50 border-yellow-300 shadow-lg ring-2 ring-yellow-400 ring-opacity-50 animate-pulse' 
+          : 'bg-white border-gray-200'
+      }`}
     >
       {/* Status accent bar */}
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${STATUS_ACCENT[jobOrder.status]}`}></div>
@@ -424,7 +443,7 @@ function JobOrderCard({ jobOrder, onViewIn }: JobOrderCardProps) {
               <span>Carry-over</span>
             </div>
           )}
-          {(jobOrder.carriedOver || jobOrder.carryOverChain || jobOrder.originalJobId) && (
+          {jobOrder.carriedOver && (
             <div className="bg-red-50 text-red-700 px-2 py-1 rounded text-xs font-medium flex items-center gap-1 border border-red-200">
               <FiAlertTriangle size={10} />
               <span>Carried</span>

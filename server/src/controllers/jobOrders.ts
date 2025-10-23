@@ -4,6 +4,7 @@ const { connectToMongo } = require('../config/mongo.js')
 const { JobOrder } = require('../models/JobOrder.js')
 const { User } = require('../models/User.js')
 const { Appointment } = require('../models/Appointment.js')
+const { WorkshopSnapshot } = require('../models/WorkshopSnapshot.js')
 const { verifyToken, requireRole } = require('../middleware/auth.js')
 
 const router = Router()
@@ -575,12 +576,14 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     }
     
     // Determine initial status
-    // If status is provided in request, use it; otherwise auto-set based on parts availability
+    // Always check for missing parts and auto-set to WP if any parts are unavailable
     let initialStatus = status || 'OG'
-    if (!status && parts && parts.length > 0) {
+    if (parts && parts.length > 0) {
       const hasUnavailableParts = parts.some(part => part.availability === 'Unavailable')
-      // If parts are unavailable but not all, can still be OG
-      initialStatus = hasUnavailableParts ? 'WP' : 'OG'
+      // If any parts are unavailable, set to WP regardless of provided status
+      if (hasUnavailableParts) {
+        initialStatus = 'WP'
+      }
     }
     
     const allPartsUnavailable = parts && parts.length > 0 ? parts.every(part => part.availability === 'Unavailable') : false
@@ -1121,14 +1124,162 @@ router.patch('/:id/redo', verifyToken, requireRole(['administrator', 'job-contro
   }
 })
 
-// Check and mark carry-over jobs from all dates
+// End of day processing: Create snapshot and mark carry-over jobs
+router.post('/end-of-day', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const userId = req.user?.userId
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' })
+    }
+    
+    // Get today's date and set to start of day
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    // Get all jobs for today to create snapshot
+    const todayJobs = await JobOrder.find({
+      date: { $gte: today, $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) }
+    })
+      .populate('createdBy', 'name email')
+      .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
+      .lean()
+    
+    // Calculate statistics
+    const stats = {
+      totalJobs: todayJobs.length,
+      onGoing: todayJobs.filter(job => job.status === 'OG').length,
+      forRelease: todayJobs.filter(job => job.status === 'FR').length,
+      onHold: todayJobs.filter(job => ['HC', 'HW', 'HI', 'WP'].includes(job.status)).length,
+      carriedOver: todayJobs.filter(job => job.carriedOver === true).length,
+      important: todayJobs.filter(job => job.isImportant === true).length,
+      qualityInspection: todayJobs.filter(job => job.status === 'QI').length,
+      finishedUnclaimed: todayJobs.filter(job => ['FU', 'CP'].includes(job.status)).length
+    }
+    
+    // Find jobs that will be marked as carry over
+    const unfinishedJobs = await JobOrder.find({
+      date: { $lt: today }, // Only jobs from previous days
+      status: { $nin: ['FR', 'FU', 'CP'] }, // Not completed statuses
+      carriedOver: { $ne: true } // Not already marked as carried over
+    })
+      .populate('createdBy', 'name email')
+      .populate('assignedTechnician', 'name email')
+      .populate('serviceAdvisor', 'name email')
+      .lean()
+    
+    // Create carry-over jobs list for snapshot
+    const carryOverJobs = unfinishedJobs.map(job => ({
+      _id: job._id.toString(),
+      jobNumber: job.jobNumber,
+      plateNumber: job.plateNumber,
+      status: job.status,
+      reason: `Status: ${job.status} - Not completed by end of day`
+    }))
+    
+    // Create workshop snapshot
+    const snapshot = await WorkshopSnapshot.create({
+      date: today,
+      createdBy: userId,
+      jobOrders: todayJobs.map(job => ({
+        _id: job._id.toString(),
+        jobNumber: job.jobNumber,
+        createdBy: {
+          _id: job.createdBy._id.toString(),
+          name: job.createdBy.name,
+          email: job.createdBy.email
+        },
+        assignedTechnician: job.assignedTechnician ? {
+          _id: job.assignedTechnician._id.toString(),
+          name: job.assignedTechnician.name,
+          email: job.assignedTechnician.email
+        } : null,
+        serviceAdvisor: job.serviceAdvisor ? {
+          _id: job.serviceAdvisor._id.toString(),
+          name: job.serviceAdvisor.name,
+          email: job.serviceAdvisor.email
+        } : null,
+        plateNumber: job.plateNumber,
+        vin: job.vin,
+        timeRange: job.timeRange,
+        actualEndTime: job.actualEndTime,
+        jobList: job.jobList,
+        parts: job.parts,
+        status: job.status,
+        date: job.date,
+        originalCreatedDate: job.originalCreatedDate,
+        sourceType: job.sourceType,
+        carriedOver: job.carriedOver,
+        isImportant: job.isImportant,
+        qiStatus: job.qiStatus,
+        holdCustomerRemarks: job.holdCustomerRemarks,
+        subletRemarks: job.subletRemarks,
+        originalJobId: job.originalJobId?.toString(),
+        carryOverChain: job.carryOverChain,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt
+      })),
+      statistics: stats,
+      carryOverJobs: carryOverJobs
+    })
+    
+    // Mark unfinished jobs as carried over
+    const updates = unfinishedJobs.map((job: any) => 
+      JobOrder.findByIdAndUpdate(
+        job._id,
+        { 
+          carriedOver: true,
+          sourceType: 'carry-over',
+          assignedTechnician: null, // Remove technician assignment for replotting
+          timeRange: { start: '00:00', end: '00:00' }, // Reset time range
+          // If this job doesn't have an originalJobId, set it to itself (first in chain)
+          originalJobId: job.originalJobId || job._id,
+          // Add to carry-over chain
+          $push: {
+            carryOverChain: {
+              jobId: job._id,
+              date: job.date,
+              status: job.status
+            }
+          }
+        },
+        { new: true }
+      )
+    )
+    
+    const updatedJobs = await Promise.all(updates)
+    
+    return res.json({ 
+      message: 'End of day processing completed successfully',
+      snapshot: {
+        id: snapshot._id,
+        date: snapshot.date,
+        totalJobs: stats.totalJobs,
+        carryOverCount: updatedJobs.length
+      },
+      carryOverJobs: updatedJobs
+    })
+  } catch (error) {
+    console.error('Error in end of day processing:', error)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Check and mark carry-over jobs from previous days only (legacy endpoint)
 router.post('/check-carry-over', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
   try {
     await connectToMongo()
     
-    // Find ALL jobs that are not completed and not already marked as carried over
-    // This includes jobs from any date (today, yesterday, or any other date)
+    // Get today's date and set to start of day
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    // Find jobs from previous days that are not completed and not already marked as carried over
+    // This excludes today's newly created jobs
     const unfinishedJobs = await JobOrder.find({
+      date: { $lt: today }, // Only jobs from previous days
       status: { $nin: ['FR', 'FU', 'CP'] }, // Not completed statuses
       carriedOver: { $ne: true } // Not already marked as carried over
     })
@@ -1164,7 +1315,7 @@ router.post('/check-carry-over', verifyToken, requireRole(['administrator', 'job
     const updatedJobs = await Promise.all(updates)
     
     return res.json({ 
-      message: 'All unfinished jobs marked as carry-over successfully',
+      message: 'Unfinished jobs from previous days marked as carry-over successfully',
       count: updatedJobs.length,
       jobs: updatedJobs
     })
@@ -1207,6 +1358,52 @@ router.post('/mark-carry-over', verifyToken, requireRole(['administrator', 'job-
     })
   } catch (error) {
     console.error('Error marking carry over:', error)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Get workshop snapshot for a specific date
+router.get('/snapshot/:date', verifyToken, async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const { date } = req.params
+    const targetDate = new Date(date)
+    targetDate.setHours(0, 0, 0, 0)
+    
+    const snapshot = await WorkshopSnapshot.findOne({ date: targetDate })
+      .populate('createdBy', 'name email')
+      .lean()
+    
+    if (!snapshot) {
+      return res.status(404).json({ error: 'No snapshot found for this date' })
+    }
+    
+    return res.json({ snapshot })
+  } catch (error) {
+    console.error('Error fetching workshop snapshot:', error)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Get list of available workshop snapshots
+router.get('/snapshots', verifyToken, async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const { limit = '30' } = req.query
+    const limitNum = parseInt(limit as string)
+    
+    const snapshots = await WorkshopSnapshot.find({})
+      .populate('createdBy', 'name email')
+      .select('date snapshotDate createdBy statistics.totalJobs statistics.carriedOver carryOverJobs')
+      .sort({ date: -1 })
+      .limit(limitNum)
+      .lean()
+    
+    return res.json({ snapshots })
+  } catch (error) {
+    console.error('Error fetching workshop snapshots:', error)
     return res.status(500).json({ error: 'Internal server error' })
   }
 })

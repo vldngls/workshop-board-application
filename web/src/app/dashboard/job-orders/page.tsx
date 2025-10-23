@@ -43,6 +43,7 @@ export default function JobOrdersPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedJob, setSelectedJob] = useState<JobOrder | null>(null)
   const [showDetails, setShowDetails] = useState(false)
+  const [highlightedJobId, setHighlightedJobId] = useState<string | null>(null)
   const updateJobMutation = useUpdateJobOrder()
 
   // Read filter from URL parameters on mount
@@ -50,6 +51,34 @@ export default function JobOrdersPage() {
     const urlFilter = searchParams?.get('filter')
     if (urlFilter) {
       setFilter(urlFilter as any)
+    }
+  }, [searchParams])
+
+  // Read highlight parameter from URL
+  useEffect(() => {
+    const highlightParam = searchParams?.get('highlight')
+    if (highlightParam) {
+      setHighlightedJobId(highlightParam)
+      
+      // Scroll to the highlighted job after a short delay to ensure it's rendered
+      setTimeout(() => {
+        const element = document.querySelector(`[data-job-id="${highlightParam}"]`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
+      
+      // Clear the highlight after a delay
+      const clearHighlightTimeout = setTimeout(() => {
+        setHighlightedJobId(null)
+        // Remove highlight from URL without page reload
+        const url = new URL(window.location.href)
+        url.searchParams.delete('highlight')
+        window.history.replaceState({}, '', url.toString())
+      }, 3000) // Highlight for 3 seconds
+      
+      // Cleanup timeout on unmount
+      return () => clearTimeout(clearHighlightTimeout)
     }
   }, [searchParams])
 
@@ -334,6 +363,7 @@ export default function JobOrdersPage() {
                 jobOrder={jobOrder}
                 onClick={handleOpenDetails}
                 onViewIn={handleViewIn}
+                highlighted={highlightedJobId === jobOrder._id}
               />
             ))}
           </div>
@@ -410,6 +440,12 @@ export default function JobOrdersPage() {
           onClose={handleCloseDetails}
           onUpdateJob={handleUpdateJob}
           onViewIn={handleViewIn}
+          onViewInJobOrders={(jobId: string) => {
+            // Already on job orders page, just set the highlight
+            setHighlightedJobId(jobId)
+            // Clear highlight after 3 seconds
+            setTimeout(() => setHighlightedJobId(null), 3000)
+          }}
           onUpdateJobStatus={handleUpdateJobStatus}
           onCarryOver={handleCarryOver}
         />

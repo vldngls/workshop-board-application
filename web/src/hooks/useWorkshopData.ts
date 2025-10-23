@@ -142,8 +142,8 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
         timeRange: job.timeRange
       })))
       
+      // Keep all jobs on timetable but filter out jobs without proper time assignments
       const timetableJobs = allJobsForDate.filter((job: JobOrderWithDetails) => 
-        !['WP', 'HC', 'HW', 'HI', 'FU'].includes(job.status) &&
         job.assignedTechnician &&
         job.timeRange.start !== '00:00' &&
         job.timeRange.end !== '00:00'

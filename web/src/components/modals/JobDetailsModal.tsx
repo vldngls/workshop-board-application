@@ -27,6 +27,7 @@ interface JobDetailsModalProps {
     parts: Array<{ name: string; availability: 'Available' | 'Unavailable' }>
   }>) => void
   onViewIn?: (jobId: string, jobDate: string, status: string) => void
+  onViewInJobOrders?: (jobId: string) => void
   onCarryOver?: (jobId: string) => void
 }
 
@@ -44,6 +45,7 @@ const JobDetailsModal = memo(({
   onSubmitForQI,
   onUpdateJob,
   onViewIn,
+  onViewInJobOrders,
   onCarryOver
 }: JobDetailsModalProps) => {
   const [isEditing, setIsEditing] = useState(false)
@@ -209,123 +211,12 @@ const JobDetailsModal = memo(({
           </div>
           
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            {/* Header Row */}
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-600">Job Number</label>
                 <p className="text-lg font-semibold">{job.jobNumber}</p>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600 mb-2 block">Status</label>
-                {onUpdateJobStatus ? (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { value: 'UA', label: 'Unassigned', color: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
-                        { value: 'HC', label: 'Hold Customer', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-                        { value: 'HW', label: 'Hold Warranty', color: 'bg-red-100 text-red-800 border-red-200' },
-                        { value: 'HI', label: 'Hold Insurance', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
-                        { value: 'HF', label: 'Hold Ford', color: 'bg-pink-100 text-pink-800 border-pink-200' },
-                        { value: 'SU', label: 'Sublet', color: 'bg-violet-100 text-violet-800 border-violet-200' },
-                        { value: 'FU', label: 'Finished Unclaimed', color: 'bg-gray-100 text-gray-800 border-gray-200' }
-                      ].map(({ value, label, color }) => (
-                        <button
-                          key={value}
-                          onClick={() => handleStatusChange(value)}
-                          disabled={updating || value === job.status}
-                          className={`p-3 rounded-lg text-sm font-semibold border-2 transition-all ${
-                            value === job.status
-                              ? `${color} border-opacity-50 cursor-not-allowed opacity-75`
-                              : `${color} hover:shadow-md hover:scale-105 cursor-pointer`
-                          }`}
-                        >
-                          <div className="text-center">
-                            <div className="font-bold">{value}</div>
-                            <div className="text-xs mt-1">{label}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="text-xs text-gray-500 text-center mt-2">
-                      Click a status to change it
-                    </div>
-                    
-                    {/* Special Actions for Process Flow Statuses */}
-                    {['OG', 'WP', 'UA', 'QI', 'FR'].includes(job.status) && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <div className="text-sm font-medium text-gray-600 mb-3">Special Actions</div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() => handleStatusChange('UA')}
-                            disabled={updating}
-                            className="px-3 py-2 text-sm font-medium text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-lg hover:bg-cyan-100 transition-colors disabled:opacity-50"
-                          >
-                            Mark as Unassigned
-                          </button>
-                          <button
-                            onClick={() => handleStatusChange('HC')}
-                            disabled={updating}
-                            className="px-3 py-2 text-sm font-medium text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg hover:bg-yellow-100 transition-colors disabled:opacity-50"
-                          >
-                            Hold Customer
-                          </button>
-                          <button
-                            onClick={() => handleStatusChange('HW')}
-                            disabled={updating}
-                            className="px-3 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
-                          >
-                            Hold Warranty
-                          </button>
-                          <button
-                            onClick={() => handleStatusChange('HI')}
-                            disabled={updating}
-                            className="px-3 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors disabled:opacity-50"
-                          >
-                            Hold Insurance
-                          </button>
-                          <button
-                            onClick={() => handleStatusChange('HF')}
-                            disabled={updating}
-                            className="px-3 py-2 text-sm font-medium text-pink-700 bg-pink-50 border border-pink-200 rounded-lg hover:bg-pink-100 transition-colors disabled:opacity-50"
-                          >
-                            Hold Ford
-                          </button>
-                          <button
-                            onClick={() => handleStatusChange('SU')}
-                            disabled={updating}
-                            className="px-3 py-2 text-sm font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-lg hover:bg-violet-100 transition-colors disabled:opacity-50"
-                          >
-                            Mark as Sublet
-                          </button>
-                        </div>
-                        <div className="mt-2">
-                          <button
-                            onClick={() => handleCarryOver(job._id)}
-                            disabled={updating}
-                            className="w-full px-3 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
-                          >
-                            Mark as Carry Over
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="text-center">
-                      <div className="text-sm font-medium text-gray-600 mb-2">Current Status</div>
-                      <div className="px-4 py-3 rounded-lg text-sm font-medium border-2 border-gray-200 bg-gray-50 text-gray-600">
-                        {job.status} - {getStatusLabel(job.status)}
-                      </div>
-                    </div>
-                    <div className="text-xs text-gray-500 text-center">
-                      Status changes are not available in this view
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-600">Plate Number</label>
                 {isEditing ? (
@@ -352,6 +243,79 @@ const JobDetailsModal = memo(({
               </div>
             </div>
 
+            {/* Status Section */}
+            <div>
+              <label className="text-sm font-medium text-gray-600 mb-2 block">Status</label>
+              {onUpdateJobStatus ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { value: 'UA', label: 'Unassigned', color: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
+                      { value: 'HC', label: 'Hold Customer', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+                      { value: 'HW', label: 'Hold Warranty', color: 'bg-red-100 text-red-800 border-red-200' },
+                      { value: 'HI', label: 'Hold Insurance', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+                      { value: 'HF', label: 'Hold Ford', color: 'bg-pink-100 text-pink-800 border-pink-200' },
+                      { value: 'SU', label: 'Sublet', color: 'bg-violet-100 text-violet-800 border-violet-200' },
+                      { value: 'FU', label: 'Finished Unclaimed', color: 'bg-gray-100 text-gray-800 border-gray-200' }
+                    ].map(({ value, label, color }) => (
+                      <button
+                        key={value}
+                        onClick={() => handleStatusChange(value)}
+                        disabled={updating || value === job.status}
+                        className={`p-2 rounded-lg text-xs font-semibold border-2 transition-all ${
+                          value === job.status
+                            ? `${color} border-opacity-50 cursor-not-allowed opacity-75`
+                            : `${color} hover:shadow-md hover:scale-105 cursor-pointer`
+                        }`}
+                      >
+                        <div className="text-center">
+                          <div className="font-bold text-sm">{value}</div>
+                          <div className="text-xs mt-1">{label}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="text-xs text-gray-500 text-center">
+                    Click a status to change it
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="pt-3 border-t border-gray-200 space-y-2">
+                    {onCarryOver && (
+                      <button
+                        onClick={() => handleCarryOver(job._id)}
+                        disabled={updating}
+                        className="w-full px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
+                      >
+                        Mark as Carry Over
+                      </button>
+                    )}
+                    {onViewInJobOrders && (
+                      <button
+                        onClick={() => onViewInJobOrders(job._id)}
+                        className="w-full px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                      >
+                        View in Job Orders
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="text-center">
+                    <div className="text-sm font-medium text-gray-600 mb-2">Current Status</div>
+                    <div className="px-4 py-3 rounded-lg text-sm font-medium border-2 border-gray-200 bg-gray-50 text-gray-600">
+                      {job.status} - {getStatusLabel(job.status)}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 text-center">
+                    Status changes are not available in this view
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Technician and Time Row */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="flex justify-between items-center mb-1">
@@ -404,7 +368,7 @@ const JobDetailsModal = memo(({
               </div>
             </div>
 
-            {(job.carriedOver || job.carryOverChain || job.originalJobId) && (
+            {job.carriedOver && (
               <div className="bg-red-500/20 backdrop-blur-sm border border-red-300/30 rounded-xl p-3">
                 <div className="flex items-center gap-2 text-red-800">
                   <FiRefreshCw size={20} />
@@ -437,82 +401,85 @@ const JobDetailsModal = memo(({
               </div>
             )}
 
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-medium text-gray-600">Job Tasks</label>
-                {onUpdateJob && (
-                  <button
-                    onClick={handleEditTasks}
-                    className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
-                  >
-                    <FiEdit3 size={14} />
-                    Edit Tasks & Parts
-                  </button>
-                )}
-              </div>
-              <div className="space-y-2">
-                {job.jobList.map((task, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-white rounded-xl border">
-                    <span className="text-sm flex-1">{task.description}</span>
-                    {onUpdateTaskStatus ? (
-                      <select
-                        value={task.status}
-                        onChange={(e) => onUpdateTaskStatus(job._id, index, e.target.value as 'Finished' | 'Unfinished')}
-                        disabled={updating}
-                        className={`ml-3 px-3 py-1 rounded text-xs font-medium border-2 focus:outline-none ${
+            {/* Tasks and Parts Row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-medium text-gray-600">Job Tasks</label>
+                  {onUpdateJob && (
+                    <button
+                      onClick={handleEditTasks}
+                      className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
+                    >
+                      <FiEdit3 size={12} />
+                      Edit
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {job.jobList.map((task, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg border">
+                      <span className="text-xs flex-1 truncate">{task.description}</span>
+                      {onUpdateTaskStatus ? (
+                        <select
+                          value={task.status}
+                          onChange={(e) => onUpdateTaskStatus(job._id, index, e.target.value as 'Finished' | 'Unfinished')}
+                          disabled={updating}
+                          className={`ml-2 px-2 py-1 rounded text-xs font-medium border-2 focus:outline-none ${
+                            task.status === 'Finished' 
+                              ? 'bg-green-100 text-green-800 border-green-300' 
+                              : 'bg-gray-100 text-gray-800 border-gray-300'
+                          }`}
+                        >
+                          <option value="Unfinished">Unfinished</option>
+                          <option value="Finished">Finished</option>
+                        </select>
+                      ) : (
+                        <div className={`ml-2 px-2 py-1 rounded text-xs font-medium border-2 ${
                           task.status === 'Finished' 
                             ? 'bg-green-100 text-green-800 border-green-300' 
                             : 'bg-gray-100 text-gray-800 border-gray-300'
-                        }`}
-                      >
-                        <option value="Unfinished">Unfinished</option>
-                        <option value="Finished">Finished</option>
-                      </select>
-                    ) : (
-                      <div className={`ml-3 px-3 py-1 rounded text-xs font-medium border-2 ${
-                        task.status === 'Finished' 
-                          ? 'bg-green-100 text-green-800 border-green-300' 
-                          : 'bg-gray-100 text-gray-800 border-gray-300'
-                      }`}>
-                        {task.status}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                        }`}>
+                          {task.status}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-600 mb-2 block">Parts Required</label>
-              <div className="space-y-2">
-                {job.parts.map((part, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-white rounded-xl border">
-                    <span className="text-sm flex-1">{part.name}</span>
-                    {onUpdatePartAvailability ? (
-                      <select
-                        value={part.availability}
-                        onChange={(e) => onUpdatePartAvailability(job._id, index, e.target.value as 'Available' | 'Unavailable')}
-                        disabled={updating}
-                        className={`ml-3 px-3 py-1 rounded text-xs font-medium border-2 focus:outline-none ${
+              
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-2 block">Parts Required</label>
+                <div className="space-y-1">
+                  {job.parts.map((part, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-white rounded-lg border">
+                      <span className="text-xs flex-1 truncate">{part.name}</span>
+                      {onUpdatePartAvailability ? (
+                        <select
+                          value={part.availability}
+                          onChange={(e) => onUpdatePartAvailability(job._id, index, e.target.value as 'Available' | 'Unavailable')}
+                          disabled={updating}
+                          className={`ml-2 px-2 py-1 rounded text-xs font-medium border-2 focus:outline-none ${
+                            part.availability === 'Available' 
+                              ? 'bg-green-100 text-green-800 border-green-300' 
+                              : 'bg-red-100 text-red-800 border-red-300'
+                          }`}
+                        >
+                          <option value="Available">Available</option>
+                          <option value="Unavailable">Unavailable</option>
+                        </select>
+                      ) : (
+                        <div className={`ml-2 px-2 py-1 rounded text-xs font-medium border-2 ${
                           part.availability === 'Available' 
                             ? 'bg-green-100 text-green-800 border-green-300' 
                             : 'bg-red-100 text-red-800 border-red-300'
-                        }`}
-                      >
-                        <option value="Available">Available</option>
-                        <option value="Unavailable">Unavailable</option>
-                      </select>
-                    ) : (
-                      <div className={`ml-3 px-3 py-1 rounded text-xs font-medium border-2 ${
-                        part.availability === 'Available' 
-                          ? 'bg-green-100 text-green-800 border-green-300' 
-                          : 'bg-red-100 text-red-800 border-red-300'
-                      }`}>
-                        {part.availability}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                        }`}>
+                          {part.availability}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 

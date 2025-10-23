@@ -213,12 +213,12 @@ export default function MainDashboard() {
 
 
 
-  const handleCheckCarryOver = async () => {
+  const handleEndOfDay = async () => {
     if (isCheckingCarryOver) return
     
     setIsCheckingCarryOver(true)
     try {
-      const response = await fetch('/api/job-orders/check-carry-over', {
+      const response = await fetch('/api/job-orders/end-of-day', {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -228,16 +228,16 @@ export default function MainDashboard() {
 
       if (response.ok) {
         const data = await response.json()
-        toast.success(`Marked ${data.count} unfinished job(s) as carry-over`)
+        toast.success(`End of day processing completed! Snapshot created with ${data.snapshot.totalJobs} jobs, ${data.snapshot.carryOverCount} marked as carry-over`)
         // Refresh dashboard data
         fetchDashboardData()
       } else {
         const errorData = await response.json()
-        toast.error(errorData.error || 'Failed to mark jobs as carry-over')
+        toast.error(errorData.error || 'Failed to process end of day')
       }
     } catch (error) {
-      console.error('Error checking carry-over:', error)
-      toast.error('Failed to check carry-over jobs')
+      console.error('Error in end of day processing:', error)
+      toast.error('Failed to process end of day')
     } finally {
       setIsCheckingCarryOver(false)
     }
@@ -902,7 +902,7 @@ export default function MainDashboard() {
         </button>
 
         <button 
-          onClick={handleCheckCarryOver} 
+          onClick={handleEndOfDay} 
           disabled={isCheckingCarryOver}
           className="group ios-card p-6 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200 text-left disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -915,9 +915,9 @@ export default function MainDashboard() {
               )}
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-lg text-slate-900 mb-1">End of Day Carry-Over</h3>
+              <h3 className="font-bold text-lg text-slate-900 mb-1">End of Day Processing</h3>
               <p className="text-sm text-slate-600 font-medium">
-                {isCheckingCarryOver ? 'Processing...' : 'Mark ALL unfinished jobs as carry-over'}
+                {isCheckingCarryOver ? 'Creating snapshot and processing carry-overs...' : 'Create workshop snapshot and mark carry-over jobs'}
               </p>
             </div>
           </div>
