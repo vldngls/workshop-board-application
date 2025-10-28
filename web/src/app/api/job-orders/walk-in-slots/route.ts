@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Forward the request to the backend API
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000'
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
     
     const response = await fetch(`${backendUrl}/job-orders/walk-in-slots?date=${encodeURIComponent(date)}&duration=${encodeURIComponent(duration)}`, {
       method: 'GET',
