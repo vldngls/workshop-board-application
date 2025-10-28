@@ -71,7 +71,8 @@ app.use((req, res, next) => {
   if (
     req.path === '/' ||
     req.path === '/health' ||
-    req.path.startsWith('/auth')
+    req.path.startsWith('/auth') ||
+    req.path === '/maintenance/settings/public'
   ) {
     return next();
   }
