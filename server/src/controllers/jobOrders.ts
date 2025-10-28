@@ -313,6 +313,155 @@ router.get('/walk-in-slots', verifyToken, async (req, res) => {
   }
 })
 
+// Get available time slots for workshop timetable (30-minute intervals)
+router.get('/workshop-slots', verifyToken, async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const { date } = req.query
+    
+    if (!date) {
+      return res.status(400).json({ error: 'Date is required' })
+    }
+    
+    const jobDate = new Date(date as string)
+    
+    // Get all technicians
+    const technicians = await User.find({ role: 'technician' }).select('name email level breakTimes').lean()
+    
+    // Get all job orders and appointments for the date
+    const jobOrders = await JobOrder.find({
+      date: {
+        $gte: new Date(jobDate.toISOString().split('T')[0] || ''),
+        $lt: new Date(new Date(jobDate).setDate(jobDate.getDate() + 1))
+      }
+    }).select('assignedTechnician timeRange').lean()
+    
+    const appointments = await Appointment.find({
+      date: {
+        $gte: new Date(jobDate.toISOString().split('T')[0] || ''),
+        $lt: new Date(new Date(jobDate).setDate(jobDate.getDate() + 1))
+      }
+    }).select('assignedTechnician timeRange').lean()
+    
+    // Generate time slots from 7:00 AM to 6:00 PM (30-minute intervals)
+    const generateTimeSlots = () => {
+      const slots = []
+      for (let hour = 7; hour <= 18; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+          slots.push(timeStr)
+        }
+      }
+      return slots
+    }
+    
+    const timeSlots = generateTimeSlots()
+    
+    // Helper function to check if a time is within a range
+    const isTimeInRange = (time: string, start: string, end: string): boolean => {
+      const [tHour, tMin] = time.split(':').map(Number)
+      const [sHour, sMin] = start.split(':').map(Number)
+      const [eHour, eMin] = end.split(':').map(Number)
+      
+      const tMinutes = tHour * 60 + tMin
+      const sMinutes = sHour * 60 + sMin
+      const eMinutes = eHour * 60 + eMin
+      
+      return tMinutes >= sMinutes && tMinutes < eMinutes
+    }
+    
+    // Helper function to check if a time slot overlaps with break times
+    const hasBreakTimeOverlap = (startTime: string, durationMinutes: number, breakTimes: any[]): boolean => {
+      if (!breakTimes || breakTimes.length === 0) return false
+      
+      const [startHour, startMinute] = startTime.split(':').map(Number)
+      const startMinutes = startHour * 60 + startMinute
+      const endMinutes = startMinutes + durationMinutes
+      
+      return breakTimes.some(breakTime => {
+        const [breakStartHour, breakStartMinute] = breakTime.startTime.split(':').map(Number)
+        const [breakEndHour, breakEndMinute] = breakTime.endTime.split(':').map(Number)
+        
+        const breakStartMinutes = breakStartHour * 60 + breakStartMinute
+        const breakEndMinutes = breakEndHour * 60 + breakEndMinute
+        
+        // Check if the time slot overlaps with the break time
+        return (startMinutes < breakEndMinutes && endMinutes > breakStartMinutes)
+      })
+    }
+    
+    // Calculate available slots for each technician
+    const technicianSlots = technicians.map(technician => {
+      const technicianJobs = jobOrders.filter(job => 
+        job.assignedTechnician && job.assignedTechnician.toString() === technician._id.toString()
+      )
+      
+      const technicianAppointments = appointments.filter(appt => 
+        appt.assignedTechnician && appt.assignedTechnician.toString() === technician._id.toString()
+      )
+      
+      // Calculate total hours for the day
+      let totalHours = 0
+      for (const job of technicianJobs) {
+        const [startHour, startMinute] = job.timeRange.start.split(':').map(Number)
+        const [endHour, endMinute] = job.timeRange.end.split(':').map(Number)
+        const hours = ((endHour * 60 + endMinute) - (startHour * 60 + startMinute)) / 60
+        totalHours += hours
+      }
+      
+      const availableSlots = []
+      
+      for (const startTime of timeSlots) {
+        // Check if this slot conflicts with any existing jobs
+        const hasJobConflict = technicianJobs.some(job => {
+          return isTimeInRange(startTime, job.timeRange.start, job.timeRange.end)
+        })
+        
+        // Check if this slot conflicts with any appointments
+        const hasAppointmentConflict = technicianAppointments.some(appt => {
+          return isTimeInRange(startTime, appt.timeRange.start, appt.timeRange.end)
+        })
+        
+        // Check if this slot overlaps with break times
+        const hasBreakOverlap = hasBreakTimeOverlap(startTime, 30, technician.breakTimes || [])
+        
+        // Check if end time is within working hours (before 6:00 PM)
+        const [startHour, startMinute] = startTime.split(':').map(Number)
+        const endMinutes = startHour * 60 + startMinute + 30
+        const endHour = Math.floor(endMinutes / 60)
+        const endMin = endMinutes % 60
+        const endTime = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
+        const isWithinWorkingHours = endHour < 18 || (endHour === 18 && endMin === 0)
+        
+        if (!hasJobConflict && !hasAppointmentConflict && !hasBreakOverlap && isWithinWorkingHours) {
+          availableSlots.push({
+            startTime,
+            endTime,
+            duration: 30
+          })
+        }
+      }
+      
+      return {
+        technician: {
+          _id: technician._id,
+          name: technician.name,
+          level: technician.level
+        },
+        availableSlots,
+        currentDailyHours: totalHours,
+        dailyHoursRemaining: Math.max(0, 7.5 - totalHours)
+      }
+    })
+    
+    return res.json({ technicianSlots })
+  } catch (error) {
+    console.error('Error fetching workshop slots:', error)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // Get job orders that can fit in a specific time slot (for reassignment)
 router.get('/available-for-slot', verifyToken, async (req, res) => {
   try {

@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import TechnicianGridRow from './TechnicianGridRow'
+import AvailableSlotSpan from './AvailableSlotSpan'
 import { TIME_SLOTS, formatTime } from '@/utils/timetableUtils'
 import type { JobOrderWithDetails, Technician } from '@/utils/timetableUtils'
 import type { Appointment } from '@/types/appointment'
@@ -9,9 +10,15 @@ interface TimetableGridProps {
   jobOrders: JobOrderWithDetails[]
   appointments: Appointment[]
   highlightedJobId: string | null
+  availableSlotsData?: Record<string, Array<{
+    startTime: string
+    endTime: string
+    duration: number
+  }>>
   onJobClick: (job: JobOrderWithDetails) => void
   onAppointmentClick: (appointment: Appointment) => void
   onDeleteAppointment?: (appointmentId: string) => void
+  onAvailableSlotClick?: (technicianId: string, startTime: string, endTime: string) => void
 }
 
 const TimetableGrid = memo(({
@@ -19,10 +26,73 @@ const TimetableGrid = memo(({
   jobOrders,
   appointments,
   highlightedJobId,
+  availableSlotsData = {},
   onJobClick,
   onAppointmentClick,
-  onDeleteAppointment
+  onDeleteAppointment,
+  onAvailableSlotClick
 }: TimetableGridProps) => {
+  // Generate available slot spans for each technician
+  const generateAvailableSlotSpans = (technicianId: string, availableSlots: any[]) => {
+    if (!availableSlots || availableSlots.length === 0) return []
+    
+    const spans = []
+    let currentSpanStart = -1
+    let currentSpanEnd = -1
+    
+    for (let i = 0; i < TIME_SLOTS.length; i++) {
+      const slotTime = TIME_SLOTS[i].time
+      const isAvailable = availableSlots.some(slot => slot.startTime === slotTime)
+      
+      if (isAvailable) {
+        if (currentSpanStart === -1) {
+          currentSpanStart = i
+        }
+        currentSpanEnd = i
+      } else {
+        if (currentSpanStart !== -1) {
+          // End current span
+          const startSlot = availableSlots.find(slot => slot.startTime === TIME_SLOTS[currentSpanStart].time)
+          const endSlot = availableSlots.find(slot => slot.startTime === TIME_SLOTS[currentSpanEnd].time)
+          
+          spans.push({
+            technicianId,
+            startSlotIndex: currentSpanStart,
+            endSlotIndex: currentSpanEnd,
+            startTime: startSlot?.startTime || TIME_SLOTS[currentSpanStart].time,
+            endTime: endSlot?.endTime || TIME_SLOTS[currentSpanEnd].time
+          })
+          
+          currentSpanStart = -1
+          currentSpanEnd = -1
+        }
+      }
+    }
+    
+    // Handle span that goes to the end
+    if (currentSpanStart !== -1) {
+      const startSlot = availableSlots.find(slot => slot.startTime === TIME_SLOTS[currentSpanStart].time)
+      const endSlot = availableSlots.find(slot => slot.startTime === TIME_SLOTS[currentSpanEnd].time)
+      
+      spans.push({
+        technicianId,
+        startSlotIndex: currentSpanStart,
+        endSlotIndex: currentSpanEnd,
+        startTime: startSlot?.startTime || TIME_SLOTS[currentSpanStart].time,
+        endTime: endSlot?.endTime || TIME_SLOTS[currentSpanEnd].time
+      })
+    }
+    
+    return spans
+  }
+  
+  // Generate all available slot spans
+  const allAvailableSlotSpans = technicians.flatMap((technician, rowIndex) => 
+    generateAvailableSlotSpans(technician._id, availableSlotsData[technician._id] || []).map(span => ({
+      ...span,
+      technicianRowIndex: rowIndex
+    }))
+  )
   return (
     <div className="floating-card overflow-hidden">
       <div className="overflow-x-auto">
@@ -59,9 +129,25 @@ const TimetableGrid = memo(({
               jobOrders={jobOrders}
               appointments={appointments}
               highlightedJobId={highlightedJobId}
+              availableSlots={availableSlotsData[technician._id] || []}
               onJobClick={onJobClick}
               onAppointmentClick={onAppointmentClick}
               onDeleteAppointment={onDeleteAppointment}
+              onAvailableSlotClick={onAvailableSlotClick}
+            />
+          ))}
+          
+          {/* Available Slot Spans */}
+          {allAvailableSlotSpans.map((span, index) => (
+            <AvailableSlotSpan
+              key={`${span.technicianId}-${span.startSlotIndex}-${index}`}
+              technicianId={span.technicianId}
+              startSlotIndex={span.startSlotIndex}
+              endSlotIndex={span.endSlotIndex}
+              startTime={span.startTime}
+              endTime={span.endTime}
+              technicianRowIndex={span.technicianRowIndex}
+              onAvailableSlotClick={onAvailableSlotClick || (() => {})}
             />
           ))}
         </div>

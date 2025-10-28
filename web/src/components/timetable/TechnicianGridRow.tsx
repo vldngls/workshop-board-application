@@ -10,9 +10,15 @@ interface TechnicianGridRowProps {
   jobOrders: JobOrderWithDetails[]
   appointments: Appointment[]
   highlightedJobId: string | null
+  availableSlots?: Array<{
+    startTime: string
+    endTime: string
+    duration: number
+  }>
   onJobClick: (job: JobOrderWithDetails) => void
   onAppointmentClick: (appointment: Appointment) => void
   onDeleteAppointment?: (appointmentId: string) => void
+  onAvailableSlotClick?: (technicianId: string, startTime: string, endTime: string) => void
 }
 
 const TechnicianGridRow = memo(({
@@ -21,9 +27,11 @@ const TechnicianGridRow = memo(({
   jobOrders,
   appointments,
   highlightedJobId,
+  availableSlots = [],
   onJobClick,
   onAppointmentClick,
-  onDeleteAppointment
+  onDeleteAppointment,
+  onAvailableSlotClick
 }: TechnicianGridRowProps) => {
   return (
     <>
@@ -49,9 +57,11 @@ const TechnicianGridRow = memo(({
           jobOrders={jobOrders}
           appointments={appointments}
           highlightedJobId={highlightedJobId}
+          availableSlots={availableSlots}
           onJobClick={onJobClick}
           onAppointmentClick={onAppointmentClick}
           onDeleteAppointment={onDeleteAppointment}
+          onAvailableSlotClick={onAvailableSlotClick}
         />
       ))}
     </>

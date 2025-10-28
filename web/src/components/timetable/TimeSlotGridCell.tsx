@@ -1,10 +1,17 @@
 import { memo } from 'react'
 import JobBlock from './JobBlock'
 import AppointmentBlock from './AppointmentBlock'
-import { getJobAtTime, getAppointmentAtTime, getJobStartSlot, getAppointmentStartSlot } from '@/utils/timetableUtils'
+import AvailableSlotSpan from './AvailableSlotSpan'
+import { getJobAtTime, getAppointmentAtTime, getJobStartSlot, getAppointmentStartSlot, TIME_SLOTS } from '@/utils/timetableUtils'
 import type { TimeSlot, JobOrderWithDetails, Technician } from '@/utils/timetableUtils'
 import type { Appointment } from '@/types/appointment'
 import { hasBreakTimeOverlap } from '@/utils/breakTimeUtils'
+
+interface AvailableSlot {
+  startTime: string
+  endTime: string
+  duration: number
+}
 
 interface TimeSlotGridCellProps {
   technician: Technician
@@ -14,9 +21,11 @@ interface TimeSlotGridCellProps {
   jobOrders: JobOrderWithDetails[]
   appointments: Appointment[]
   highlightedJobId: string | null
+  availableSlots?: AvailableSlot[]
   onJobClick: (job: JobOrderWithDetails) => void
   onAppointmentClick: (appointment: Appointment) => void
   onDeleteAppointment?: (appointmentId: string) => void
+  onAvailableSlotClick?: (technicianId: string, startTime: string, endTime: string) => void
 }
 
 const TimeSlotGridCell = memo(({
@@ -27,15 +36,68 @@ const TimeSlotGridCell = memo(({
   jobOrders,
   appointments,
   highlightedJobId,
+  availableSlots = [],
   onJobClick,
   onAppointmentClick,
-  onDeleteAppointment
+  onDeleteAppointment,
+  onAvailableSlotClick
 }: TimeSlotGridCellProps) => {
   const job = getJobAtTime(technician._id, timeSlot, jobOrders)
   const isJobStart = job && getJobStartSlot(job) === slotIndex
   
   const appointment = getAppointmentAtTime(technician._id, timeSlot, appointments)
   const isAppointmentStart = appointment && getAppointmentStartSlot(appointment) === slotIndex
+  
+  // Check if this time slot is available for walk-in
+  const isAvailableSlot = availableSlots.some(slot => slot.startTime === timeSlot.time)
+  
+  // Check if this is the start of a consecutive available slot span
+  const isAvailableSlotStart = isAvailableSlot && (
+    slotIndex === 0 || 
+    !availableSlots.some(slot => slot.startTime === TIME_SLOTS[slotIndex - 1]?.time)
+  )
+  
+  // Find the end of this available slot span
+  const getAvailableSlotSpan = () => {
+    if (!isAvailableSlotStart) return null
+    
+    let endSlotIndex = slotIndex
+    // Find consecutive available slots
+    for (let i = slotIndex + 1; i < TIME_SLOTS.length; i++) {
+      const nextSlotTime = TIME_SLOTS[i]?.time
+      if (nextSlotTime && availableSlots.some(slot => slot.startTime === nextSlotTime)) {
+        endSlotIndex = i
+      } else {
+        break
+      }
+    }
+    
+    // Only create span if there are multiple consecutive slots or if it's a single slot
+    if (endSlotIndex > slotIndex || isAvailableSlot) {
+      const startSlot = availableSlots.find(slot => slot.startTime === timeSlot.time)
+      
+      // Calculate the actual end time based on the consecutive slots
+      const spanSlots = endSlotIndex - slotIndex + 1
+      const startMinutes = slotIndex * 30 // Each slot is 30 minutes
+      const endMinutes = startMinutes + (spanSlots * 30)
+      
+      // Convert back to time format
+      const endHour = Math.floor(endMinutes / 60)
+      const endMin = endMinutes % 60
+      const calculatedEndTime = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
+      
+      return {
+        startSlotIndex: slotIndex,
+        endSlotIndex,
+        startTime: startSlot?.startTime || timeSlot.time,
+        endTime: calculatedEndTime
+      }
+    }
+    
+    return null
+  }
+  
+  const availableSlotSpan = getAvailableSlotSpan()
   
   // Check if this time slot is during a break time
   const breakTimes = (technician as any).breakTimes || []

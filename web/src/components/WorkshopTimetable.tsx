@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, memo } from 'react'
 import toast, { Toaster } from 'react-hot-toast'
 import { FiCalendar } from 'react-icons/fi'
+import { useQuery } from '@tanstack/react-query'
 import type { JobOrder } from '@/types/jobOrder'
 import type { Appointment } from '@/types/appointment'
 import type { Role } from '@/types/auth'
@@ -20,6 +21,8 @@ import ReplotJobOrderModal from './ReplotJobOrderModal'
 import CreateJobOrderFromAppointmentModal from './CreateJobOrderFromAppointmentModal'
 import ConfirmDialog from './ConfirmDialog'
 import JobReassignmentModal from './JobReassignmentModal'
+import AddJobOrderModal from './AddJobOrderModal'
+import TechnicianHoursSummary from './TechnicianHoursSummary'
 
 interface WorkshopTimetableProps {
   date: Date
@@ -110,7 +113,35 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
   const [showCarryOverReassignModal, setShowCarryOverReassignModal] = useState(false)
   const [selectedCarryOverJob, setSelectedCarryOverJob] = useState<JobOrderWithDetails | null>(null)
   
-  // Get technicians with their break times for break time calculations
+  // Available slots state
+  const [selectedAvailableSlot, setSelectedAvailableSlot] = useState<{
+    technicianId: string
+    startTime: string
+    endTime: string
+  } | null>(null)
+  const [showAvailableSlotModal, setShowAvailableSlotModal] = useState(false)
+  
+  // Fetch available slots for workshop timetable
+  const { data: availableSlotsData, refetch: refetchAvailableSlots } = useQuery({
+    queryKey: ['workshop-slots', date.toISOString().split('T')[0]],
+    queryFn: async () => {
+      const response = await fetch(`/api/job-orders/workshop-slots?date=${encodeURIComponent(date.toISOString().split('T')[0])}`, {
+        credentials: 'include'
+      })
+      if (!response.ok) {
+        throw new Error('Failed to fetch available slots')
+      }
+      return response.json()
+    },
+    enabled: !isHistorical, // Only fetch for current date, not historical
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  })
+  
+  // Transform available slots data into a format suitable for the grid
+  const availableSlotsMap = availableSlotsData?.technicianSlots?.reduce((acc: any, technicianSlot: any) => {
+    acc[technicianSlot.technician._id] = technicianSlot.availableSlots
+    return acc
+  }, {}) || {}
   const { data: techniciansData } = useUsers({ role: 'technician' })
   const techniciansWithBreakTimes = techniciansData?.users || []
 
@@ -268,6 +299,19 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
     toast.success('Job order created from appointment!')
   }, [fetchData])
 
+  const handleAvailableSlotClick = useCallback((technicianId: string, startTime: string, endTime: string) => {
+    setSelectedAvailableSlot({ technicianId, startTime, endTime })
+    setShowAvailableSlotModal(true)
+  }, [])
+
+  const handleAvailableSlotJobCreated = useCallback(() => {
+    setShowAvailableSlotModal(false)
+    setSelectedAvailableSlot(null)
+    fetchData()
+    refetchAvailableSlots()
+    toast.success('Job order created!')
+  }, [fetchData, refetchAvailableSlots])
+
   const handleConflictsResolved = useCallback(() => {
     // Refresh data when conflicts are resolved
     fetchData()
@@ -360,15 +404,20 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
         waitingPartsJobs={waitingPartsJobs}
       />
 
+      {/* Technician Hours Summary */}
+      <TechnicianHoursSummary date={date} />
+
       {/* Timetable Grid */}
       <TimetableGrid
         technicians={technicians}
         jobOrders={jobOrders}
         appointments={appointments}
         highlightedJobId={highlightedJobId}
+        availableSlotsData={availableSlotsMap}
         onJobClick={handleCellClick}
         onAppointmentClick={handleAppointmentClick}
         onDeleteAppointment={userRole === 'technician' ? undefined : handleDeleteAppointment}
+        onAvailableSlotClick={handleAvailableSlotClick}
       />
 
       {/* Job Status Sections */}
@@ -546,6 +595,26 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
             setShowCarryOverReassignModal(false)
             setSelectedCarryOverJob(null)
             fetchData()
+          }}
+        />
+      )}
+
+      {/* Available Slot Job Order Modal */}
+      {showAvailableSlotModal && selectedAvailableSlot && (
+        <AddJobOrderModal
+          onClose={() => {
+            setShowAvailableSlotModal(false)
+            setSelectedAvailableSlot(null)
+          }}
+          onSuccess={handleAvailableSlotJobCreated}
+          prefilledData={{
+            assignedTechnician: selectedAvailableSlot.technicianId,
+            timeRange: {
+              start: selectedAvailableSlot.startTime,
+              end: selectedAvailableSlot.endTime
+            },
+            date: date.toISOString().split('T')[0],
+            status: 'OG'
           }}
         />
       )}
