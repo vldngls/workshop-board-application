@@ -37,7 +37,6 @@
     "jsx": "react-jsx",
     "verbatimModuleSyntax": false,
     "isolatedModules": true,
-    "noUncheckedSideEffectImports": false,
     "moduleDetection": "force",
     "skipLibCheck": true,
     "noImplicitAny": false,
@@ -47,7 +46,6 @@
     "strictPropertyInitialization": false,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
     "noImplicitThis": true,
     "alwaysStrict": true,
 
