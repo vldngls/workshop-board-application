@@ -1,4 +1,4 @@
-export type Role = 'administrator' | 'job-controller' | 'technician' | 'service-advisor'
+export type Role = 'administrator' | 'job-controller' | 'technician' | 'service-advisor' | 'superadmin'
 export type TechnicianLevel = 'untrained' | 'level-0' | 'level-1' | 'level-2' | 'level-3'
 
 export interface BreakTime {

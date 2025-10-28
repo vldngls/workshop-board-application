@@ -36,10 +36,10 @@ export default function AccountManagementPage() {
 
   const technicians = users.filter(user => user.role === 'technician')
   const serviceAdvisors = users.filter(user => user.role === 'service-advisor')
-  const otherUsers = users.filter(user => user.role !== 'technician' && user.role !== 'service-advisor')
+  const otherUsers = users.filter(user => user.role !== 'technician' && user.role !== 'service-advisor' && user.role !== 'superadmin')
 
   return (
-    <RoleGuard allowedRoles={['administrator']}>
+    <RoleGuard allowedRoles={['administrator', 'superadmin']}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

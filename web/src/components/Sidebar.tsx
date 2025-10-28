@@ -9,6 +9,19 @@ type NavItem = { href: string; label: string }
 
 function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
   switch (role) {
+    case "superadmin":
+      return {
+        title: "Super Admin",
+        items: [
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/dashboard/workshop", label: "Workshop" },
+          { href: "/dashboard/job-orders", label: "Job Orders" },
+          { href: "/dashboard/appointments", label: "Appointments" },
+          { href: "/dashboard/walk-in", label: "Walk-In System" },
+          { href: "/dashboard/account-management", label: "Account Management" },
+          { href: "/dashboard/maintenance", label: "Maintenance" },
+        ],
+      }
     case "administrator":
       return {
         title: "Admin",

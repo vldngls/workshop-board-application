@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 const { Schema } = mongoose
 
-type Role = 'administrator' | 'job-controller' | 'technician' | 'service-advisor'
+type Role = 'administrator' | 'job-controller' | 'technician' | 'service-advisor' | 'superadmin'
 type TechnicianLevel = 'untrained' | 'level-0' | 'level-1' | 'level-2' | 'level-3'
 
 interface BreakTime {
@@ -27,7 +27,7 @@ const userSchema = new Schema({
   username: { type: String, unique: true, sparse: true, index: true },
   phone: { type: String },
   passwordHash: { type: String, required: true },
-  role: { type: String, required: true, enum: ['administrator', 'job-controller', 'technician', 'service-advisor'] },
+  role: { type: String, required: true, enum: ['administrator', 'job-controller', 'technician', 'service-advisor', 'superadmin'] },
   pictureUrl: String,
   level: { 
     type: String, 

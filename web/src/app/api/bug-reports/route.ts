@@ -1,0 +1,71 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
+
+export async function POST(request: NextRequest) {
+  try {
+    // Get JWT token from cookies
+    const cookieStore = await cookies()
+    const token = cookieStore.get('token')?.value
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    const body = await request.json()
+    
+    const response = await fetch(`${API_BASE}/bug-reports`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    })
+    
+    const text = await response.text()
+    try {
+      const data = JSON.parse(text)
+      return NextResponse.json(data, { status: response.status })
+    } catch {
+      return new NextResponse(text, { status: response.status })
+    }
+  } catch (e) {
+    return NextResponse.json({ error: "Upstream error" }, { status: 502 })
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    // Get JWT token from cookies
+    const cookieStore = await cookies()
+    const token = cookieStore.get('token')?.value
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    
+    // Get query parameters from the request
+    const { searchParams } = new URL(request.url)
+    const queryString = searchParams.toString()
+    const url = queryString ? `${API_BASE}/bug-reports?${queryString}` : `${API_BASE}/bug-reports`
+    
+    const response = await fetch(url, { 
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      } 
+    })
+    
+    const text = await response.text()
+    try {
+      const data = JSON.parse(text)
+      return NextResponse.json(data, { status: response.status })
+    } catch {
+      return new NextResponse(text, { status: response.status })
+    }
+  } catch (e) {
+    return NextResponse.json({ error: "Upstream error" }, { status: 502 })
+  }
+}

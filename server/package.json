@@ -9,8 +9,8 @@
     "start": "node dist/index.js",
     "vercel-build": "npm run build",
     "seed": "node ./scripts/seed.mjs",
-    "seed-enhanced": "node ./scripts/seed-enhanced.mjs",
-    "seed-comprehensive": "node ./scripts/seed-comprehensive.mjs"
+    "seed-realistic": "node ./scripts/seed-realistic.mjs",
+    "create-superadmin": "node ./scripts/create-superadmin.mjs"
   },
   "keywords": [],
   "author": "",

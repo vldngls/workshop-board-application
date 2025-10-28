@@ -40,19 +40,31 @@ export async function middleware(req: NextRequest) {
 
     // RBAC enforcement
     if (pathname.startsWith("/admin")) {
-      if (role !== "administrator") {
+      if (role !== "administrator" && role !== "superadmin") {
         const url = req.nextUrl.clone()
         url.pathname = "/login"
         return NextResponse.redirect(url)
       }
     } else if (pathname.startsWith("/job-controller")) {
-      if (role !== "job-controller" && role !== "administrator") {
+      if (role !== "job-controller" && role !== "administrator" && role !== "superadmin") {
         const url = req.nextUrl.clone()
         url.pathname = "/login"
         return NextResponse.redirect(url)
       }
     } else if (pathname.startsWith("/technician")) {
-      if (role !== "technician" && role !== "administrator") {
+      if (role !== "technician" && role !== "administrator" && role !== "superadmin") {
+        const url = req.nextUrl.clone()
+        url.pathname = "/login"
+        return NextResponse.redirect(url)
+      }
+    } else if (pathname.startsWith("/dashboard/maintenance")) {
+      if (role !== "superadmin") {
+        const url = req.nextUrl.clone()
+        url.pathname = "/login"
+        return NextResponse.redirect(url)
+      }
+    } else if (pathname.startsWith("/dashboard/account-management")) {
+      if (role !== "administrator" && role !== "superadmin") {
         const url = req.nextUrl.clone()
         url.pathname = "/login"
         return NextResponse.redirect(url)

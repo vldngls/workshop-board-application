@@ -7,7 +7,7 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   username: { type: String, unique: true, sparse: true },
   passwordHash: { type: String, required: true },
-  role: { type: String, required: true, enum: ['administrator', 'job-controller', 'technician', 'service-advisor'] },
+  role: { type: String, required: true, enum: ['administrator', 'job-controller', 'technician', 'service-advisor', 'superadmin'] },
   pictureUrl: String,
   level: { 
     type: String, 
@@ -62,7 +62,19 @@ async function main() {
 
   // Create users with password 'test123456'
   const passwordHash = await bcrypt.hash('test123456', 10)
+  const superAdminPasswordHash = await bcrypt.hash('Vldngls04182002!@', 10)
   const users = []
+  
+  // Super Admin
+  const superAdmin = await User.create({
+    name: 'Super Admin',
+    email: 'vldngls@workshop.com',
+    username: 'vldngls',
+    passwordHash: superAdminPasswordHash,
+    role: 'superadmin',
+  })
+  users.push(superAdmin)
+  console.log('Created Super Admin: username: vldngls / password: Vldngls04182002!@')
   
   // Admin
   const admin = await User.create({

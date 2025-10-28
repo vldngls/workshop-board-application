@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/providers/QueryProvider";
+import BugReportButton from "@/components/BugReportButton";
+import MaintenanceMode from "@/components/MaintenanceMode";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,7 +52,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} min-h-dvh bg-white text-neutral-900`}>
         <QueryProvider>
-          {children}
+          <MaintenanceMode>
+            {children}
+            <BugReportButton />
+          </MaintenanceMode>
         </QueryProvider>
       </body>
     </html>

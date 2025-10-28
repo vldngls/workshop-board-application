@@ -7,6 +7,10 @@ const authRouter = require('./controllers/auth.js');
 const usersRouter = require('./controllers/users.js');
 const jobOrdersRouter = require('./controllers/jobOrders.js');
 const appointmentsRouter = require('./controllers/appointments.js');
+const bugReportsRouter = require('./routes/bugReports.js');
+const bugReportsIdRouter = require('./routes/bugReportsId.js');
+const maintenanceStatsRouter = require('./routes/maintenanceStats.js');
+const maintenanceSettingsRouter = require('./routes/maintenanceSettings.js');
 
 // Only load .env file in development
 if (process.env.NODE_ENV !== 'production') {
@@ -14,7 +18,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increase payload limit for image uploads
 // Configure CORS based on environment
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const allowedOrigins: any[] = [];
@@ -92,6 +96,10 @@ app.use('/auth', authRouter); // login/register without JWT
 app.use('/users', usersRouter); // protected by JWT
 app.use('/job-orders', jobOrdersRouter); // protected by JWT
 app.use('/appointments', appointmentsRouter); // protected by JWT
+app.use('/bug-reports', bugReportsRouter); // protected by JWT
+app.use('/bug-reports', bugReportsIdRouter); // protected by JWT
+app.use('/maintenance/stats', maintenanceStatsRouter); // protected by JWT
+app.use('/maintenance/settings', maintenanceSettingsRouter); // protected by JWT
 
 // Admin-only endpoint using JWT middleware
 const { requireRole } = require('./middleware/auth.js');
