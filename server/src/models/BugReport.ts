@@ -6,7 +6,7 @@ interface BugReportDoc {
   description: string
   imageData?: string // Base64 encoded image
   imageMimeType?: string
-  submittedBy: mongoose.Types.ObjectId
+  submittedBy: any // mongoose.Types.ObjectId
   submittedByEmail: string
   submittedByName: string
   submittedByRole: string
@@ -14,10 +14,10 @@ interface BugReportDoc {
   userAgent: string
   status: 'open' | 'in-progress' | 'resolved' | 'closed'
   priority: 'low' | 'medium' | 'high' | 'critical'
-  assignedTo?: mongoose.Types.ObjectId
+  assignedTo?: any // mongoose.Types.ObjectId
   resolution?: string
   resolvedAt?: Date
-  resolvedBy?: mongoose.Types.ObjectId
+  resolvedBy?: any // mongoose.Types.ObjectId
 }
 
 const bugReportSchema = new Schema({
