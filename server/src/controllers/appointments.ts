@@ -475,7 +475,7 @@ router.post('/:id/resolve-conflicts', verifyToken, requireRole(['administrator',
 // Convert appointment to job order
 const createJobOrderFromAppointmentSchema = z.object({
   jobNumber: z.string().min(1),
-  vin: z.string().min(1),
+  vin: z.string().min(1).max(14),
   assignedTechnician: z.string().min(1),
   serviceAdvisor: z.string().min(1),
   jobList: z.array(z.object({

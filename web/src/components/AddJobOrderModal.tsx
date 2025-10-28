@@ -246,6 +246,7 @@ export default function AddJobOrderModal({ onClose, onSuccess, prefilledData }: 
                   type="text"
                   value={formData.vin}
                   onChange={(e) => handleInputChange('vin', e.target.value.toUpperCase())}
+                  maxLength={14}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />

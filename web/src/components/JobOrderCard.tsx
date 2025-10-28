@@ -512,6 +512,7 @@ function JobOrderCard({ jobOrder, onViewIn, highlighted = false, onClick }: JobO
                         type="text"
                         value={editingValue}
                         onChange={(e) => setEditingValue(e.target.value)}
+                        maxLength={14}
                         className="flex-1 px-2 py-1 text-xs font-bold border border-gray-300 rounded font-mono focus:ring-1 focus:ring-blue-500 focus:border-transparent bg-white"
                         autoFocus
                         onKeyDown={(e) => {

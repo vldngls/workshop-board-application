@@ -235,6 +235,7 @@ const JobDetailsModal = memo(({
                   <input
                     value={editVin}
                     onChange={(e) => setEditVin(e.target.value.toUpperCase())}
+                    maxLength={14}
                     className="mt-1 w-full px-3 py-2 border rounded-lg font-mono"
                   />
                 ) : (

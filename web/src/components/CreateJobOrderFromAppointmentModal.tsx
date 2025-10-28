@@ -333,6 +333,7 @@ export default function CreateJobOrderFromAppointmentModal({
                 type="text"
                 value={vin}
                 onChange={(e) => setVin(e.target.value.toUpperCase())}
+                maxLength={14}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase font-medium text-gray-900"
                 placeholder="Enter VIN number"
                 required

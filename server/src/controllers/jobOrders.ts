@@ -621,7 +621,7 @@ const createJobOrderSchema = z.object({
   assignedTechnician: z.string().min(1),
   serviceAdvisor: z.string().min(1),
   plateNumber: z.string().min(1),
-  vin: z.string().min(1),
+  vin: z.string().min(1).max(14),
   timeRange: z.object({
     start: z.string(),
     end: z.string()
@@ -785,7 +785,7 @@ const updateJobOrderSchema = z.object({
   assignedTechnician: z.string().nullable().optional(),
   serviceAdvisor: z.string().min(1).optional(),
   plateNumber: z.string().optional(),
-  vin: z.string().optional(),
+  vin: z.string().max(14).optional(),
   timeRange: z.object({
     start: z.string(),
     end: z.string()
