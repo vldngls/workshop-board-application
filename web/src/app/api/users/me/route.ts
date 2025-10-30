@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { jwtVerify } from 'jose'
+import { decryptToken } from '@/utils/tokenCrypto'
 
 interface JWTPayload {
   userId: string
@@ -13,9 +14,9 @@ export async function GET() {
   try {
     // Get JWT token from cookies
     const cookieStore = await cookies()
-    const token = cookieStore.get('token')?.value
+    const enc = cookieStore.get('token')?.value
     
-    if (!token) {
+    if (!enc) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -27,14 +28,13 @@ export async function GET() {
     }
 
     const secret = new TextEncoder().encode(jwtSecret)
-    const { payload } = await jwtVerify(token, secret)
+    const raw = await decryptToken(enc)
+    const { payload } = await jwtVerify(raw, secret)
     
     // Return user information from the JWT payload
     const userInfo = {
-      id: payload.userId,
-      email: payload.email,
-      role: payload.role,
-      name: payload.name
+      id: (payload as any).sub,
+      role: (payload as any).role,
     }
 
     return NextResponse.json(userInfo, { status: 200 })

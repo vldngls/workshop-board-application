@@ -111,7 +111,7 @@ export default function TechnicianScheduleView({
     queryFn: async () => {
       if (!technicianId || !date) return { appointments: [], jobOrders: [] }
       
-      console.log('Fetching schedule for technician:', technicianId, 'date:', date)
+      
       
       // Fetch appointments
       const appointmentsRes = await fetch(`/api/appointments?date=${date}&technician=${technicianId}`, {
@@ -123,7 +123,6 @@ export default function TechnicianScheduleView({
       }
       const appointmentsData = await appointmentsRes.json()
       const appointments = appointmentsData.appointments || []
-      console.log('Fetched appointments:', appointments.length)
 
       // Fetch job orders
       const jobOrdersRes = await fetch(`/api/job-orders?date=${date}&technician=${technicianId}`, {
@@ -135,7 +134,6 @@ export default function TechnicianScheduleView({
       }
       const jobOrdersData = await jobOrdersRes.json()
       const jobOrders = jobOrdersData.jobOrders || []
-      console.log('Fetched job orders:', jobOrders.length)
 
       return { appointments, jobOrders }
     },
@@ -190,7 +188,6 @@ export default function TechnicianScheduleView({
       }
     })
 
-    console.log('Schedule updated with', slots.length, 'slots')
     return slots
   }, [scheduleData, breakTimes])
 

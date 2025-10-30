@@ -44,16 +44,14 @@ router.post('/login', async (req, res) => {
       return res.status(500).json({ error: 'Server configuration error' })
     }
 
+    // Minimal claims: subject and role only; short-lived access token
     const token = jwt.sign(
       {
-        userId: user._id,
-        email: user.email,
-        username: user.username,
+        sub: String(user._id),
         role: user.role,
-        name: user.name,
       },
       jwtSecret,
-      { expiresIn: '8h' }
+      { expiresIn: '15m' }
     )
 
     await logger.audit('Login success', { userId: String(user._id), userEmail: user.email, userRole: user.role })

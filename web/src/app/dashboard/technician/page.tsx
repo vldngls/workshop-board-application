@@ -14,6 +14,8 @@ import {
 } from 'react-icons/fi'
 import type { JobOrder } from '@/types/jobOrder'
 import type { Appointment } from '@/types/appointment'
+import { useMe } from '@/hooks/useAuth'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 interface TechnicianStats {
   totalAssigned: number
@@ -53,9 +55,9 @@ export default function TechnicianDashboard() {
   })
   const [assignedJobs, setAssignedJobs] = useState<JobOrderWithDetails[]>([])
   const [todayAppointments, setTodayAppointments] = useState<AppointmentWithDetails[]>([])
-  const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date())
-  const [userInfo, setUserInfo] = useState<{ name: string; level?: string } | null>(null)
+  const { data: meData } = useMe()
+  const queryClient = useQueryClient()
 
   // Update current time every minute
   useEffect(() => {
@@ -66,67 +68,80 @@ export default function TechnicianDashboard() {
     return () => clearInterval(timer)
   }, [])
 
+  // Queries
+  const jobsQuery = useQuery<{ jobOrders: JobOrderWithDetails[] }>({
+    queryKey: ['job-orders', 'assignedToMe', { limit: 1000 }],
+    queryFn: async () => {
+      const res = await fetch('/api/job-orders?assignedToMe=true&limit=1000', { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to fetch job orders')
+      return res.json()
+    },
+    staleTime: 60_000,
+  })
+
+  const today = new Date().toISOString().split('T')[0]
+  const apptsQuery = useQuery<{ appointments: AppointmentWithDetails[] }>({
+    queryKey: ['appointments', { date: today, assignedToMe: true }],
+    queryFn: async () => {
+      const res = await fetch(`/api/appointments?date=${today}&assignedToMe=true`, { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to fetch appointments')
+      return res.json()
+    },
+    staleTime: 60_000,
+  })
+
+  // Derive local state from queries
   useEffect(() => {
-    fetchTechnicianData()
-    fetchUserInfo()
-  }, [])
+    if (jobsQuery.data) {
+      const jobs = jobsQuery.data.jobOrders || []
+      setAssignedJobs(jobs)
+      setStats(prev => ({
+        ...prev,
+        totalAssigned: jobs.length,
+        onGoing: jobs.filter(job => job.status === 'OG').length,
+        forRelease: jobs.filter(job => job.status === 'FR').length,
+        onHold: jobs.filter(job => ['HC', 'HW', 'HI', 'WP'].includes(job.status)).length,
+        important: jobs.filter(job => job.isImportant).length,
+        qualityInspection: jobs.filter(job => job.status === 'QI').length,
+      }))
+    }
+  }, [jobsQuery.data])
 
-  const fetchUserInfo = async () => {
-    try {
-      const response = await fetch('/api/auth/me', { 
+  useEffect(() => {
+    if (apptsQuery.data) {
+      const appts = apptsQuery.data.appointments || []
+      setTodayAppointments(appts)
+      setStats(prev => ({ ...prev, todayAppointments: appts.length }))
+    }
+  }, [apptsQuery.data])
+
+  // Mutations
+  const updateJobMutation = useMutation<{ ok: boolean }, Error, { jobId: string; updates: any }>({
+    mutationFn: async ({ jobId, updates }) => {
+      const res = await fetch(`/api/job-orders/${jobId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        body: JSON.stringify(updates),
       })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setUserInfo({ name: data.user.name, level: undefined }) // Level not in JWT, would need separate API call
-      }
-    } catch (error) {
-      console.error('Error fetching user info:', error)
-    }
-  }
+      if (!res.ok) throw new Error('Failed to update job')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['job-orders'] })
+    },
+  })
 
-  const fetchTechnicianData = async () => {
-    try {
-      setLoading(true)
-      
-      // Fetch assigned job orders
-      const jobsResponse = await fetch('/api/job-orders?assignedToMe=true&limit=1000', { credentials: 'include' })
-      if (!jobsResponse.ok) throw new Error('Failed to fetch job orders')
-      const jobsData = await jobsResponse.json()
-      const assignedJobs: JobOrderWithDetails[] = jobsData.jobOrders || []
-
-      // Fetch today's appointments
-      const today = new Date().toISOString().split('T')[0]
-      const appointmentsResponse = await fetch(`/api/appointments?date=${today}&assignedToMe=true`, { credentials: 'include' })
-      if (!appointmentsResponse.ok) throw new Error('Failed to fetch appointments')
-      const appointmentsData = await appointmentsResponse.json()
-      const todayAppointments: AppointmentWithDetails[] = appointmentsData.appointments || []
-
-      // Calculate statistics
-      const newStats: TechnicianStats = {
-        totalAssigned: assignedJobs.length,
-        onGoing: assignedJobs.filter(job => job.status === 'OG').length,
-        forRelease: assignedJobs.filter(job => job.status === 'FR').length,
-        onHold: assignedJobs.filter(job => ['HC', 'HW', 'HI', 'WP'].includes(job.status)).length,
-        important: assignedJobs.filter(job => job.isImportant).length,
-        qualityInspection: assignedJobs.filter(job => job.status === 'QI').length,
-        todayAppointments: todayAppointments.length
-      }
-
-      setStats(newStats)
-      setAssignedJobs(assignedJobs)
-      setTodayAppointments(todayAppointments)
-    } catch (error) {
-      console.error('Error fetching technician data:', error)
-      toast.error('Failed to load dashboard data')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const submitQiMutation = useMutation<{ ok: boolean }, Error, { jobId: string }>({
+    mutationFn: async ({ jobId }) => {
+      const res = await fetch(`/api/job-orders/${jobId}/submit-qi`, { method: 'POST', credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to submit for quality inspection')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['job-orders'] })
+    },
+  })
 
   const updateTaskStatus = async (jobId: string, taskIndex: number, status: 'Finished' | 'Unfinished') => {
     try {
@@ -136,17 +151,8 @@ export default function TechnicianDashboard() {
       const updatedJobList = [...job.jobList]
       updatedJobList[taskIndex].status = status
 
-      const response = await fetch(`/api/job-orders/${jobId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ jobList: updatedJobList })
-      })
-
-      if (!response.ok) throw new Error('Failed to update task')
-      
+      await updateJobMutation.mutateAsync({ jobId, updates: { jobList: updatedJobList } })
       toast.success(`Task marked as ${status.toLowerCase()}`)
-      fetchTechnicianData() // Refresh data
     } catch (error) {
       console.error('Error updating task:', error)
       toast.error('Failed to update task')
@@ -155,20 +161,15 @@ export default function TechnicianDashboard() {
 
   const submitForQualityInspection = async (jobId: string) => {
     try {
-      const response = await fetch(`/api/job-orders/${jobId}/submit-qi`, {
-        method: 'POST',
-        credentials: 'include'
-      })
-
-      if (!response.ok) throw new Error('Failed to submit for quality inspection')
-      
+      await submitQiMutation.mutateAsync({ jobId })
       toast.success('Job submitted for quality inspection')
-      fetchTechnicianData() // Refresh data
     } catch (error) {
       console.error('Error submitting for QI:', error)
       toast.error('Failed to submit for quality inspection')
     }
   }
+
+  const loading = jobsQuery.isLoading || apptsQuery.isLoading
 
   if (loading) {
     return (
@@ -225,12 +226,7 @@ export default function TechnicianDashboard() {
               <div className="flex items-center gap-6 mt-4">
                 <div className="flex items-center gap-2 text-blue-200">
                   <FiUser size={18} />
-                  <span className="font-medium text-sm">{userInfo?.name}</span>
-                  {userInfo?.level && (
-                    <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                      {userInfo.level}
-                    </span>
-                  )}
+                  <span className="font-medium text-sm">{meData?.user?.name}</span>
                 </div>
                 <div className="flex items-center gap-2 text-blue-200">
                   <FiCalendar size={18} />
@@ -340,7 +336,7 @@ export default function TechnicianDashboard() {
         </div>
       </div>
 
-      {/* Today's Appointments */}
+      {/* Today\'s Appointments */}
       {todayAppointments.length > 0 && (
         <div className="floating-card p-5">
           <div className="flex items-center justify-between mb-4">

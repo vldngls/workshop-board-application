@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { encryptToken } from "@/utils/tokenCrypto"
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,17 +34,20 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ ok: true, role })
     const isProduction = process.env.NODE_ENV === 'production'
     
-    // Store JWT token securely
-    res.cookies.set("token", token, {
+    // Encrypt and store JWT token securely
+    const encrypted = await encryptToken(token)
+    res.cookies.set("token", encrypted, {
       httpOnly: true,
       sameSite: "lax",
       secure: isProduction,
       path: "/",
-      maxAge: 60 * 60 * 8, // 8 hours
+      maxAge: 60 * 15, // 15 minutes to match access token exp
     })
     
     return res
-  } catch {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Invalid request'
+    const status = message.includes('Missing NEXT_JWT_ENC_SECRET') ? 500 : 400
+    return NextResponse.json({ error: message }, { status })
   }
 }

@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { getRawToken } from '../../../_lib/auth'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
 const API_KEY = process.env.API_KEY
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('token')?.value
+    const token = await getRawToken()
 
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = await params
+  const { id } = await params
     const response = await fetch(`${API_BASE_URL}/job-orders/${id}/mark-complete`, {
       method: 'PATCH',
       headers: {

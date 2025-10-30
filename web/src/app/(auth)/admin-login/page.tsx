@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useLogin, useLogout, useMe } from "@/hooks/useAuth"
 
 export default function AdminLoginPage() {
   const [emailOrUsername, setEmailOrUsername] = useState("")
@@ -13,6 +14,10 @@ export default function AdminLoginPage() {
     setMounted(true)
   }, [])
 
+  const { refetch: refetchMe } = useMe()
+  const login = useLogin()
+  const logout = useLogout()
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -23,31 +28,14 @@ export default function AdminLoginPage() {
         ? { email: emailOrUsername, password }
         : { username: emailOrUsername, password }
 
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(loginData),
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: "Invalid credentials" }))
-        setError(errorData.error || "Invalid credentials")
-        return
-      }
-
-      // Verify role is superadmin
-      const me = await fetch('/api/auth/me', { credentials: 'include' })
-      if (me.ok) {
-        const data = await me.json()
-        if (data.user?.role === 'superadmin') {
-          // Go to maintenance dashboard by default
+      await login.mutateAsync(loginData)
+      const refreshed = await refetchMe()
+      const role = refreshed.data?.user?.role
+      if (role === 'superadmin') {
           window.location.href = "/dashboard/maintenance"
         } else {
           setError('Only superadmin is allowed during maintenance')
-          await fetch('/api/logout', { method: 'POST', credentials: 'include' })
-        }
-      } else {
-        setError('Unable to verify user role')
+        await logout.mutateAsync()
       }
     } catch {
       setError("Network error - please try again")

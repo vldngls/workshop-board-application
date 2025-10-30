@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import type { Role } from "@/types/auth"
+import { useLogout, useMe } from "@/hooks/useAuth"
 
 type NavItem = { href: string; label: string }
 
@@ -59,54 +60,24 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
 }
 
 export default function Sidebar({ role, name }: { role: Role | null; name?: string | null }) {
-  const [userInfo, setUserInfo] = useState<{ role: Role | null; name: string | null }>({ role, name: name || null })
+  const { data: meData } = useMe()
+  const resolvedRole = (meData?.user?.role as Role) ?? role
+  const resolvedName = meData?.user?.name ?? name ?? null
+  const [userInfo] = useState<{ role: Role | null; name: string | null }>({ role: resolvedRole, name: resolvedName })
   const { title, items } = getNavForRole(userInfo.role)
   const pathname = usePathname()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const logout = useLogout()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  // Get user info from server
-  useEffect(() => {
-    const fetchUserInfo = async () => {
-      try {
-        const response = await fetch('/api/auth/me', { 
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          setUserInfo({ role: data.user.role as Role, name: data.user.name })
-        }
-      } catch (error) {
-        console.error('Error fetching user info:', error)
-      }
-    }
-
-    fetchUserInfo()
-  }, [])
 
   const handleLogout = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoggingOut(true)
     
     try {
-      const response = await fetch('/api/logout', {
-        method: 'POST',
-        credentials: 'include', // Include cookies
-      })
-      
-      if (response.ok) {
-        // Clear any client-side state if needed
-        // Force a full page reload to ensure all state is cleared
+      await logout.mutateAsync()
         window.location.href = '/login'
-      } else {
-        console.error('Logout failed')
-        // Still redirect to login even if logout API fails
-        window.location.href = '/login'
-      }
     } catch (error) {
       console.error('Logout error:', error)
       // Still redirect to login even if logout API fails

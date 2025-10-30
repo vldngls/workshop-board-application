@@ -1,10 +1,8 @@
 const jwt = require('jsonwebtoken')
 
 interface JWTPayload {
-  userId: string
-  email: string
+  sub: string
   role: string
-  name: string
 }
 
 declare global {
@@ -33,7 +31,7 @@ function verifyToken(req: any, res: any, next: any) {
   try {
     const decoded = jwt.verify(token, jwtSecret) as JWTPayload
     req.user = decoded
-    console.log(`[AUTH] Token verified for user: ${decoded.email} (${decoded.role})`)
+    console.log(`[AUTH] Token verified for userId: ${decoded.sub} (${decoded.role})`)
     next()
   } catch (err) {
     console.error('[AUTH] Token verification failed:', err instanceof Error ? err.message : 'Unknown error')

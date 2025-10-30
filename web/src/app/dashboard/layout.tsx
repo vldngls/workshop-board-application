@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import Sidebar from "@/components/Sidebar"
 import type { ReactNode } from "react"
 import type { Role } from "@/types/auth"
+import { decryptToken } from "@/utils/tokenCrypto"
 
 interface JWTPayload {
   userId: string
@@ -15,9 +16,9 @@ interface JWTPayload {
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies()
-  const token = cookieStore.get("token")?.value
+  const encToken = cookieStore.get("token")?.value
 
-  if (!token) {
+  if (!encToken) {
     redirect("/login")
   }
 
@@ -30,7 +31,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     }
     
     const secret = new TextEncoder().encode(jwtSecret)
-    const { payload: jwtPayload } = await jwtVerify(token, secret)
+    const raw = await decryptToken(encToken)
+    const { payload: jwtPayload } = await jwtVerify(raw, secret)
     payload = jwtPayload as unknown as JWTPayload
   } catch (err) {
     redirect("/login") // Invalid or expired token

@@ -1,8 +1,9 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import type { Role } from "@/types/auth"
+import { useMe } from "@/hooks/useAuth"
 
 interface RoleGuardProps {
   children: React.ReactNode
@@ -11,44 +12,20 @@ interface RoleGuardProps {
 }
 
 export default function RoleGuard({ children, allowedRoles, fallbackPath = "/login" }: RoleGuardProps) {
-  const [userRole, setUserRole] = useState<Role | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: meData, status } = useMe()
   const router = useRouter()
 
+  const userRole: Role | null = (meData?.user?.role as Role) ?? null
+
   useEffect(() => {
-    const fetchUserRole = async () => {
-      try {
-        const response = await fetch('/api/auth/me', { 
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          setUserRole(data.user.role as Role)
-        } else {
-          setUserRole(null)
-        }
-      } catch (error) {
-        console.error('Error fetching user role:', error)
-        setUserRole(null)
-      } finally {
-        setLoading(false)
+    if (status === 'success') {
+      if (!userRole || !allowedRoles.includes(userRole)) {
+        router.push(fallbackPath)
       }
     }
+  }, [userRole, status, allowedRoles, router, fallbackPath])
 
-    fetchUserRole()
-  }, [])
-
-  useEffect(() => {
-    if (!loading && (!userRole || !allowedRoles.includes(userRole))) {
-      router.push(fallbackPath)
-    }
-  }, [userRole, loading, allowedRoles, router, fallbackPath])
-
-  if (loading) {
+  if (status !== 'success') {
     return <div>Loading...</div>
   }
 

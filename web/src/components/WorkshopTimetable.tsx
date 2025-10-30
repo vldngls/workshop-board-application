@@ -12,6 +12,7 @@ import { useWorkshopData } from '@/hooks/useWorkshopData'
 import { useJobActions } from '@/hooks/useJobActions'
 import { useUsers } from '@/hooks/useJobOrders'
 import { hasBreakTimeOverlap } from '@/utils/breakTimeUtils'
+import { useMe } from '@/hooks/useAuth'
 import TimetableHeader from './timetable/TimetableHeader'
 import TimetableGrid from './timetable/TimetableGrid'
 import JobStatusSections from './status-sections/JobStatusSections'
@@ -34,27 +35,12 @@ interface WorkshopTimetableProps {
 
 function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = false, historicalJobOrders }: WorkshopTimetableProps) {
   const [userRole, setUserRole] = useState<Role | null>(null)
-  
-  // Get user role
+  const { data: meData } = useMe()
   useEffect(() => {
-    const fetchUserRole = async () => {
-      try {
-        const response = await fetch('/api/auth/me', { 
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          setUserRole(data.user.role as Role)
+    if (meData?.user?.role) {
+      setUserRole(meData.user.role as Role)
         }
-      } catch (error) {
-        console.error('Error fetching user role:', error)
-      }
-    }
-
-    fetchUserRole()
-  }, [])
+  }, [meData])
 
   // Use custom hooks for data and actions
   const workshopData = useWorkshopData(date)

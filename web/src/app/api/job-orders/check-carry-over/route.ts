@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getRawToken } from '../../_lib/auth'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value
+    const token = await getRawToken()
 
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

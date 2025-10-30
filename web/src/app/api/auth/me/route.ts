@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { jwtVerify, JWTPayload as JoseJWTPayload } from 'jose'
+import { decryptToken } from '@/utils/tokenCrypto'
 
 interface CustomJWTPayload extends JoseJWTPayload {
   userId: string
@@ -13,9 +14,9 @@ interface CustomJWTPayload extends JoseJWTPayload {
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()
-    const token = cookieStore.get('token')?.value
+    const enc = cookieStore.get('token')?.value
 
-    if (!token) {
+    if (!enc) {
       return NextResponse.json({ error: 'No token found' }, { status: 401 })
     }
 
@@ -25,17 +26,15 @@ export async function GET(request: NextRequest) {
     }
 
     const secret = new TextEncoder().encode(jwtSecret)
-    const { payload } = await jwtVerify(token, secret)
+    const raw = await decryptToken(enc)
+    const { payload } = await jwtVerify(raw, secret)
     
     const userInfo = payload as CustomJWTPayload
 
     return NextResponse.json({
       user: {
-        userId: userInfo.userId,
-        email: userInfo.email,
-        username: userInfo.username,
+        userId: (userInfo as any).sub,
         role: userInfo.role,
-        name: userInfo.name
       }
     })
   } catch (error) {

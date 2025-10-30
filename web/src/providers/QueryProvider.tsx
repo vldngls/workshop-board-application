@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactNode, useState } from 'react'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 export function QueryProvider({ children }: { children: ReactNode }) {
   // Create a client with optimized settings
@@ -16,8 +17,8 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         refetchOnWindowFocus: true,
         // Retry failed requests
         retry: 1,
-        // Don't refetch on mount if data is still fresh
-        refetchOnMount: 'always',
+        // Only refetch on mount when stale to leverage cache effectively
+        refetchOnMount: 'ifStale',
       },
       mutations: {
         // Retry mutations once on failure
@@ -29,6 +30,9 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
+      {process.env.NODE_ENV !== 'production' && (
+        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+      )}
     </QueryClientProvider>
   )
 }

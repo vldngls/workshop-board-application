@@ -100,7 +100,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     }
     
     // Get user ID from JWT token
-    const userId = req.user?.userId
+    const userId = req.user?.sub
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' })
     }

@@ -25,6 +25,8 @@ import {
 import type { JobOrder } from '@/types/jobOrder'
 import SkeletonLoader from '@/components/SkeletonLoader'
 import JobReassignmentModal from '@/components/JobReassignmentModal'
+import { useMe } from '@/hooks/useAuth'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 interface DashboardStats {
   total: number
@@ -52,6 +54,8 @@ interface JobOrderWithTechnician extends JobOrder {
 
 export default function MainDashboard() {
   const router = useRouter()
+  const queryClient = useQueryClient()
+  const { data: meData, status: meStatus } = useMe()
   const [userRole, setUserRole] = useState<string | null>(null)
   const [stats, setStats] = useState<DashboardStats>({
     total: 0,
@@ -88,74 +92,32 @@ export default function MainDashboard() {
     if (savedBreakEnd) setBreakEnd(savedBreakEnd)
   }, [])
 
-  // Check user role and redirect technicians
+  // Determine role and redirect technicians
   useEffect(() => {
-    const fetchUserInfo = async () => {
-      try {
-        const response = await fetch('/api/auth/me', { 
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          const role = data.user.role
-          console.log('Detected role from server:', role) // Debug log
-          
-          setUserRole(role)
-          
-          // Redirect technicians to their specific dashboard
-          if (role === 'technician') {
-            router.push('/dashboard/technician')
-            return
-          }
-        } else {
-          console.log('No valid token, redirecting to login')
-          router.push('/login')
-          return
-        }
-      } catch (error) {
-        console.error('Error fetching user info:', error)
-        router.push('/login')
-        return
-      }
+    if (meStatus !== 'success') return
+    const role = meData?.user?.role
+    if (!role) return
+    setUserRole(role)
+    if (role === 'technician') {
+      router.push('/dashboard/technician')
     }
+  }, [meData, meStatus, router])
 
-    fetchUserInfo()
-  }, [router])
+  // Query for all job orders (non-technician views)
+  const allJobsQuery = useQuery<{ jobOrders: JobOrderWithTechnician[] }>({
+    queryKey: ['job-orders', { limit: 1000 }],
+    queryFn: async () => {
+      const res = await fetch('/api/job-orders?limit=1000')
+      if (!res.ok) throw new Error('Failed to fetch job orders')
+      return res.json()
+    },
+    enabled: !!userRole && userRole !== 'technician',
+    staleTime: 60_000,
+  })
 
   useEffect(() => {
-    // Only fetch dashboard data for non-technicians
-    if (userRole && userRole !== 'technician') {
-      fetchDashboardData()
-      
-      // No longer auto-check for carry-over jobs - user must manually trigger
-    }
-  }, [userRole])
-
-  // Update current time every minute
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 60000) // Update every minute
-
-    return () => clearInterval(timer)
-  }, [])
-
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true)
-      
-      // Fetch all job orders (with pagination limit increased)
-      const response = await fetch('/api/job-orders?limit=1000')
-      if (!response.ok) throw new Error('Failed to fetch job orders')
-      const data = await response.json()
-      const allJobs: JobOrderWithTechnician[] = data.jobOrders || []
-
-      // Calculate statistics
+    if (!allJobsQuery.data) return
+    const allJobs: JobOrderWithTechnician[] = allJobsQuery.data.jobOrders || []
       const newStats: DashboardStats = {
         total: allJobs.length,
         onGoing: allJobs.filter(job => job.status === 'OG').length,
@@ -166,85 +128,74 @@ export default function MainDashboard() {
         qualityInspection: allJobs.filter(job => job.status === 'QI').length,
         finishedUnclaimed: allJobs.filter(job => job.status === 'FU' || job.status === 'CP').length
       }
-
-      // Filter carried over jobs that need reassignment (exclude completed jobs only)
-      const carried = allJobs.filter(job => 
-        job.carriedOver && 
-        job.status !== 'FR' && 
-        job.status !== 'FU' && 
-        job.status !== 'CP'
-      )
+    const carried = allJobs.filter(job => job.carriedOver && job.status !== 'FR' && job.status !== 'FU' && job.status !== 'CP')
       const important = allJobs.filter(job => job.isImportant && job.status !== 'FR' && job.status !== 'FU' && job.status !== 'CP')
-      
-      // Identify pending job orders (mainly WP status or jobs needing attention)
       const pendingJobs = allJobs.filter(job => {
-        // Exclude completed jobs
         if (job.status === 'FR' || job.status === 'FU' || job.status === 'CP') return false
-        
-        // Include all Waiting Parts jobs
         if (job.status === 'WP') return true
-        
-        // Check for unavailable parts in non-WP jobs
         const hasUnavailableParts = job.parts && job.parts.some(part => part.availability === 'Unavailable')
-        
-        // Check for overdue jobs (older than 7 days and not on hold)
         const jobDate = new Date(job.date)
         const daysSinceJob = Math.floor((new Date().getTime() - jobDate.getTime()) / (1000 * 60 * 60 * 24))
         const isOverdue = daysSinceJob > 7 && !['HC', 'HW', 'HI', 'WP'].includes(job.status)
-        
-        // Check for jobs with all tasks finished but not submitted for QI
         const allTasksFinished = job.jobList && job.jobList.every(task => task.status === 'Finished')
         const notSubmittedForQI = allTasksFinished && job.status !== 'QI'
-        
         return hasUnavailableParts || isOverdue || notSubmittedForQI
       })
-
       setStats(newStats)
       setAllJobs(allJobs)
       setCarriedOverJobs(carried)
       setImportantJobs(important)
       setAnomalyJobs(pendingJobs)
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-    } finally {
       setLoading(false)
+  }, [allJobsQuery.data])
+
+  // Update current time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000) // Update every minute
+
+    return () => clearInterval(timer)
+  }, [])
+
+    
+  // End of day mutation
+  const endOfDayMutation = useMutation<any, Error, void>({
+    mutationFn: async () => {
+      const response = await fetch('/api/job-orders/end-of-day', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error((errorData as any).error || 'Failed to process end of day')
+      }
+      return response.json()
+    },
+    onSuccess: (data) => {
+        toast.success(`End of day processing completed! Snapshot created with ${data.snapshot.totalJobs} jobs, ${data.snapshot.carryOverCount} marked as carry-over`)
+      queryClient.invalidateQueries({ queryKey: ['job-orders'] })
+    },
+    onError: (err) => {
+      toast.error(err.message)
     }
-  }
+  })
 
 
 
   const handleEndOfDay = async () => {
     if (isCheckingCarryOver) return
-    
     setIsCheckingCarryOver(true)
     try {
-      const response = await fetch('/api/job-orders/end-of-day', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        toast.success(`End of day processing completed! Snapshot created with ${data.snapshot.totalJobs} jobs, ${data.snapshot.carryOverCount} marked as carry-over`)
-        // Refresh dashboard data
-        fetchDashboardData()
-      } else {
-        const errorData = await response.json()
-        toast.error(errorData.error || 'Failed to process end of day')
-      }
-    } catch (error) {
-      console.error('Error in end of day processing:', error)
-      toast.error('Failed to process end of day')
+      await endOfDayMutation.mutateAsync()
     } finally {
       setIsCheckingCarryOver(false)
     }
   }
 
   // Show loading while checking role
-  if (!userRole) {
+  if (meStatus !== 'success' || !userRole) {
     return (
       <div className="space-y-6">
         <Toaster position="top-right" />

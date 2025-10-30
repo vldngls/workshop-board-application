@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BugReport } from '@/types/bugReport'
 import RoleGuard from '@/components/RoleGuard'
 import BugReportDetailModal from '@/components/BugReportDetailModal'
+import { useBugReports, useMaintenanceSettings, useSystemLogs, useSystemStats, useUpdateBugReport } from '@/hooks/useMaintenance'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface SystemStats {
   totalUsers: number
@@ -23,104 +25,57 @@ interface MaintenanceSettings {
 
 export default function MaintenancePage() {
   const [bugReports, setBugReports] = useState<BugReport[]>([])
-  const [stats, setStats] = useState<SystemStats | null>(null)
   const [maintenanceSettings, setMaintenanceSettings] = useState<MaintenanceSettings>({
     isUnderMaintenance: false,
     maintenanceMessage: ''
   })
-  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'bug-reports' | 'settings' | 'logs'>('overview')
   const [logs, setLogs] = useState<any[]> ([])
-  const [logsLoading, setLogsLoading] = useState(false)
   const [selectedBugReport, setSelectedBugReport] = useState<BugReport | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const queryClient = useQueryClient()
+
+  // Queries
+  const bugReportsQuery = useBugReports()
+  const statsQuery = useSystemStats()
+  const settingsQuery = useMaintenanceSettings()
+  const logsQuery = useSystemLogs(100, activeTab === 'logs')
+  const updateBugReport = useUpdateBugReport()
+
+  // Local derived state
+  const stats = statsQuery.data || null
 
   useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
-    try {
-      const [bugReportsRes, statsRes, settingsRes] = await Promise.all([
-        fetch('/api/bug-reports', { credentials: 'include' }),
-        fetch('/api/maintenance/stats', { credentials: 'include' }),
-        fetch('/api/maintenance/settings', { credentials: 'include' })
-      ])
-
-      if (bugReportsRes.ok) {
-        const bugData = await bugReportsRes.json()
-        setBugReports(bugData.bugReports || [])
+    if (bugReportsQuery.data) {
+      setBugReports(bugReportsQuery.data.bugReports || [])
       }
+  }, [bugReportsQuery.data])
 
-      if (statsRes.ok) {
-        const statsData = await statsRes.json()
-        setStats(statsData)
-      }
-
-      if (settingsRes.ok) {
-        const settingsData = await settingsRes.json()
-        setMaintenanceSettings(settingsData)
-      }
-    } catch (error) {
-      console.error('Error fetching maintenance data:', error)
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    if (settingsQuery.data) {
+      setMaintenanceSettings({
+        isUnderMaintenance: !!settingsQuery.data.isUnderMaintenance,
+        maintenanceMessage: settingsQuery.data.maintenanceMessage || ''
+      })
     }
-  }
+  }, [settingsQuery.data])
 
   useEffect(() => {
-    const loadLogs = async () => {
-      if (activeTab !== 'logs') return
-      setLogsLoading(true)
-      try {
-        const res = await fetch('/api/system-logs?limit=100', { credentials: 'include' })
-        if (res.ok) {
-          const data = await res.json()
-          setLogs(data.items || [])
+    if (logsQuery.data) {
+      setLogs(logsQuery.data.items || [])
         }
-      } finally {
-        setLogsLoading(false)
-      }
-    }
-    loadLogs()
-  }, [activeTab])
+  }, [logsQuery.data])
+
+  const logsLoading = logsQuery.isFetching
 
   const updateBugReportStatus = async (id: string, status: string, resolution?: string) => {
-    try {
-      const response = await fetch(`/api/bug-reports/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status, resolution })
-      })
-
-      if (response.ok) {
-        fetchData() // Refresh data
-      }
-    } catch (error) {
-      console.error('Error updating bug report:', error)
-    }
+    await updateBugReport.mutateAsync({ id, updates: { status, resolution } })
   }
 
   const handleBugReportUpdate = async (id: string, updates: any) => {
-    try {
-      const response = await fetch(`/api/bug-reports/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(updates)
-      })
-
-      if (response.ok) {
-        fetchData() // Refresh data
-        // Update the selected bug report if it's the same one
+    await updateBugReport.mutateAsync({ id, updates })
         if (selectedBugReport && selectedBugReport._id === id) {
           setSelectedBugReport(prev => prev ? { ...prev, ...updates } : null)
-        }
-      }
-    } catch (error) {
-      console.error('Error updating bug report:', error)
-      throw error
     }
   }
 
@@ -130,20 +85,8 @@ export default function MaintenancePage() {
   }
 
   const updateMaintenanceSettings = async () => {
-    try {
-      const response = await fetch('/api/maintenance/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(maintenanceSettings)
-      })
-
-      if (response.ok) {
+    await settingsQuery.updateSettings.mutateAsync(maintenanceSettings)
         alert('Maintenance settings updated successfully')
-      }
-    } catch (error) {
-      console.error('Error updating maintenance settings:', error)
-    }
   }
 
   const getStatusColor = (status: string) => {
@@ -166,7 +109,7 @@ export default function MaintenancePage() {
     }
   }
 
-  if (loading) {
+  if (bugReportsQuery.isLoading || statsQuery.isLoading || settingsQuery.isLoading) {
     return (
       <RoleGuard allowedRoles={['superadmin']}>
         <div className="flex items-center justify-center min-h-screen">

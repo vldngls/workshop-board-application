@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
-import { jwtVerify } from 'jose'
+import { jwtVerify, JWTPayload as JoseJWTPayload } from 'jose'
+import { decryptToken } from '@/utils/tokenCrypto'
 
-interface JWTPayload {
-  userId: string
-  email: string
-  role: string
-  name: string
-}
+type RoleClaim = 'administrator' | 'job-controller' | 'technician' | 'superadmin'
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const token = req.cookies.get("token")?.value
+  const encToken = req.cookies.get("token")?.value
   const origin = req.nextUrl.origin
+  
+  
 
   // Always allow core public assets
   if (pathname.startsWith("/_next") || pathname.startsWith("/api") || pathname === "/favicon.ico") {
@@ -32,13 +30,14 @@ export async function middleware(req: NextRequest) {
         }
 
         // If superadmin, allow access everywhere
-        if (token) {
+        if (encToken) {
           const jwtSecret = process.env.JWT_SECRET
           if (jwtSecret) {
             try {
               const secret = new TextEncoder().encode(jwtSecret)
-              const { payload } = await jwtVerify(token, secret)
-              const role = (payload as any).role as string
+              const raw = await decryptToken(encToken)
+              const { payload } = await jwtVerify(raw, secret)
+              const role = (payload as JoseJWTPayload & { role?: RoleClaim }).role
               if (role === 'superadmin') {
                 return NextResponse.next()
               }
@@ -67,13 +66,13 @@ export async function middleware(req: NextRequest) {
     // If status check fails, do not block
   }
 
-  // Allow public login routes when not in maintenance
-  if (pathname.startsWith("/login") || pathname.startsWith("/admin-login")) {
+  // Allow public auth routes only if not authenticated; authenticated users handled below
+  if ((pathname.startsWith("/login") || pathname.startsWith("/admin-login")) && !encToken) {
     return NextResponse.next()
   }
 
   // Not authenticated
-  if (!token) {
+  if (!encToken) {
     const url = req.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
@@ -83,15 +82,22 @@ export async function middleware(req: NextRequest) {
   try {
     const jwtSecret = process.env.JWT_SECRET
     if (!jwtSecret) {
-      console.error('JWT_SECRET not configured in middleware')
       const url = req.nextUrl.clone()
       url.pathname = "/login"
       return NextResponse.redirect(url)
     }
 
     const secret = new TextEncoder().encode(jwtSecret)
-    const { payload } = await jwtVerify(token, secret)
+    const raw = await decryptToken(encToken)
+    const { payload } = await jwtVerify(raw, secret)
     const role = payload.role as string
+
+    // If already authenticated, keep users away from auth pages
+    if (pathname === '/login' || pathname === '/admin-login') {
+      const url = req.nextUrl.clone()
+      url.pathname = role === 'superadmin' ? '/dashboard/maintenance' : '/dashboard'
+      return NextResponse.redirect(url)
+    }
 
     // RBAC enforcement
     if (pathname.startsWith("/admin")) {

@@ -53,7 +53,6 @@ export default function BreakTimeManager({ technician, onUpdate, onClose }: Brea
     setLoading(true)
     
     try {
-      console.log('Saving break times:', breakTimes)
       const response = await fetch(`/api/users/${technician._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -68,7 +67,6 @@ export default function BreakTimeManager({ technician, onUpdate, onClose }: Brea
       }
       
       const result = await response.json()
-      console.log('Save successful:', result)
       
       onUpdate(breakTimes)
       onClose()

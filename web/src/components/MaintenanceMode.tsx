@@ -1,59 +1,48 @@
 "use client"
 
-import { useState, useEffect } from 'react'
 import type { Role } from '@/types/auth'
+import { useMe } from '@/hooks/useAuth'
+import { useQuery } from '@tanstack/react-query'
 
 interface MaintenanceModeProps {
   children: React.ReactNode
 }
 
 export default function MaintenanceMode({ children }: MaintenanceModeProps) {
-  const [isUnderMaintenance, setIsUnderMaintenance] = useState(false)
-  const [maintenanceMessage, setMaintenanceMessage] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [userRole, setUserRole] = useState<Role | null>(null)
-  const [checkingRole, setCheckingRole] = useState(true)
+  const { data: meData, status: meStatus } = useMe()
   // dedicated admin login route handles auth during maintenance
 
-  useEffect(() => {
-    checkMaintenanceStatus()
-    checkRole()
-  }, [])
-
-  const checkMaintenanceStatus = async () => {
+  const maintenanceQuery = useQuery<{ isUnderMaintenance: boolean; maintenanceMessage?: string }>({
+    queryKey: ['maintenance-status'],
+    queryFn: async () => {
     try {
       const response = await fetch('/api/maintenance/status', { cache: 'no-store' })
-      if (response.ok) {
-        const data = await response.json()
-        setIsUnderMaintenance(!!data.isUnderMaintenance)
-        setMaintenanceMessage(data.maintenanceMessage || '')
+        if (!response.ok) {
+          // Treat 404 as "not under maintenance" for robustness in dev/local
+          if (response.status === 404) {
+            return { isUnderMaintenance: false, maintenanceMessage: '' }
+          }
+          throw new Error('Failed to fetch maintenance status')
+        }
+        return response.json()
+      } catch {
+        // Network or other errors: assume not under maintenance
+        return { isUnderMaintenance: false, maintenanceMessage: '' }
       }
-    } catch (error) {
-      console.error('Error checking maintenance status:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+    },
+    refetchOnWindowFocus: true,
+    // Poll only when maintenance is ON; otherwise rely on focus/refetches
+    refetchInterval: (data) => (data?.isUnderMaintenance ? 30000 : false),
+    refetchIntervalInBackground: true,
+    retry: false,
+  })
 
-  const checkRole = async () => {
-    try {
-      const response = await fetch('/api/auth/me', { credentials: 'include' })
-      if (response.ok) {
-        const data = await response.json()
-        setUserRole(data.user?.role as Role)
-      } else {
-        setUserRole(null)
-      }
-    } catch {
-      setUserRole(null)
-    } finally {
-      setCheckingRole(false)
-    }
-  }
+  const isUnderMaintenance = !!maintenanceQuery.data?.isUnderMaintenance
+  const maintenanceMessage = maintenanceQuery.data?.maintenanceMessage || ''
 
   // admin login handled at /admin-login
 
-  if (loading || checkingRole) {
+  if (maintenanceQuery.isLoading || meStatus === 'pending') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -68,6 +57,7 @@ export default function MaintenanceMode({ children }: MaintenanceModeProps) {
     }
   }
 
+  const userRole: Role | null = (meData?.user?.role as Role) ?? null
   if (isUnderMaintenance && userRole !== 'superadmin') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

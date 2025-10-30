@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
+import { getRawToken } from "../../_lib/auth"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
 
-export async function PUT(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Get JWT token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get('token')?.value
+    const token = await getRawToken()
     
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
     const body = await _req.json()
-    const { id } = await params
+  const { id } = await params
     const r = await fetch(`${API_BASE}/users/${id}`, {
       method: "PUT",
       headers: { 
@@ -35,17 +33,15 @@ export async function PUT(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Get JWT token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get('token')?.value
+    const token = await getRawToken()
     
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { id } = await params
+  const { id } = await params
     const r = await fetch(`${API_BASE}/users/${id}`, {
       method: "DELETE",
       headers: { 

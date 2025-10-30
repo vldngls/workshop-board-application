@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getRawToken } from '../../_lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,8 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Date and duration are required' }, { status: 400 })
     }
 
-    // Get JWT token from cookies
-    const token = request.cookies.get('token')?.value
+    const token = await getRawToken()
 
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

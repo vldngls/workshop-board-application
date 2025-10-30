@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { getRawToken } from '../../_lib/auth'
 
 export async function DELETE(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('token')?.value
+    const token = await getRawToken()
 
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -22,8 +21,6 @@ export async function DELETE(request: NextRequest) {
 
     if (!response.ok) {
       const responseText = await response.text()
-      console.log('Backend response status:', response.status)
-      console.log('Backend response text:', responseText)
       
       try {
         const errorData = JSON.parse(responseText)

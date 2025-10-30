@@ -200,12 +200,10 @@ export default function JobOrdersPage() {
 
   const handleUpdateJobStatus = useCallback((jobId: string, status: string, remarks?: string) => {
     // For now, just show a toast - in a real implementation, you'd call an API
-    console.log('Update job status:', { jobId, status, remarks })
   }, [])
 
   const handleCarryOver = useCallback((jobId: string) => {
     // For now, just show a toast - in a real implementation, you'd call an API
-    console.log('Carry over job:', jobId)
   }, [])
 
   if (error) {

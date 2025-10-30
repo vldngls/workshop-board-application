@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import { useLogin } from "@/hooks/useAuth"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -17,6 +18,8 @@ export default function LoginPage() {
     setMounted(true)
   }, [])
 
+  const login = useLogin()
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -29,20 +32,7 @@ export default function LoginPage() {
         ? { email: emailOrUsername, password }
         : { username: emailOrUsername, password }
       
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(loginData),
-      })
-      
-      if (!res.ok) {
-        const errorData = await res.json()
-        setError(errorData.error || "Invalid credentials")
-        return
-      }
-      
-      const data = await res.json()
-      
+      const data = await login.mutateAsync(loginData)
       if (data.ok && data.role) {
         // Force a page refresh to ensure cookies are set
         window.location.href = "/dashboard"

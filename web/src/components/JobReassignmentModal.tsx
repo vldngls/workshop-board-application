@@ -66,7 +66,6 @@ export default function JobReassignmentModal({
 
   // Initialize form with current job data
   useEffect(() => {
-    console.log('🔧 JobReassignmentModal - Initializing with job order:', jobOrder)
     if (jobOrder) {
       // Set date to tomorrow by default (or today if it's a carried-over job)
       const today = new Date()
@@ -77,24 +76,17 @@ export default function JobReassignmentModal({
       const defaultDate = jobOrder.carriedOver ? tomorrow : today
       const dateStr = defaultDate.toISOString().split('T')[0]
       
-      console.log('📅 Setting date to:', dateStr, '(carriedOver:', jobOrder.carriedOver, ')')
       setSelectedDate(dateStr)
       
-      console.log('⏰ Setting start time:', jobOrder.timeRange.start)
       setStartTime(jobOrder.timeRange.start)
-      console.log('⏰ Setting end time:', jobOrder.timeRange.end)
       setEndTime(jobOrder.timeRange.end)
       
       // Calculate and set duration
       const currentDuration = calculateDuration(jobOrder.timeRange.start, jobOrder.timeRange.end)
-      console.log('⏱️ Setting duration:', currentDuration, 'hours')
       setDuration(currentDuration)
       
       if (jobOrder.assignedTechnician) {
-        console.log('👤 Setting technician:', jobOrder.assignedTechnician._id)
         setSelectedTechnician(jobOrder.assignedTechnician._id)
-      } else {
-        console.log('👤 No assigned technician')
       }
     }
   }, [jobOrder, calculateDuration])
@@ -102,21 +94,15 @@ export default function JobReassignmentModal({
   // Fetch available technicians
   useEffect(() => {
     const fetchTechnicians = async () => {
-      console.log('🔍 Fetching technicians for:', { selectedDate, startTime, endTime })
       if (!selectedDate || !startTime || !endTime) {
-        console.log('⏭️ Skipping technician fetch - missing date/time')
         return
       }
       
       try {
         setLoading(true)
         const url = `/api/job-orders/technicians/available?date=${selectedDate}&startTime=${startTime}&endTime=${endTime}`
-        console.log('🌐 Fetching from URL:', url)
         
         const response = await fetch(url, { credentials: 'include' })
-        
-        console.log('📡 Technician fetch response status:', response.status)
-        console.log('📡 Technician fetch response ok:', response.ok)
         
         if (!response.ok) {
           const errorText = await response.text()
@@ -125,7 +111,6 @@ export default function JobReassignmentModal({
         }
         
         const data = await response.json()
-        console.log('✅ Technician fetch success:', data)
         setAvailableTechnicians(data.technicians || [])
       } catch (error) {
         console.error('💥 Error fetching technicians:', error)
@@ -148,21 +133,13 @@ export default function JobReassignmentModal({
 
 
   const handleSubmit = async () => {
-    console.log('🔄 Reassignment Modal - handleSubmit called')
-    console.log('📋 Job Order:', jobOrder)
-    console.log('👤 Selected Technician:', selectedTechnician)
-    console.log('📅 Selected Date:', selectedDate)
-    console.log('⏰ Start Time:', startTime)
-    console.log('⏰ End Time:', endTime)
 
     if (!selectedTechnician) {
-      console.log('❌ No technician selected')
       toast.error('Please select a technician')
       return
     }
 
     if (!selectedDate || !startTime || !endTime) {
-      console.log('❌ Missing date or time range')
       toast.error('Please select date and time range')
       return
     }
@@ -176,23 +153,14 @@ export default function JobReassignmentModal({
       carriedOver: false // Remove from carry-over queue since it's now reassigned
     }
 
-    console.log('📤 Request Body:', requestBody)
-    console.log('📅 Selected Date:', selectedDate)
-    console.log('📅 Original Job Date:', jobOrder.date)
-    console.log('🌐 API Endpoint:', `/api/job-orders/${jobOrder._id}`)
-
     setSubmitting(true)
     try {
-      console.log('🚀 Making API request...')
       const response = await fetch(`/api/job-orders/${jobOrder._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(requestBody)
       })
-
-      console.log('📡 Response Status:', response.status)
-      console.log('📡 Response OK:', response.ok)
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -201,9 +169,6 @@ export default function JobReassignmentModal({
       }
 
       const responseData = await response.json()
-      console.log('✅ API Success Response:', responseData)
-      console.log('📅 Updated Job Date:', responseData.jobOrder?.date)
-      console.log('📅 Updated Job Original Date:', responseData.jobOrder?.originalCreatedDate)
 
       toast.success(`Job ${jobOrder.jobNumber} reassigned successfully!`, {
         duration: 4000,
@@ -214,12 +179,10 @@ export default function JobReassignmentModal({
           fontWeight: '500'
         }
       })
-      console.log('🎉 Calling onSuccess callback')
       onSuccess()
       
       // Small delay to let user see the success message
       setTimeout(() => {
-        console.log('🚪 Calling onClose callback')
         onClose()
       }, 1000)
     } catch (error) {
@@ -232,7 +195,6 @@ export default function JobReassignmentModal({
         toast.error('Failed to reassign job')
       }
     } finally {
-      console.log('🏁 Setting submitting to false')
       setSubmitting(false)
     }
   }
@@ -444,7 +406,6 @@ export default function JobReassignmentModal({
                       date={selectedDate}
                       duration={duration * 60} // Convert hours to minutes
                       onTimeSlotSelect={(startTime) => {
-                        console.log('🕐 Time slot selected:', startTime)
                         setStartTime(startTime)
                       }}
                       selectedStart={startTime}
