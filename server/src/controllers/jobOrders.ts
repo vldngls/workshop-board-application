@@ -22,7 +22,7 @@ router.get('/', verifyToken, async (req, res) => {
     if (technician) filter.assignedTechnician = technician
     if (assignedToMe === 'true') {
       // Filter to only show job orders assigned to the current user
-      filter.assignedTechnician = req.user?.userId
+      filter.assignedTechnician = req.user?.sub
     }
     if (date) {
       const startDate = new Date(date as string)
@@ -726,7 +726,7 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     }
     
     // Get user ID from JWT token
-    const userId = req.user?.userId
+    const userId = req.user?.sub
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' })
     }
@@ -766,8 +766,8 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
     
     try {
       await logger.audit('Job order created', {
-        userId: req.user?.userId,
-        userEmail: req.user?.email,
+        userId: req.user?.sub,
+        userEmail: undefined,
         userRole: req.user?.role,
         context: { jobId: String(jobOrder._id), jobNumber: jobOrder.jobNumber }
       })
@@ -1039,8 +1039,8 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
     
     try {
       await logger.audit('Job order updated', {
-        userId: req.user?.userId,
-        userEmail: req.user?.email,
+        userId: req.user?.sub,
+        userEmail: undefined,
         userRole: req.user?.role,
         context: { jobId: String(jobOrder._id), changes: updateData }
       })
@@ -1075,8 +1075,8 @@ router.delete('/:id', verifyToken, requireRole(['administrator', 'job-controller
     
     try {
       await logger.audit('Job order deleted', {
-        userId: req.user?.userId,
-        userEmail: req.user?.email,
+        userId: req.user?.sub,
+        userEmail: undefined,
         userRole: req.user?.role,
         context: { jobId: String(jobOrder._id), jobNumber: jobOrder.jobNumber }
       })
@@ -1110,8 +1110,8 @@ router.patch('/:id/toggle-important', verifyToken, requireRole(['administrator',
     
     try {
       await logger.audit('Job order important toggled', {
-        userId: req.user?.userId,
-        userEmail: req.user?.email,
+        userId: req.user?.sub,
+        userEmail: undefined,
         userRole: req.user?.role,
         context: { jobId: String(jobOrder._id), isImportant: jobOrder.isImportant }
       })
@@ -1156,7 +1156,7 @@ router.patch('/:id/submit-qi', verifyToken, requireRole(['administrator', 'job-c
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    try { await logger.audit('Job order submitted for QI', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+    try { await logger.audit('Job order submitted for QI', { userId: req.user?.sub, userEmail: undefined, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
 
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
@@ -1189,7 +1189,7 @@ router.patch('/:id/approve-qi', verifyToken, requireRole(['administrator', 'job-
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    try { await logger.audit('QI approved', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+    try { await logger.audit('QI approved', { userId: req.user?.sub, userEmail: undefined, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
 
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
@@ -1222,7 +1222,7 @@ router.patch('/:id/reject-qi', verifyToken, requireRole(['administrator', 'job-c
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    try { await logger.audit('QI rejected', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+    try { await logger.audit('QI rejected', { userId: req.user?.sub, userEmail: undefined, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
 
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
@@ -1254,7 +1254,7 @@ router.patch('/:id/complete', verifyToken, requireRole(['administrator', 'job-co
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    try { await logger.audit('Job order marked finished-unclaimed', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+    try { await logger.audit('Job order marked finished-unclaimed', { userId: req.user?.sub, userEmail: undefined, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
 
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
@@ -1286,7 +1286,7 @@ router.patch('/:id/mark-complete', verifyToken, requireRole(['administrator', 'j
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    try { await logger.audit('Job order marked complete', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+    try { await logger.audit('Job order marked complete', { userId: req.user?.sub, userEmail: undefined, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
 
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
@@ -1319,7 +1319,7 @@ router.patch('/:id/redo', verifyToken, requireRole(['administrator', 'job-contro
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    try { await logger.audit('Job order redo to QI', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+    try { await logger.audit('Job order redo to QI', { userId: req.user?.sub, userEmail: undefined, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
 
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
@@ -1333,7 +1333,7 @@ router.post('/end-of-day', verifyToken, requireRole(['administrator', 'job-contr
   try {
     await connectToMongo()
     
-    const userId = req.user?.userId
+    const userId = req.user?.sub
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' })
     }
@@ -1396,8 +1396,8 @@ router.post('/end-of-day', verifyToken, requireRole(['administrator', 'job-contr
           email: job.createdBy.email || 'unknown@example.com'
         } : {
           _id: String(userId),
-          name: req.user?.name || 'System',
-          email: req.user?.email || 'system@example.com'
+          name: undefined,
+          email: undefined
         },
         assignedTechnician: job.assignedTechnician ? {
           _id: String(job.assignedTechnician._id || ''),

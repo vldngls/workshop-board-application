@@ -18,6 +18,7 @@ type LoginRequest = {
 type LoginResponse = {
   ok: boolean
   role?: string
+  error?: string
 }
 
 export function useMe() {
@@ -25,10 +26,15 @@ export function useMe() {
     queryKey: ['me'],
     queryFn: async () => {
       const res = await fetch('/api/auth/me', { credentials: 'include' })
+      if (res.status === 401) {
+        // Not authenticated; return empty result and avoid throwing
+        return {} as MeResponse
+      }
       if (!res.ok) throw new Error('Failed to load user')
       return res.json()
     },
     staleTime: 5 * 60 * 1000,
+    retry: false,
   })
 }
 
@@ -41,14 +47,16 @@ export function useLogin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error((data as any).error || 'Invalid credentials')
+        return { ok: false, error: (data as any).error || 'Invalid credentials' }
       }
-      return res.json()
+      return data as LoginResponse
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['me'] })
+    onSuccess: (data) => {
+      if (data.ok) {
+        queryClient.invalidateQueries({ queryKey: ['me'] })
+      }
     },
   })
 }

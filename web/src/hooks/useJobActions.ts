@@ -276,6 +276,16 @@ export function useJobActions({
       if (!selectedJob) return
       
       const currentTime = getCurrentTime()
+      // Optimistic: move job from timetable to QI list immediately
+      updateJobOrders(prev => prev.filter(job => job._id !== jobId))
+      updateQiJobs(prev => {
+        // If selectedJob is the one, clone with status QI
+        const optimistic = selectedJob && selectedJob._id === jobId
+          ? { ...selectedJob, status: 'QI' as any }
+          : undefined
+        return optimistic ? [...prev, optimistic as any] : prev
+      })
+
       const response = await fetch(`/api/job-orders/${jobId}/submit-qi`, {
         method: 'PATCH'
       })
@@ -297,6 +307,19 @@ export function useJobActions({
   const approveQI = useCallback(async (jobId: string) => {
     try {
       setUpdating(true)
+      // Optimistic: move from QI to For Release
+      let movedJob: any = null
+      updateQiJobs(prev => {
+        const job = prev.find(j => j._id === jobId)
+        if (job) {
+          movedJob = { ...job, status: 'FR' as any }
+        }
+        return prev.filter(j => j._id !== jobId)
+      })
+      if (movedJob) {
+        updateForReleaseJobs(prev => [movedJob, ...prev])
+      }
+
       const response = await fetch(`/api/job-orders/${jobId}/approve-qi`, {
         method: 'PATCH'
       })
@@ -314,6 +337,9 @@ export function useJobActions({
   const rejectQI = useCallback(async (jobId: string) => {
     try {
       setUpdating(true)
+      // Optimistic: remove from QI list
+      updateQiJobs(prev => prev.filter(job => job._id !== jobId))
+
       const response = await fetch(`/api/job-orders/${jobId}/reject-qi`, {
         method: 'PATCH'
       })
@@ -328,10 +354,7 @@ export function useJobActions({
     }
   }, [fetchData, setUpdating])
 
-  const completeJob = useCallback(async (jobId: string) => {
-    // Show claimed/unclaimed prompt
-    const isClaimed = window.confirm('Is this job claimed by the customer?')
-    
+  const completeJob = useCallback(async (jobId: string, isClaimed: boolean) => {
     try {
       setUpdating(true)
       
@@ -367,6 +390,19 @@ export function useJobActions({
   const redoJob = useCallback(async (jobId: string) => {
     try {
       setUpdating(true)
+      // Optimistic: move from For Release back to QI
+      let movedJob: any = null
+      updateForReleaseJobs(prev => {
+        const job = prev.find(j => j._id === jobId)
+        if (job) {
+          movedJob = { ...job, status: 'QI' as any }
+        }
+        return prev.filter(j => j._id !== jobId)
+      })
+      if (movedJob) {
+        updateQiJobs(prev => [movedJob, ...prev])
+      }
+
       const response = await fetch(`/api/job-orders/${jobId}/redo`, {
         method: 'PATCH'
       })

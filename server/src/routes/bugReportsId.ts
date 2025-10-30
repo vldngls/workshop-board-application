@@ -56,7 +56,7 @@ router.put('/:id', verifyToken, requireRole(['superadmin']), async (req, res) =>
     // If status is being changed to resolved, set resolvedAt and resolvedBy
     if (updateData.status === 'resolved') {
       updateData.resolvedAt = new Date();
-      updateData.resolvedBy = req.user.userId;
+      updateData.resolvedBy = req.user?.sub;
     }
     
     const bugReport = await BugReport.findByIdAndUpdate(

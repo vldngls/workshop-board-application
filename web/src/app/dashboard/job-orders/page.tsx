@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { Toaster } from 'react-hot-toast'
 import type { JobOrder, JobStatus } from "@/types/jobOrder"
 import JobOrderCard from "@/components/JobOrderCard"
-import JobDetailsModal from "@/components/modals/JobDetailsModal"
 import { useJobOrders, useUpdateJobOrder } from '@/hooks/useJobOrders'
 import RoleGuard from "@/components/RoleGuard"
 
@@ -41,6 +40,7 @@ export default function JobOrdersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null)
   const [selectedJob, setSelectedJob] = useState<JobOrder | null>(null)
   const [showDetails, setShowDetails] = useState(false)
   const [highlightedJobId, setHighlightedJobId] = useState<string | null>(null)
@@ -128,16 +128,33 @@ export default function JobOrdersPage() {
     return allJobs.filter((job: JobOrder) => job.status === filter)
   }, [data?.jobOrders, filter])
 
-  // Paginate filtered results
+  // Sort: important first, then newest by createdAt/originalCreatedDate
+  const sortedJobOrders = useMemo(() => {
+    const toTime = (job: JobOrder) => {
+      const t1 = Date.parse(job.createdAt ?? '')
+      const t2 = Date.parse((job as any).originalCreatedDate ?? '')
+      return isNaN(t1) ? (isNaN(t2) ? 0 : t2) : t1
+    }
+    const copy = [...getFilteredJobOrders]
+    copy.sort((a, b) => {
+      const favA = a.isImportant ? 1 : 0
+      const favB = b.isImportant ? 1 : 0
+      if (favA !== favB) return favB - favA
+      return toTime(b) - toTime(a)
+    })
+    return copy
+  }, [getFilteredJobOrders])
+
+  // Paginate sorted results
   const paginatedJobOrders = useMemo(() => {
-    const startIndex = (currentPage - 1) * 10
-    const endIndex = startIndex + 10
-    return getFilteredJobOrders.slice(startIndex, endIndex)
-  }, [getFilteredJobOrders, currentPage])
+    const startIndex = (currentPage - 1) * 5
+    const endIndex = startIndex + 5
+    return sortedJobOrders.slice(startIndex, endIndex)
+  }, [sortedJobOrders, currentPage])
 
   const pagination = useMemo(() => {
-    const totalItems = getFilteredJobOrders.length
-    const itemsPerPage = 10
+    const totalItems = sortedJobOrders.length
+    const itemsPerPage = 5
     const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage))
     
     return {
@@ -148,7 +165,7 @@ export default function JobOrdersPage() {
       hasNextPage: currentPage < totalPages,
       hasPrevPage: currentPage > 1
     }
-  }, [getFilteredJobOrders, currentPage])
+  }, [sortedJobOrders, currentPage])
 
   const jobOrders = paginatedJobOrders
 
@@ -160,10 +177,12 @@ export default function JobOrdersPage() {
   const handleFilterChange = useCallback((newFilter: JobStatus | 'all' | 'hold' | 'carried' | 'important' | 'unclaimed') => {
     setFilter(newFilter)
     setCurrentPage(1)
+    setExpandedJobId(null)
   }, [])
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page)
+    setExpandedJobId(null)
   }, [])
 
   const handleOpenDetails = useCallback((job: JobOrder) => {
@@ -359,9 +378,10 @@ export default function JobOrdersPage() {
               <JobOrderCard
                 key={jobOrder._id}
                 jobOrder={jobOrder}
-                onClick={handleOpenDetails}
                 onViewIn={handleViewIn}
                 highlighted={highlightedJobId === jobOrder._id}
+                expanded={expandedJobId === jobOrder._id}
+                onToggleExpand={(id, expanded) => setExpandedJobId(expanded ? id : null)}
               />
             ))}
           </div>
@@ -429,25 +449,7 @@ export default function JobOrdersPage() {
         </Suspense>
       )}
 
-      {/* Job Details Modal */}
-      {showDetails && selectedJob && (
-        <JobDetailsModal
-          isOpen={showDetails}
-          job={selectedJob as any}
-          updating={false}
-          onClose={handleCloseDetails}
-          onUpdateJob={handleUpdateJob}
-          onViewIn={handleViewIn}
-          onViewInJobOrders={(jobId: string) => {
-            // Already on job orders page, just set the highlight
-            setHighlightedJobId(jobId)
-            // Clear highlight after 3 seconds
-            setTimeout(() => setHighlightedJobId(null), 3000)
-          }}
-          onUpdateJobStatus={handleUpdateJobStatus}
-          onCarryOver={handleCarryOver}
-        />
-      )}
+      {/* Job Details Modal intentionally removed in favor of inline expanded view */}
       </div>
     </RoleGuard>
   )

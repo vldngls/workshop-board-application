@@ -101,9 +101,9 @@ router.put('/', verifyToken, requireRole(['superadmin']), async (req, res) => {
     // Track who enabled/disabled maintenance
     if (isUnderMaintenance && !previousState) {
       // Maintenance was just enabled
-      settings.enabledBy = req.user.userId;
-      settings.enabledByName = req.user.name;
-      settings.enabledByEmail = req.user.email;
+      settings.enabledBy = req.user?.sub;
+      settings.enabledByName = undefined;
+      settings.enabledByEmail = undefined;
       settings.enabledAt = new Date();
       // Clear disabled fields
       settings.disabledBy = undefined;
@@ -112,9 +112,9 @@ router.put('/', verifyToken, requireRole(['superadmin']), async (req, res) => {
       settings.disabledAt = undefined;
     } else if (!isUnderMaintenance && previousState) {
       // Maintenance was just disabled
-      settings.disabledBy = req.user.userId;
-      settings.disabledByName = req.user.name;
-      settings.disabledByEmail = req.user.email;
+      settings.disabledBy = req.user?.sub;
+      settings.disabledByName = undefined;
+      settings.disabledByEmail = undefined;
       settings.disabledAt = new Date();
       // Clear enabled fields
       settings.enabledBy = undefined;

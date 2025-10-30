@@ -6,8 +6,8 @@ function requestLogger(req: any, res: any, next: any) {
   res.on('finish', async () => {
     const durationMs = Date.now() - start
     const meta = {
-      userId: req.user?.userId,
-      userEmail: req.user?.email,
+      userId: req.user?.sub,
+      userEmail: undefined,
       userRole: req.user?.role,
       ip,
       method: req.method,

@@ -36,6 +36,8 @@ interface JobOrderCardProps {
   onClick?: (jobOrder: JobOrder) => void
   onViewIn?: (jobId: string, jobDate: string, status: string) => void
   highlighted?: boolean
+  expanded?: boolean
+  onToggleExpand?: (jobId: string, expanded: boolean) => void
 }
 
 // Status mapping for display
@@ -84,8 +86,8 @@ const STATUS_ACCENT: Record<JobStatus, string> = {
   'CP': 'bg-emerald-500'
 }
 
-function JobOrderCard({ jobOrder, onViewIn, highlighted = false, onClick }: JobOrderCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
+function JobOrderCard({ jobOrder, onViewIn, highlighted = false, onClick, expanded = false, onToggleExpand }: JobOrderCardProps) {
+  const isExpanded = expanded
   const [isHighlighted, setIsHighlighted] = useState(highlighted)
   
   // Update internal highlight state when prop changes
@@ -384,11 +386,12 @@ function JobOrderCard({ jobOrder, onViewIn, highlighted = false, onClick }: JobO
     <div
       data-job-id={jobOrder._id}
       onClick={handleCardClick}
-      className={`relative group transition-all duration-200 hover:shadow-lg w-full rounded-lg border overflow-hidden cursor-pointer ${
+      className={`relative group transition-all duration-200 hover:shadow-lg w-full rounded-2xl border overflow-hidden cursor-pointer ${
         isHighlighted 
           ? 'bg-yellow-50 border-yellow-300 shadow-lg ring-2 ring-yellow-400 ring-opacity-50 animate-pulse' 
           : 'bg-white border-gray-200'
       }`}
+      style={{ zIndex: isExpanded ? 50 : 'auto' as any }}
     >
       {/* Status accent bar */}
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${STATUS_ACCENT[jobOrder.status]}`}></div>
@@ -691,7 +694,7 @@ function JobOrderCard({ jobOrder, onViewIn, highlighted = false, onClick }: JobO
         <button
           onClick={(e) => { 
             stop(e); 
-            setIsExpanded(!isExpanded);
+            onToggleExpand?.(jobOrder._id, !isExpanded)
           }}
           className="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-medium transition-all border border-gray-200 hover:border-gray-300 flex items-center justify-center gap-1"
           title={isExpanded ? 'Collapse details' : 'Show details'}
@@ -1143,7 +1146,7 @@ function JobOrderCard({ jobOrder, onViewIn, highlighted = false, onClick }: JobO
           {/* Collapse Button */}
           <div className="mt-4 pt-3 border-t border-gray-200">
             <button
-              onClick={(e) => { stop(e); setIsExpanded(false) }}
+              onClick={(e) => { stop(e); onToggleExpand?.(jobOrder._id, false) }}
               className="w-full px-3 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded text-xs font-medium transition-all border border-gray-200 hover:border-gray-300 flex items-center justify-center gap-1"
               title="Collapse quick details"
             >
@@ -1251,6 +1254,17 @@ function JobOrderCard({ jobOrder, onViewIn, highlighted = false, onClick }: JobO
           onSuccess={handleReassignmentSuccess}
         />
       )}
+
+      {/* Page dimmer when expanded to prevent accidental clicks */}
+      {isExpanded && createPortal(
+        <div
+          className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-40"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) onToggleExpand?.(jobOrder._id, false)
+          }}
+        />,
+        document.body
+      )}
     </div>
   )
 }
@@ -1261,5 +1275,7 @@ export default memo(JobOrderCard, (prevProps, nextProps) => {
          prevProps.jobOrder.status === nextProps.jobOrder.status &&
          prevProps.jobOrder.isImportant === nextProps.jobOrder.isImportant &&
          JSON.stringify(prevProps.jobOrder.jobList) === JSON.stringify(nextProps.jobOrder.jobList) &&
-         JSON.stringify(prevProps.jobOrder.parts) === JSON.stringify(nextProps.jobOrder.parts)
+         JSON.stringify(prevProps.jobOrder.parts) === JSON.stringify(nextProps.jobOrder.parts) &&
+         prevProps.highlighted === nextProps.highlighted &&
+         prevProps.expanded === nextProps.expanded
 })

@@ -3,7 +3,7 @@ import { getRawToken } from "../../_lib/auth"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
 
-export async function PUT(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = await getRawToken()
     
@@ -33,7 +33,7 @@ export async function PUT(_req: NextRequest, { params }: { params: { id: string 
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = await getRawToken()
     

@@ -31,17 +31,18 @@ export default function LoginPage() {
       const loginData = isEmail 
         ? { email: emailOrUsername, password }
         : { username: emailOrUsername, password }
-      
+
       const data = await login.mutateAsync(loginData)
       if (data.ok && data.role) {
         // Force a page refresh to ensure cookies are set
         window.location.href = "/dashboard"
       } else {
-        setError("Login failed - no role received")
+        setError(data.error || "Invalid credentials")
       }
     } catch (err) {
       console.error("Login error:", err)
-      setError("Network error - please try again")
+      const message = err instanceof Error ? err.message : 'Network error - please try again'
+      setError(message)
     } finally {
       setIsLoading(false)
     }

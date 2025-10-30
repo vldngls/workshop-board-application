@@ -19,7 +19,7 @@ router.get('/', verifyToken, async (req, res) => {
     if (technician) filter.assignedTechnician = technician
     if (assignedToMe === 'true') {
       // Filter to only show appointments assigned to the current user
-      filter.assignedTechnician = req.user?.userId
+      filter.assignedTechnician = req.user?.sub
     }
     if (date) {
       const startDate = new Date(date as string)
@@ -518,7 +518,7 @@ router.post('/:id/create-job-order', verifyToken, requireRole(['administrator', 
     }
     
     // Get user ID from JWT token
-    const userId = req.user?.userId
+    const userId = req.user?.sub
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' })
     }

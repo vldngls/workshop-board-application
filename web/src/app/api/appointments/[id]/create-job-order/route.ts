@@ -5,10 +5,13 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('[CREATE-JOB-ORDER] Starting request')
+    
     const token = await getRawToken()
+    console.log('[CREATE-JOB-ORDER] Token retrieved:', token ? 'YES' : 'NO')
 
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -17,6 +20,8 @@ export async function POST(
     const { id } = await params
     const body = await request.json()
 
+    console.log('[CREATE-JOB-ORDER] Calling backend:', `${API_BASE_URL}/appointments/${id}/create-job-order`)
+    
     const response = await fetch(`${API_BASE_URL}/appointments/${id}/create-job-order`, {
       method: 'POST',
       headers: {
@@ -26,8 +31,11 @@ export async function POST(
       body: JSON.stringify(body),
     })
 
+    console.log('[CREATE-JOB-ORDER] Backend response status:', response.status)
+
     if (!response.ok) {
       const errorData = await response.json()
+      console.log('[CREATE-JOB-ORDER] Backend error:', errorData)
       return NextResponse.json(errorData, { status: response.status })
     }
 

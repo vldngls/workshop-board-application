@@ -32,7 +32,10 @@ export default function MaintenanceMode({ children }: MaintenanceModeProps) {
     },
     refetchOnWindowFocus: true,
     // Poll only when maintenance is ON; otherwise rely on focus/refetches
-    refetchInterval: (data) => (data?.isUnderMaintenance ? 30000 : false),
+    refetchInterval: (query) => {
+      const data = query.state.data
+      return data?.isUnderMaintenance ? 30000 : false
+    },
     refetchIntervalInBackground: true,
     retry: false,
   })

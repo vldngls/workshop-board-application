@@ -331,40 +331,22 @@ export default function MainDashboard() {
     <div className="space-y-6">
       <Toaster position="top-right" />
       
-      {/* iOS 26 Inspired Header */}
-      <div className="ios-card p-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2" style={{color: 'var(--ios-text-primary)', fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif'}}>
-              Workshop Dashboard
-            </h1>
-            <p className="text-base font-medium mb-4" style={{color: 'var(--ios-text-secondary)'}}>
-              Real-time overview of job orders and workshop operations
-            </p>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2" style={{color: 'var(--ios-text-tertiary)'}}>
-                <FiCalendar size={18} />
-                <span className="font-medium text-sm">{currentTime.toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}</span>
-              </div>
-              <div className="flex items-center gap-2" style={{color: 'var(--ios-text-tertiary)'}}>
-                <FiClock size={18} />
-                <span className="font-medium text-sm">{currentTime.toLocaleTimeString('en-US', { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })}</span>
-              </div>
-            </div>
+      {/* Page Header (consistent with other pages) */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Workshop Dashboard</h1>
+          <p className="text-sm text-gray-600">Real-time overview of job orders and workshop operations</p>
+        </div>
+        <div className="flex items-center gap-6 text-gray-600">
+          <div className="flex items-center gap-2">
+            <FiCalendar size={18} />
+            <span className="font-medium text-sm">{currentTime.toLocaleDateString('en-US', { 
+              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+            })}</span>
           </div>
-          <div className="text-right">
-            <div className="w-16 h-16 ford-gradient rounded-2xl shadow-lg flex items-center justify-center mb-2">
-              <FiWrench size={32} color="white" />
-            </div>
-            <div className="text-sm font-medium" style={{color: 'var(--ios-text-tertiary)'}}>Workshop Management</div>
+          <div className="flex items-center gap-2">
+            <FiClock size={18} />
+            <span className="font-medium text-sm">{currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
         </div>
       </div>
@@ -1015,7 +997,7 @@ export default function MainDashboard() {
           onSuccess={() => {
             setShowReassignModal(false)
             setSelectedJobForReassign(null)
-            fetchDashboardData()
+            queryClient.invalidateQueries({ queryKey: ['job-orders'] })
           }}
         />
       )}
@@ -1031,7 +1013,7 @@ export default function MainDashboard() {
           onSuccess={() => {
             setShowJobDetailsModal(false)
             setSelectedJobForDetails(null)
-            fetchDashboardData()
+            queryClient.invalidateQueries({ queryKey: ['job-orders'] })
           }}
         />
       )}

@@ -101,6 +101,8 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
   const [showReplotModal, setShowReplotModal] = useState(false)
   const [showCarryOverReassignModal, setShowCarryOverReassignModal] = useState(false)
   const [selectedCarryOverJob, setSelectedCarryOverJob] = useState<JobOrderWithDetails | null>(null)
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false)
+  const [pendingCompleteJobId, setPendingCompleteJobId] = useState<string | null>(null)
   
   // Available slots state
   const [selectedAvailableSlot, setSelectedAvailableSlot] = useState<{
@@ -214,6 +216,26 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
     setSelectedJob,
     fetchData
   })
+
+  // Wrap complete job to use UI dialog instead of native confirm
+  const requestCompleteJob = useCallback((jobId: string) => {
+    setPendingCompleteJobId(jobId)
+    setShowCompleteConfirm(true)
+  }, [])
+
+  const confirmCompleteAsClaimed = useCallback(() => {
+    if (!pendingCompleteJobId) return
+    completeJob(pendingCompleteJobId, true)
+    setShowCompleteConfirm(false)
+    setPendingCompleteJobId(null)
+  }, [pendingCompleteJobId, completeJob])
+
+  const confirmCompleteAsUnclaimed = useCallback(() => {
+    if (!pendingCompleteJobId) return
+    completeJob(pendingCompleteJobId, false)
+    setShowCompleteConfirm(false)
+    setPendingCompleteJobId(null)
+  }, [pendingCompleteJobId, completeJob])
 
   // Handle highlighting a specific job
   useEffect(() => {
@@ -425,7 +447,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
         onJobClick={handleCellClick}
         onApproveQI={userRole === 'technician' ? undefined : approveQI}
         onRejectQI={userRole === 'technician' ? undefined : rejectQI}
-        onCompleteJob={userRole === 'technician' ? undefined : completeJob}
+        onCompleteJob={userRole === 'technician' ? undefined : requestCompleteJob}
         onRedoJob={userRole === 'technician' ? undefined : redoJob}
         onMarkComplete={userRole === 'technician' ? undefined : markComplete}
         onReassignCarryOver={userRole === 'technician' ? undefined : handleCarryOverReassign}
@@ -571,6 +593,18 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
         confirmVariant="danger"
         onConfirm={confirmDeleteAppointment}
         onCancel={cancelDeleteAppointment}
+      />
+
+      {/* Complete Job Confirmation (Claimed vs Unclaimed) */}
+      <ConfirmDialog
+        isOpen={showCompleteConfirm}
+        title="Release Job"
+        message="Is this job claimed by the customer?"
+        confirmLabel="Claimed"
+        cancelLabel="Unclaimed"
+        confirmVariant="primary"
+        onConfirm={confirmCompleteAsClaimed}
+        onCancel={confirmCompleteAsUnclaimed}
       />
 
       {/* Carry-Over Reassignment Modal */}

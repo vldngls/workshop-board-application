@@ -29,6 +29,9 @@ router.get('/', verifyToken, requireRole(['superadmin']), async (req, res) => {
       BugReport.countDocuments({ status: 'resolved' })
     ]);
     
+    const uptimeSeconds = typeof process.uptime === 'function' ? process.uptime() : 0
+    const uptimeHours = Math.floor(uptimeSeconds / 3600)
+
     const stats = {
       totalUsers,
       totalJobOrders,
@@ -36,7 +39,7 @@ router.get('/', verifyToken, requireRole(['superadmin']), async (req, res) => {
       totalBugReports,
       openBugReports,
       resolvedBugReports,
-      systemUptime: '99.9%', // This would be calculated from actual uptime data
+      systemUptime: `${uptimeHours}h`,
       lastBackup: new Date().toISOString() // This would be from actual backup logs
     };
     

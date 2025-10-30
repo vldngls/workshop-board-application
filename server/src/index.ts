@@ -13,6 +13,7 @@ const maintenanceStatsRouter = require('./routes/maintenanceStats.js');
 const maintenanceSettingsRouter = require('./routes/maintenanceSettings.js');
 const systemLogsRouter = require('./routes/systemLogs.js');
 
+
 // Only load .env file in development
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
@@ -80,14 +81,10 @@ app.use((req, res, next) => {
     return requestLogger(req, res, next);
   }
 
-  // Attach logger for authenticated paths
-  requestLogger(req, res, () => {})
-  {
-    return next();
-  }
-
-  // All other routes require JWT authentication
-  return verifyToken(req, res, next);
+  // Attach logger and require JWT authentication for all other routes
+  requestLogger(req, res, () => {
+    return verifyToken(req, res, next);
+  });
 });
 
 // JWT middleware handles authentication and user context

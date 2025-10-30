@@ -6,7 +6,7 @@ const API_KEY = process.env.API_KEY
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = await getRawToken()

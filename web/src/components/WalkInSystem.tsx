@@ -120,7 +120,7 @@ export default function WalkInSystem({ date }: WalkInSystemProps) {
   return (
     <div className="space-y-4">
       {/* Compact Header */}
-      <div className="bg-white rounded-lg border border-neutral-200 p-4">
+      <div className="floating-card p-5 rounded-2xl">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-neutral-900">Walk-In System</h2>
@@ -139,7 +139,7 @@ export default function WalkInSystem({ date }: WalkInSystemProps) {
       ) : (
         <div className="space-y-4">
           {technicianSlots.map((technicianSlot) => (
-            <div key={technicianSlot.technician._id} className="bg-white rounded-lg border border-neutral-200 p-4">
+            <div key={technicianSlot.technician._id} className="floating-card p-4 rounded-2xl">
               {/* Technician Header with Hours */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -173,7 +173,7 @@ export default function WalkInSystem({ date }: WalkInSystemProps) {
                 </div>
 
                 {/* Main timeline bar */}
-                <div className="relative h-8 bg-gray-200 rounded-lg overflow-hidden">
+                <div className="relative h-8 bg-gray-200 rounded-xl overflow-hidden">
                   {/* Generate time segments */}
                   {(() => {
                     const segments = []
@@ -197,12 +197,12 @@ export default function WalkInSystem({ date }: WalkInSystemProps) {
                       segments.push(
                         <div
                           key={currentTime}
-                          className={`absolute h-full cursor-pointer transition-all hover:opacity-80 ${
+                          className={`absolute h-full cursor-pointer transition-all hover:opacity-90 ${
                             isSelected
-                              ? 'bg-blue-500 z-10'
+                              ? 'bg-blue-600 z-10'
                               : isAvailable
-                              ? 'bg-green-400 hover:bg-green-500'
-                              : 'bg-red-400'
+                              ? 'bg-green-500 hover:bg-green-600'
+                              : 'bg-red-400/60'
                           }`}
                           style={{
                             left: `${segmentStart}%`,
@@ -231,17 +231,17 @@ export default function WalkInSystem({ date }: WalkInSystemProps) {
                 </div>
 
                 {/* Legend */}
-                <div className="flex gap-4 mt-2 text-xs">
+                <div className="flex gap-4 mt-2 text-xs text-neutral-600">
                   <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-green-400 rounded"></div>
+                    <div className="w-3 h-3 bg-green-500 rounded"></div>
                     <span>Available</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-red-400 rounded"></div>
+                    <div className="w-3 h-3 bg-red-400/60 rounded"></div>
                     <span>Occupied</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                    <div className="w-3 h-3 bg-blue-600 rounded"></div>
                     <span>Selected</span>
                   </div>
                 </div>
@@ -253,7 +253,7 @@ export default function WalkInSystem({ date }: WalkInSystemProps) {
 
       {/* Selected Slot Info */}
       {selectedSlot && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <div>
               <h4 className="text-base font-semibold text-blue-900">Selected Time Slot</h4>
@@ -267,7 +267,7 @@ export default function WalkInSystem({ date }: WalkInSystemProps) {
             </div>
             <button
               onClick={() => setSelectedSlot(null)}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              className="btn-secondary text-sm px-3 py-1 rounded-xl"
             >
               Clear Selection
             </button>

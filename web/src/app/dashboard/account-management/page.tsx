@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import ConfirmDialog from "@/components/ConfirmDialog"
 import type { Role, TechnicianLevel, User } from "@/types/auth"
 import RoleGuard from "@/components/RoleGuard"
 import BreakTimeManager from "@/components/BreakTimeManager"
@@ -445,9 +446,10 @@ function EditUserForm({ apiBase, user, onUpdated }: { apiBase: string; user: Use
 function DeleteUserButton({ apiBase, id, onDeleted }: { apiBase: string; id: string; onDeleted: () => void }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   async function remove(): Promise<void> {
-    if (!confirm("Delete this user?")) return
+    setShowConfirm(false)
     setLoading(true)
     setError(null)
     try {
@@ -463,7 +465,17 @@ function DeleteUserButton({ apiBase, id, onDeleted }: { apiBase: string; id: str
 
   return (
     <span className="inline-flex flex-col items-start">
-      <button className="text-red-600" onClick={remove} disabled={loading}>{loading ? "Deleting..." : "Delete"}</button>
+      <button className="text-red-600" onClick={() => setShowConfirm(true)} disabled={loading}>{loading ? "Deleting..." : "Delete"}</button>
+      <ConfirmDialog
+        isOpen={showConfirm}
+        title="Delete User"
+        message="Are you sure you want to delete this user? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        confirmVariant="danger"
+        onConfirm={remove}
+        onCancel={() => setShowConfirm(false)}
+      />
       {error ? <span className="text-xs text-red-600">{error}</span> : null}
     </span>
   )

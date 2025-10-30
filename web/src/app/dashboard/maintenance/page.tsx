@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 import { BugReport } from '@/types/bugReport'
 import RoleGuard from '@/components/RoleGuard'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import BugReportDetailModal from '@/components/BugReportDetailModal'
-import { useBugReports, useMaintenanceSettings, useSystemLogs, useSystemStats, useUpdateBugReport } from '@/hooks/useMaintenance'
+import { useBugReports, useMaintenanceSettings, useSystemStats, useUpdateBugReport, useInfiniteSystemLogs } from '@/hooks/useMaintenance'
 import { useQueryClient } from '@tanstack/react-query'
 
 interface SystemStats {
@@ -30,7 +32,6 @@ export default function MaintenancePage() {
     maintenanceMessage: ''
   })
   const [activeTab, setActiveTab] = useState<'overview' | 'bug-reports' | 'settings' | 'logs'>('overview')
-  const [logs, setLogs] = useState<any[]> ([])
   const [selectedBugReport, setSelectedBugReport] = useState<BugReport | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const queryClient = useQueryClient()
@@ -39,7 +40,20 @@ export default function MaintenancePage() {
   const bugReportsQuery = useBugReports()
   const statsQuery = useSystemStats()
   const settingsQuery = useMaintenanceSettings()
-  const logsQuery = useSystemLogs(100, activeTab === 'logs')
+  // Logs filters and infinite scroll
+  const [logLevel, setLogLevel] = useState<string>('')
+  const [logEmail, setLogEmail] = useState<string>('')
+  const [logPath, setLogPath] = useState<string>('')
+
+  const logsInfinite = useInfiniteSystemLogs({
+    level: logLevel || undefined,
+    userEmail: logEmail || undefined,
+    path: logPath || undefined,
+    limit: 50,
+    enabled: activeTab === 'logs'
+  })
+  const [showClearLogsConfirm, setShowClearLogsConfirm] = useState(false)
+  const [showConfirmSaveSettings, setShowConfirmSaveSettings] = useState(false)
   const updateBugReport = useUpdateBugReport()
 
   // Local derived state
@@ -60,13 +74,9 @@ export default function MaintenancePage() {
     }
   }, [settingsQuery.data])
 
-  useEffect(() => {
-    if (logsQuery.data) {
-      setLogs(logsQuery.data.items || [])
-        }
-  }, [logsQuery.data])
+  // Logs are streamed via `logsInfinite`; no local copy needed
 
-  const logsLoading = logsQuery.isFetching
+  const logsLoading = logsInfinite.isFetching || logsInfinite.isFetchingNextPage
 
   const updateBugReportStatus = async (id: string, status: string, resolution?: string) => {
     await updateBugReport.mutateAsync({ id, updates: { status, resolution } })
@@ -86,7 +96,7 @@ export default function MaintenancePage() {
 
   const updateMaintenanceSettings = async () => {
     await settingsQuery.updateSettings.mutateAsync(maintenanceSettings)
-        alert('Maintenance settings updated successfully')
+    toast.success('Maintenance settings updated successfully')
   }
 
   const getStatusColor = (status: string) => {
@@ -361,10 +371,11 @@ export default function MaintenancePage() {
                 </div>
 
                 <button
-                  onClick={updateMaintenanceSettings}
+                  onClick={() => setShowConfirmSaveSettings(true)}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  disabled={settingsQuery.updateSettings.isPending}
                 >
-                  Save Settings
+                  {settingsQuery.updateSettings.isPending ? 'Saving...' : 'Save Settings'}
                 </button>
               </div>
             </div>
@@ -373,26 +384,120 @@ export default function MaintenancePage() {
           {/* Logs Tab */}
           {activeTab === 'logs' && (
             <div className="floating-card p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">System Logs</h3>
-              <div className="bg-gray-900 rounded-lg p-4 text-green-400 font-mono text-sm overflow-x-auto">
-                {logsLoading ? (
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">System Logs</h3>
+                <div className="flex gap-2">
+                  <select
+                    value={logLevel}
+                    onChange={(e) => { setLogLevel(e.target.value) }}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  >
+                    <option value="">All Levels</option>
+                    <option value="info">INFO</option>
+                    <option value="audit">AUDIT</option>
+                    <option value="warn">WARN</option>
+                    <option value="error">ERROR</option>
+                  </select>
+                  <input
+                    value={logEmail}
+                    onChange={(e) => { setLogEmail(e.target.value) }}
+                    placeholder="User email"
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                  <input
+                    value={logPath}
+                    onChange={(e) => { setLogPath(e.target.value) }}
+                    placeholder="Path"
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                  <button
+                    className="btn-destructive px-3 py-2 rounded-md text-sm"
+                    onClick={() => setShowClearLogsConfirm(true)}
+                    disabled={logsInfinite.isFetching || logsInfinite.isFetchingNextPage}
+                  >
+                    Delete All
+                  </button>
+                </div>
+              </div>
+              <div
+                className="bg-gray-900 rounded-lg p-4 text-green-400 font-mono text-sm overflow-y-auto overflow-x-auto"
+                style={{ maxHeight: 420 }}
+                onScroll={(e) => {
+                  const el = e.currentTarget
+                  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 48 && logsInfinite.hasNextPage && !logsInfinite.isFetchingNextPage) {
+                    logsInfinite.fetchNextPage()
+                  }
+                }}
+              >
+                {logsInfinite.isLoading ? (
                   <div className="text-gray-400">Loading logs...</div>
-                ) : logs.length === 0 ? (
-                  <div className="text-gray-400">No logs found</div>
                 ) : (
                   <div className="space-y-1">
-                    {logs.map((log) => (
+                    {(logsInfinite.data?.pages || []).flatMap((p: any) => p.items || []).map((log: any) => (
                       <div key={log._id}>
-                        [{new Date(log.createdAt).toLocaleString()}] {log.level.toUpperCase()}: {log.message}
+                        [{new Date(log.createdAt).toLocaleString()}] {(log.level || '').toUpperCase()}: {log.message}
                         {log.userEmail ? ` - ${log.userEmail}` : ''}
                         {log.path ? ` (${log.method} ${log.path} ${log.status})` : ''}
                       </div>
+                    ))}
+                    {logsInfinite.isFetchingNextPage && (
+                      <div className="text-gray-400">Loading more...</div>
+                    )}
+                    {!logsInfinite.hasNextPage && ((logsInfinite.data?.pages?.[0] as any)?.items?.length ? (
+                      <div className="text-gray-500 text-xs mt-2">End of logs</div>
+                    ) : (
+                      <div className="text-gray-400">No logs found</div>
                     ))}
                   </div>
                 )}
               </div>
             </div>
           )}
+
+          {/* Clear Logs Confirmation */}
+          <ConfirmDialog
+            isOpen={showClearLogsConfirm}
+            title="Delete System Logs"
+            message="Are you sure you want to permanently delete system logs? This cannot be undone."
+            confirmLabel="Delete"
+            cancelLabel="Cancel"
+            confirmVariant="danger"
+            onConfirm={async () => {
+              try {
+                const url = new URL('/api/system-logs', window.location.origin)
+                if (logLevel) url.searchParams.set('level', logLevel)
+                if (logEmail) url.searchParams.set('userEmail', logEmail)
+                if (logPath) url.searchParams.set('path', logPath)
+                const res = await fetch(url.toString().replace(window.location.origin, ''), {
+                  method: 'DELETE',
+                  credentials: 'include'
+                })
+                if (!res.ok) throw new Error('Failed to delete logs')
+                setShowClearLogsConfirm(false)
+                await logsInfinite.refetch()
+                toast.success('Logs deleted')
+              } catch (e) {
+                setShowClearLogsConfirm(false)
+                toast.error('Failed to delete logs')
+              }
+            }}
+            onCancel={() => setShowClearLogsConfirm(false)}
+          />
+
+          {/* Save Settings Confirmation */}
+          <ConfirmDialog
+            isOpen={showConfirmSaveSettings}
+            title="Save Maintenance Settings"
+            message="Apply these maintenance settings now? This will take effect immediately."
+            confirmLabel="Save"
+            cancelLabel="Cancel"
+            confirmVariant="primary"
+            onConfirm={async () => {
+              setShowConfirmSaveSettings(false)
+              await updateMaintenanceSettings()
+            }}
+            onCancel={() => setShowConfirmSaveSettings(false)}
+          />
         </div>
 
         {/* Bug Report Detail Modal */}

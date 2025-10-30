@@ -14,10 +14,10 @@ router.get('/me', verifyToken, async (req, res) => {
     // User info is already in req.user from JWT verification
     return res.json({
       user: {
-        id: req.user?.userId,
-        email: req.user?.email,
+        id: req.user?.sub,
+        email: undefined,
         role: req.user?.role,
-        name: req.user?.name
+        name: undefined
       }
     })
   } catch (error) {
@@ -76,7 +76,7 @@ router.post('/', verifyToken, requireRole(['administrator']), async (req, res) =
     pictureUrl: pictureUrl || undefined 
   })
   try {
-    await logger.audit('User created', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { createdUserId: String(user._id), email } })
+    await logger.audit('User created', { userId: req.user?.sub, userEmail: undefined, userRole: req.user?.role, context: { createdUserId: String(user._id), email } })
   } catch {}
   return res.status(201).json({ id: user._id })
 })
@@ -124,7 +124,7 @@ router.put('/:id', verifyToken, requireRole(['administrator']), async (req, res)
   
   console.log('Updated user:', result)
   try {
-    await logger.audit('User updated', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { targetUserId: id, update } })
+    await logger.audit('User updated', { userId: req.user?.sub, userEmail: undefined, userRole: req.user?.role, context: { targetUserId: id, update } })
   } catch {}
   
   // Return the updated user data
@@ -148,7 +148,7 @@ router.delete('/:id', verifyToken, requireRole(['administrator']), async (req, r
   const { id } = req.params
   const result = await User.findByIdAndDelete(id)
   if (!result) return res.status(404).json({ error: 'Not found' })
-  try { await logger.audit('User deleted', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { targetUserId: id } }) } catch {}
+  try { await logger.audit('User deleted', { userId: req.user?.sub, userEmail: undefined, userRole: req.user?.role, context: { targetUserId: id } }) } catch {}
   return res.json({ ok: true })
 })
 

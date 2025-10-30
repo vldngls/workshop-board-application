@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 
 export function useBugReports() {
   return useQuery<{ bugReports: any[] }>({
@@ -63,6 +63,35 @@ export function useSystemLogs(limit = 100, enabled = false) {
     },
     enabled,
   })
+}
+
+export function useInfiniteSystemLogs(params: { level?: string; userEmail?: string; path?: string; limit?: number; enabled?: boolean }) {
+  const { level, userEmail, path, limit = 50, enabled = false } = params
+  return useInfiniteQuery<{ items: any[]; page: number; total: number; limit: number }>(
+    {
+      queryKey: ['system-logs', 'infinite', { level, userEmail, path, limit }],
+      queryFn: async ({ pageParam }) => {
+        const url = new URL('/api/system-logs', window.location.origin)
+        url.searchParams.set('page', String(pageParam))
+        url.searchParams.set('limit', String(limit))
+        if (level) url.searchParams.set('level', level)
+        if (userEmail) url.searchParams.set('userEmail', userEmail)
+        if (path) url.searchParams.set('path', path)
+        const res = await fetch(url.toString().replace(window.location.origin, ''), { credentials: 'include' })
+        if (!res.ok) throw new Error('Failed to fetch system logs')
+        return res.json()
+      },
+      initialPageParam: 1,
+      getNextPageParam: (lastPage) => {
+        const { page, total, limit: pageSize } = lastPage
+        const totalPages = Math.ceil((total || 0) / (pageSize || 1))
+        if (page < totalPages) return page + 1
+        return undefined
+      },
+      enabled,
+      staleTime: 10_000,
+    }
+  )
 }
 
 export function useUpdateBugReport() {

@@ -12,24 +12,19 @@ export async function middleware(req: NextRequest) {
   
 
   // Always allow core public assets
-  if (pathname.startsWith("/_next") || pathname.startsWith("/api") || pathname === "/favicon.ico") {
+  if (pathname.startsWith("/_next") || pathname.startsWith("/api") || pathname === "/favicon.ico" || pathname === "/site.webmanifest") {
     return NextResponse.next()
   }
 
   // Maintenance mode gate: check early
   try {
-    const res = await fetch(`${origin}/api/maintenance/status`, { cache: 'no-store' })
+    const res = await fetch(`${origin}/api/maintenance/settings/public`, { cache: 'no-store' })
     if (res.ok) {
       const data = await res.json().catch(() => null)
       const isUnderMaintenance = !!data?.isUnderMaintenance
 
       if (isUnderMaintenance) {
-        // Allow dedicated admin login page during maintenance
-        if (pathname.startsWith('/admin-login')) {
-          return NextResponse.next()
-        }
-
-        // If superadmin, allow access everywhere
+        // If superadmin, allow full access during maintenance
         if (encToken) {
           const jwtSecret = process.env.JWT_SECRET
           if (jwtSecret) {
@@ -42,17 +37,13 @@ export async function middleware(req: NextRequest) {
                 return NextResponse.next()
               }
             } catch {
-              // fall through to redirect
+              // fall through
             }
           }
         }
 
-        // Redirect all non-admin routes to maintenance or admin-login appropriately
+        // Strict maintenance gate for everyone else: only allow root ('/') to render maintenance page
         const url = req.nextUrl.clone()
-        if (pathname.startsWith('/login')) {
-          url.pathname = '/admin-login'
-          return NextResponse.redirect(url)
-        }
         // Allow root to render maintenance page without redirect loop
         if (pathname === '/') {
           return NextResponse.next()

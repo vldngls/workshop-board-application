@@ -27,6 +27,23 @@ router.get('/', verifyToken, requireRole(['superadmin']), async (req, res) => {
   }
 })
 
+// Delete all logs (optionally with filters)
+router.delete('/', verifyToken, requireRole(['superadmin']), async (req, res) => {
+  try {
+    await connectToMongo()
+    const { level, userEmail, path } = req.query
+    const query = {}
+    if (level) query.level = level
+    if (userEmail) query.userEmail = userEmail
+    if (path) query.path = path
+    const result = await SystemLog.deleteMany(query)
+    res.json({ ok: true, deleted: result.deletedCount || 0 })
+  } catch (err) {
+    console.error('Failed to delete system logs:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 module.exports = router
 
 

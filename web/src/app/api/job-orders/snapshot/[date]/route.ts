@@ -5,7 +5,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { date: string } }
+  { params }: { params: Promise<{ date: string }> }
 ) {
   try {
     const token = await getRawToken()
@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-  const { date } = params
+  const { date } = await params
     
     const response = await fetch(`${API_BASE_URL}/job-orders/snapshot/${date}`, {
       method: 'GET',

@@ -18,7 +18,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         // Retry failed requests
         retry: 1,
         // Only refetch on mount when stale to leverage cache effectively
-        refetchOnMount: 'ifStale',
+        refetchOnMount: true,
       },
       mutations: {
         // Retry mutations once on failure
