@@ -1,5 +1,7 @@
 {
   // Visit https://aka.ms/tsconfig to read more about this file
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "api", "scripts"],
   "compilerOptions": {
     // File Layout
     "rootDir": "src",
@@ -53,6 +55,7 @@
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
+    "allowJs": true,
     "forceConsistentCasingInFileNames": true,
   }
 }
