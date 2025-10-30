@@ -72,6 +72,11 @@ out/
 # Nuxt.js build / generate output
 .nuxt
 dist
+server/dist
+server/api/*.d.ts
+server/api/*.d.ts.map
+server/scripts/*.d.mts
+server/scripts/*.d.mts.map
 
 # Gatsby files
 .cache/
