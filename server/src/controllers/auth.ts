@@ -2,11 +2,11 @@ const { Router } = require('express')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { z } = require('zod')
-const { connectToMongo } = require('../config/mongo.js')
-const { User } = require('../models/User.js')
+const { connectToMongo } = require('../config/mongo')
+const { User } = require('../models/User')
 
 const router = Router()
-const logger = require('../utils/logger.ts')
+const logger = require('../utils/logger')
 
 const loginSchema = z.object({
   email: z.string().optional(),

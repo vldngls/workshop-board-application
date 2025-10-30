@@ -1,10 +1,10 @@
 const { Router } = require('express')
 const { z } = require('zod')
-const { connectToMongo } = require('../config/mongo.js')
-const { Appointment } = require('../models/Appointment.js')
-const { User } = require('../models/User.js')
-const { JobOrder } = require('../models/JobOrder.js')
-const { verifyToken, requireRole } = require('../middleware/auth.js')
+const { connectToMongo } = require('../config/mongo')
+const { Appointment } = require('../models/Appointment')
+const { User } = require('../models/User')
+const { JobOrder } = require('../models/JobOrder')
+const { verifyToken, requireRole } = require('../middleware/auth')
 
 const router = Router()
 

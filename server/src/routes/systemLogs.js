@@ -1,7 +1,7 @@
 const { Router } = require('express')
-const { connectToMongo } = require('../config/mongo.ts')
-const { verifyToken, requireRole } = require('../middleware/auth.ts')
-const SystemLog = require('../models/SystemLog.ts')
+const { connectToMongo } = require('../config/mongo')
+const { verifyToken, requireRole } = require('../middleware/auth')
+const SystemLog = require('../models/SystemLog')
 
 const router = Router()
 

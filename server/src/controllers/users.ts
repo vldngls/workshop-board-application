@@ -1,12 +1,12 @@
 const { Router } = require('express')
-const { connectToMongo } = require('../config/mongo.js')
-const { User } = require('../models/User.js')
+const { connectToMongo } = require('../config/mongo')
+const { User } = require('../models/User')
 const { z } = require('zod')
 const bcrypt = require('bcryptjs')
-const { verifyToken, requireRole } = require('../middleware/auth.js')
+const { verifyToken, requireRole } = require('../middleware/auth')
 
 const router = Router()
-const logger = require('../utils/logger.ts')
+const logger = require('../utils/logger')
 
 // Get current user info (any authenticated user)
 router.get('/me', verifyToken, async (req, res) => {

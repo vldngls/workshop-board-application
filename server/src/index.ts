@@ -2,16 +2,16 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { connectToMongo } = require('./config/mongo.js');
-const authRouter = require('./controllers/auth.js');
-const usersRouter = require('./controllers/users.js');
-const jobOrdersRouter = require('./controllers/jobOrders.js');
-const appointmentsRouter = require('./controllers/appointments.js');
-const bugReportsRouter = require('./routes/bugReports.js');
-const bugReportsIdRouter = require('./routes/bugReportsId.js');
-const maintenanceStatsRouter = require('./routes/maintenanceStats.js');
-const maintenanceSettingsRouter = require('./routes/maintenanceSettings.js');
-const systemLogsRouter = require('./routes/systemLogs.js');
+const { connectToMongo } = require('./config/mongo');
+const authRouter = require('./controllers/auth');
+const usersRouter = require('./controllers/users');
+const jobOrdersRouter = require('./controllers/jobOrders');
+const appointmentsRouter = require('./controllers/appointments');
+const bugReportsRouter = require('./routes/bugReports');
+const bugReportsIdRouter = require('./routes/bugReportsId');
+const maintenanceStatsRouter = require('./routes/maintenanceStats');
+const maintenanceSettingsRouter = require('./routes/maintenanceSettings');
+const systemLogsRouter = require('./routes/systemLogs');
 
 
 // Only load .env file in development
@@ -66,8 +66,8 @@ if (!isDevelopment) {
 }
 
 // JWT authentication for protected routes
-const { verifyToken } = require('./middleware/auth.js');
-const { requestLogger } = require('./middleware/requestLogger.ts');
+const { verifyToken } = require('./middleware/auth');
+const { requestLogger } = require('./middleware/requestLogger');
 
 app.use((req, res, next) => {
   // Public routes that don't need authentication
@@ -110,7 +110,7 @@ app.use('/maintenance/settings', maintenanceSettingsRouter); // protected by JWT
 app.use('/system-logs', systemLogsRouter); // protected by JWT (superadmin)
 
 // Admin-only endpoint using JWT middleware
-const { requireRole } = require('./middleware/auth.js');
+const { requireRole } = require('./middleware/auth');
 
 app.get('/admin-only', requireRole(['administrator']), (_req, res) => {
   res.json({ secret: 'admin data' });

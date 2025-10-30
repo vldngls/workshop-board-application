@@ -1,7 +1,7 @@
 const { Router } = require('express')
 const { z } = require('zod')
-const { connectToMongo } = require('../config/mongo.ts')
-const { verifyToken, requireRole } = require('../middleware/auth.ts')
+const { connectToMongo } = require('../config/mongo')
+const { verifyToken, requireRole } = require('../middleware/auth')
 
 const router = Router()
 
@@ -88,7 +88,7 @@ router.put('/', verifyToken, requireRole(['superadmin']), async (req, res) => {
 
     // Audit log
     try {
-      const logger = require('../utils/logger.ts')
+      const logger = require('../utils/logger')
       await logger.audit('Maintenance settings updated', {
         userId: req.user?.userId,
         userEmail: req.user?.email,

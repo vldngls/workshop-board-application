@@ -1,4 +1,4 @@
-const SystemLog = require('../models/SystemLog.ts')
+const SystemLog = require('../models/SystemLog')
 
 async function write(level: 'info'|'warn'|'error'|'audit', message: string, meta: any = {}) {
   try {

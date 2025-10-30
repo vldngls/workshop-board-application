@@ -1,14 +1,14 @@
 const { Router } = require('express')
 const { z } = require('zod')
-const { connectToMongo } = require('../config/mongo.js')
-const { JobOrder } = require('../models/JobOrder.js')
-const { User } = require('../models/User.js')
-const { Appointment } = require('../models/Appointment.js')
-const { WorkshopSnapshot } = require('../models/WorkshopSnapshot.js')
-const { verifyToken, requireRole } = require('../middleware/auth.js')
+const { connectToMongo } = require('../config/mongo')
+const { JobOrder } = require('../models/JobOrder')
+const { User } = require('../models/User')
+const { Appointment } = require('../models/Appointment')
+const { WorkshopSnapshot } = require('../models/WorkshopSnapshot')
+const { verifyToken, requireRole } = require('../middleware/auth')
 
 const router = Router()
-const logger = require('../utils/logger.ts')
+const logger = require('../utils/logger')
 
 // Get all job orders with optional filtering, search, and pagination
 router.get('/', verifyToken, async (req, res) => {

@@ -1,4 +1,4 @@
-const logger = require('../utils/logger.ts')
+const logger = require('../utils/logger')
 
 function requestLogger(req: any, res: any, next: any) {
   const start = Date.now()
