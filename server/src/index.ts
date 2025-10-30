@@ -11,6 +11,7 @@ const bugReportsRouter = require('./routes/bugReports.js');
 const bugReportsIdRouter = require('./routes/bugReportsId.js');
 const maintenanceStatsRouter = require('./routes/maintenanceStats.js');
 const maintenanceSettingsRouter = require('./routes/maintenanceSettings.js');
+const systemLogsRouter = require('./routes/systemLogs.js');
 
 // Only load .env file in development
 if (process.env.NODE_ENV !== 'production') {
@@ -65,6 +66,7 @@ if (!isDevelopment) {
 
 // JWT authentication for protected routes
 const { verifyToken } = require('./middleware/auth.js');
+const { requestLogger } = require('./middleware/requestLogger.ts');
 
 app.use((req, res, next) => {
   // Public routes that don't need authentication
@@ -74,6 +76,13 @@ app.use((req, res, next) => {
     req.path.startsWith('/auth') ||
     req.path === '/maintenance/settings/public'
   ) {
+    // Still log public requests
+    return requestLogger(req, res, next);
+  }
+
+  // Attach logger for authenticated paths
+  requestLogger(req, res, () => {})
+  {
     return next();
   }
 
@@ -101,6 +110,7 @@ app.use('/bug-reports', bugReportsRouter); // protected by JWT
 app.use('/bug-reports', bugReportsIdRouter); // protected by JWT
 app.use('/maintenance/stats', maintenanceStatsRouter); // protected by JWT
 app.use('/maintenance/settings', maintenanceSettingsRouter); // protected by JWT
+app.use('/system-logs', systemLogsRouter); // protected by JWT (superadmin)
 
 // Admin-only endpoint using JWT middleware
 const { requireRole } = require('./middleware/auth.js');

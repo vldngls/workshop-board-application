@@ -10,6 +10,7 @@ interface TimetableHeaderProps {
   holdWarrantyJobs: JobOrderWithDetails[]
   holdInsuranceJobs: JobOrderWithDetails[]
   waitingPartsJobs: JobOrderWithDetails[]
+  isSnapshot?: boolean
 }
 
 const TimetableHeader = memo(({
@@ -20,7 +21,8 @@ const TimetableHeader = memo(({
   holdCustomerJobs,
   holdWarrantyJobs,
   holdInsuranceJobs,
-  waitingPartsJobs
+  waitingPartsJobs,
+  isSnapshot
 }: TimetableHeaderProps) => {
   const navigateDate = (direction: 'prev' | 'next') => {
     const newDate = new Date(date)
@@ -50,6 +52,9 @@ const TimetableHeader = memo(({
         </button>
         <div className="flex items-center space-x-3">
           <h2 className="text-lg font-bold whitespace-nowrap">{formatDate(date)}</h2>
+          {isSnapshot && (
+            <span className="px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800 border border-amber-300">Snapshot</span>
+          )}
           <button
             onClick={() => onDateChange(new Date())}
             className="px-3 py-1.5 text-sm bg-ford-blue/20 hover:bg-ford-blue/30 text-ford-blue rounded-lg font-semibold transition-all border border-ford-blue/30"

@@ -217,7 +217,7 @@ export default function JobOrdersPage() {
   }
 
   return (
-    <RoleGuard allowedRoles={['administrator', 'job-controller']}>
+    <RoleGuard allowedRoles={['administrator', 'job-controller', 'superadmin']}>
       <div className="space-y-6">
         <Toaster position="top-right" />
       <div className="flex justify-between items-center">

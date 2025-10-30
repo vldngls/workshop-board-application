@@ -11,9 +11,64 @@ interface JWTPayload {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   const token = req.cookies.get("token")?.value
+  const origin = req.nextUrl.origin
 
-  // Allow public paths
-  if (pathname.startsWith("/login") || pathname.startsWith("/_next") || pathname.startsWith("/api") || pathname === "/favicon.ico") {
+  // Always allow core public assets
+  if (pathname.startsWith("/_next") || pathname.startsWith("/api") || pathname === "/favicon.ico") {
+    return NextResponse.next()
+  }
+
+  // Maintenance mode gate: check early
+  try {
+    const res = await fetch(`${origin}/api/maintenance/status`, { cache: 'no-store' })
+    if (res.ok) {
+      const data = await res.json().catch(() => null)
+      const isUnderMaintenance = !!data?.isUnderMaintenance
+
+      if (isUnderMaintenance) {
+        // Allow dedicated admin login page during maintenance
+        if (pathname.startsWith('/admin-login')) {
+          return NextResponse.next()
+        }
+
+        // If superadmin, allow access everywhere
+        if (token) {
+          const jwtSecret = process.env.JWT_SECRET
+          if (jwtSecret) {
+            try {
+              const secret = new TextEncoder().encode(jwtSecret)
+              const { payload } = await jwtVerify(token, secret)
+              const role = (payload as any).role as string
+              if (role === 'superadmin') {
+                return NextResponse.next()
+              }
+            } catch {
+              // fall through to redirect
+            }
+          }
+        }
+
+        // Redirect all non-admin routes to maintenance or admin-login appropriately
+        const url = req.nextUrl.clone()
+        if (pathname.startsWith('/login')) {
+          url.pathname = '/admin-login'
+          return NextResponse.redirect(url)
+        }
+        // Allow root to render maintenance page without redirect loop
+        if (pathname === '/') {
+          return NextResponse.next()
+        }
+        // For any other route, show maintenance warning page at root
+        url.pathname = '/'
+        return NextResponse.redirect(url)
+      }
+    }
+  } catch {
+    // If status check fails, do not block
+  }
+
+  // Allow public login routes when not in maintenance
+  if (pathname.startsWith("/login") || pathname.startsWith("/admin-login")) {
     return NextResponse.next()
   }
 
@@ -85,7 +140,8 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/(admin/:path*)", "/(job-controller/:path*)", "/(technician/:path*)", "/dashboard/:path*"],
+  // Run on all routes; logic above skips assets and API as needed
+  matcher: ["/(.*)"],
 }
 
 

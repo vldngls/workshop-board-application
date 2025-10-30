@@ -30,6 +30,8 @@ export default function MaintenancePage() {
   })
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'bug-reports' | 'settings' | 'logs'>('overview')
+  const [logs, setLogs] = useState<any[]> ([])
+  const [logsLoading, setLogsLoading] = useState(false)
   const [selectedBugReport, setSelectedBugReport] = useState<BugReport | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
 
@@ -65,6 +67,23 @@ export default function MaintenancePage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const loadLogs = async () => {
+      if (activeTab !== 'logs') return
+      setLogsLoading(true)
+      try {
+        const res = await fetch('/api/system-logs?limit=100', { credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          setLogs(data.items || [])
+        }
+      } finally {
+        setLogsLoading(false)
+      }
+    }
+    loadLogs()
+  }, [activeTab])
 
   const updateBugReportStatus = async (id: string, status: string, resolution?: string) => {
     try {
@@ -162,8 +181,8 @@ export default function MaintenancePage() {
 
   return (
     <RoleGuard allowedRoles={['superadmin']}>
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="space-y-6">
+        <div className="space-y-6">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Maintenance Dashboard</h1>
             <p className="text-gray-600">System administration and maintenance tools</p>
@@ -198,7 +217,7 @@ export default function MaintenancePage() {
             <div className="space-y-6">
               {/* Stats Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white rounded-lg shadow p-6">
+                <div className="floating-card p-6">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
                       <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -214,7 +233,7 @@ export default function MaintenancePage() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow p-6">
+                <div className="floating-card p-6">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
                       <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
@@ -230,7 +249,7 @@ export default function MaintenancePage() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow p-6">
+                <div className="floating-card p-6">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
                       <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -246,7 +265,7 @@ export default function MaintenancePage() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow p-6">
+                <div className="floating-card p-6">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
                       <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
@@ -264,7 +283,7 @@ export default function MaintenancePage() {
               </div>
 
               {/* System Status */}
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="floating-card p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">System Status</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center">
@@ -286,7 +305,7 @@ export default function MaintenancePage() {
 
           {/* Bug Reports Tab */}
           {activeTab === 'bug-reports' && (
-            <div className="bg-white rounded-lg shadow">
+            <div className="floating-card">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900">Bug Reports & Suggestions</h3>
               </div>
@@ -364,7 +383,7 @@ export default function MaintenancePage() {
 
           {/* Settings Tab */}
           {activeTab === 'settings' && (
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="floating-card p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">Maintenance Settings</h3>
               
               <div className="space-y-6">
@@ -410,18 +429,24 @@ export default function MaintenancePage() {
 
           {/* Logs Tab */}
           {activeTab === 'logs' && (
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="floating-card p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">System Logs</h3>
               <div className="bg-gray-900 rounded-lg p-4 text-green-400 font-mono text-sm overflow-x-auto">
-                <div className="space-y-1">
-                  <div>[2024-01-15 10:30:15] INFO: System started successfully</div>
-                  <div>[2024-01-15 10:30:16] INFO: Database connection established</div>
-                  <div>[2024-01-15 10:30:17] INFO: Authentication service initialized</div>
-                  <div>[2024-01-15 10:35:22] INFO: User login: admin@example.com</div>
-                  <div>[2024-01-15 10:40:15] WARN: High memory usage detected</div>
-                  <div>[2024-01-15 10:45:30] INFO: Backup completed successfully</div>
-                  <div>[2024-01-15 11:00:00] INFO: Scheduled maintenance check passed</div>
-                </div>
+                {logsLoading ? (
+                  <div className="text-gray-400">Loading logs...</div>
+                ) : logs.length === 0 ? (
+                  <div className="text-gray-400">No logs found</div>
+                ) : (
+                  <div className="space-y-1">
+                    {logs.map((log) => (
+                      <div key={log._id}>
+                        [{new Date(log.createdAt).toLocaleString()}] {log.level.toUpperCase()}: {log.message}
+                        {log.userEmail ? ` - ${log.userEmail}` : ''}
+                        {log.path ? ` (${log.method} ${log.path} ${log.status})` : ''}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

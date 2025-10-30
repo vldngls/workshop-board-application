@@ -84,13 +84,16 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
     updateHoldCustomerJobs,
     updateHoldWarrantyJobs,
     updateHoldInsuranceJobs,
-    updateFinishedUnclaimedJobs
+    updateFinishedUnclaimedJobs,
+    isSnapshot
   } = isHistorical && historicalJobOrders ? {
     ...workshopData,
     jobOrders: historicalJobOrders,
     loading: false,
     updating: false
   } : workshopData
+
+  const readOnly = !!isSnapshot || !!isHistorical
 
   // Modal and UI state
   const [selectedJob, setSelectedJob] = useState<any>(null)
@@ -402,6 +405,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
         holdWarrantyJobs={holdWarrantyJobs}
         holdInsuranceJobs={holdInsuranceJobs}
         waitingPartsJobs={waitingPartsJobs}
+        isSnapshot={isSnapshot}
       />
 
       {/* Technician Hours Summary */}
@@ -414,10 +418,10 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
         appointments={appointments}
         highlightedJobId={highlightedJobId}
         availableSlotsData={availableSlotsMap}
-        onJobClick={handleCellClick}
-        onAppointmentClick={handleAppointmentClick}
-        onDeleteAppointment={userRole === 'technician' ? undefined : handleDeleteAppointment}
-        onAvailableSlotClick={handleAvailableSlotClick}
+        onJobClick={readOnly ? ((_: any) => {}) as any : handleCellClick}
+        onAppointmentClick={readOnly ? ((_: any) => {}) as any : handleAppointmentClick}
+        onDeleteAppointment={readOnly || userRole === 'technician' ? ((_: any) => {}) as any : handleDeleteAppointment}
+        onAvailableSlotClick={readOnly ? ((_: any, __: any, ___: any) => {}) as any : handleAvailableSlotClick}
       />
 
       {/* Job Status Sections */}

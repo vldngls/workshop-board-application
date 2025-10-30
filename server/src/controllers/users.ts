@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs')
 const { verifyToken, requireRole } = require('../middleware/auth.js')
 
 const router = Router()
+const logger = require('../utils/logger.ts')
 
 // Get current user info (any authenticated user)
 router.get('/me', verifyToken, async (req, res) => {
@@ -74,6 +75,9 @@ router.post('/', verifyToken, requireRole(['administrator']), async (req, res) =
     level: role === 'technician' ? (level || 'untrained') : undefined,
     pictureUrl: pictureUrl || undefined 
   })
+  try {
+    await logger.audit('User created', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { createdUserId: String(user._id), email } })
+  } catch {}
   return res.status(201).json({ id: user._id })
 })
 
@@ -119,6 +123,9 @@ router.put('/:id', verifyToken, requireRole(['administrator']), async (req, res)
   if (!result) return res.status(404).json({ error: 'Not found' })
   
   console.log('Updated user:', result)
+  try {
+    await logger.audit('User updated', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { targetUserId: id, update } })
+  } catch {}
   
   // Return the updated user data
   return res.json({ 
@@ -141,6 +148,7 @@ router.delete('/:id', verifyToken, requireRole(['administrator']), async (req, r
   const { id } = req.params
   const result = await User.findByIdAndDelete(id)
   if (!result) return res.status(404).json({ error: 'Not found' })
+  try { await logger.audit('User deleted', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { targetUserId: id } }) } catch {}
   return res.json({ ok: true })
 })
 

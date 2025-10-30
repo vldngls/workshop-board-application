@@ -8,6 +8,7 @@ const { WorkshopSnapshot } = require('../models/WorkshopSnapshot.js')
 const { verifyToken, requireRole } = require('../middleware/auth.js')
 
 const router = Router()
+const logger = require('../utils/logger.ts')
 
 // Get all job orders with optional filtering, search, and pagination
 router.get('/', verifyToken, async (req, res) => {
@@ -757,6 +758,15 @@ router.post('/', verifyToken, requireRole(['administrator', 'job-controller']), 
       .populate('serviceAdvisor', 'name email')
       .lean()
     
+    try {
+      await logger.audit('Job order created', {
+        userId: req.user?.userId,
+        userEmail: req.user?.email,
+        userRole: req.user?.role,
+        context: { jobId: String(jobOrder._id), jobNumber: jobOrder.jobNumber }
+      })
+    } catch {}
+
     return res.status(201).json({ jobOrder: populatedJobOrder })
   } catch (error) {
     console.error('Error creating job order:', error)
@@ -1021,6 +1031,15 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
       .populate('serviceAdvisor', 'name email')
       .lean()
     
+    try {
+      await logger.audit('Job order updated', {
+        userId: req.user?.userId,
+        userEmail: req.user?.email,
+        userRole: req.user?.role,
+        context: { jobId: String(jobOrder._id), changes: updateData }
+      })
+    } catch {}
+
     console.log('✅ SERVER - Job order updated successfully:', {
       _id: updatedJobOrder?._id,
       jobNumber: updatedJobOrder?.jobNumber,
@@ -1048,6 +1067,15 @@ router.delete('/:id', verifyToken, requireRole(['administrator', 'job-controller
       return res.status(404).json({ error: 'Job order not found' })
     }
     
+    try {
+      await logger.audit('Job order deleted', {
+        userId: req.user?.userId,
+        userEmail: req.user?.email,
+        userRole: req.user?.role,
+        context: { jobId: String(jobOrder._id), jobNumber: jobOrder.jobNumber }
+      })
+    } catch {}
+
     return res.json({ message: 'Job order deleted successfully' })
   } catch (error) {
     console.error('Error deleting job order:', error)
@@ -1074,6 +1102,15 @@ router.patch('/:id/toggle-important', verifyToken, requireRole(['administrator',
       .populate('serviceAdvisor', 'name email')
       .lean()
     
+    try {
+      await logger.audit('Job order important toggled', {
+        userId: req.user?.userId,
+        userEmail: req.user?.email,
+        userRole: req.user?.role,
+        context: { jobId: String(jobOrder._id), isImportant: jobOrder.isImportant }
+      })
+    } catch {}
+
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error toggling important status:', error)
@@ -1113,6 +1150,8 @@ router.patch('/:id/submit-qi', verifyToken, requireRole(['administrator', 'job-c
       .populate('serviceAdvisor', 'name email')
       .lean()
     
+    try { await logger.audit('Job order submitted for QI', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error submitting for QI:', error)
@@ -1144,6 +1183,8 @@ router.patch('/:id/approve-qi', verifyToken, requireRole(['administrator', 'job-
       .populate('serviceAdvisor', 'name email')
       .lean()
     
+    try { await logger.audit('QI approved', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error approving QI:', error)
@@ -1175,6 +1216,8 @@ router.patch('/:id/reject-qi', verifyToken, requireRole(['administrator', 'job-c
       .populate('serviceAdvisor', 'name email')
       .lean()
     
+    try { await logger.audit('QI rejected', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error rejecting QI:', error)
@@ -1205,6 +1248,8 @@ router.patch('/:id/complete', verifyToken, requireRole(['administrator', 'job-co
       .populate('serviceAdvisor', 'name email')
       .lean()
     
+    try { await logger.audit('Job order marked finished-unclaimed', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error completing job:', error)
@@ -1235,6 +1280,8 @@ router.patch('/:id/mark-complete', verifyToken, requireRole(['administrator', 'j
       .populate('serviceAdvisor', 'name email')
       .lean()
     
+    try { await logger.audit('Job order marked complete', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error marking job as complete:', error)
@@ -1266,6 +1313,8 @@ router.patch('/:id/redo', verifyToken, requireRole(['administrator', 'job-contro
       .populate('serviceAdvisor', 'name email')
       .lean()
     
+    try { await logger.audit('Job order redo to QI', { userId: req.user?.userId, userEmail: req.user?.email, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
     console.error('Error redoing job:', error)
@@ -1274,7 +1323,7 @@ router.patch('/:id/redo', verifyToken, requireRole(['administrator', 'job-contro
 })
 
 // End of day processing: Create snapshot and mark carry-over jobs
-router.post('/end-of-day', verifyToken, requireRole(['administrator', 'job-controller']), async (req, res) => {
+router.post('/end-of-day', verifyToken, requireRole(['administrator', 'job-controller', 'superadmin']), async (req, res) => {
   try {
     await connectToMongo()
     
@@ -1333,42 +1382,46 @@ router.post('/end-of-day', verifyToken, requireRole(['administrator', 'job-contr
       date: today,
       createdBy: userId,
       jobOrders: todayJobs.map(job => ({
-        _id: job._id.toString(),
-        jobNumber: job.jobNumber,
-        createdBy: {
-          _id: job.createdBy._id.toString(),
-          name: job.createdBy.name,
-          email: job.createdBy.email
+        _id: String(job._id),
+        jobNumber: job.jobNumber || '',
+        createdBy: job.createdBy && job.createdBy._id ? {
+          _id: String(job.createdBy._id),
+          name: job.createdBy.name || 'Unknown',
+          email: job.createdBy.email || 'unknown@example.com'
+        } : {
+          _id: String(userId),
+          name: req.user?.name || 'System',
+          email: req.user?.email || 'system@example.com'
         },
         assignedTechnician: job.assignedTechnician ? {
-          _id: job.assignedTechnician._id.toString(),
-          name: job.assignedTechnician.name,
-          email: job.assignedTechnician.email
+          _id: String(job.assignedTechnician._id || ''),
+          name: job.assignedTechnician.name || 'Unknown',
+          email: job.assignedTechnician.email || 'unknown@example.com'
         } : null,
         serviceAdvisor: job.serviceAdvisor ? {
-          _id: job.serviceAdvisor._id.toString(),
-          name: job.serviceAdvisor.name,
-          email: job.serviceAdvisor.email
+          _id: String(job.serviceAdvisor._id || ''),
+          name: job.serviceAdvisor.name || 'Unknown',
+          email: job.serviceAdvisor.email || 'unknown@example.com'
         } : null,
-        plateNumber: job.plateNumber,
-        vin: job.vin,
-        timeRange: job.timeRange,
-        actualEndTime: job.actualEndTime,
-        jobList: job.jobList,
-        parts: job.parts,
+        plateNumber: job.plateNumber || '',
+        vin: job.vin || '',
+        timeRange: job.timeRange || { start: '00:00', end: '00:00' },
+        actualEndTime: job.actualEndTime || undefined,
+        jobList: Array.isArray(job.jobList) ? job.jobList : [],
+        parts: Array.isArray(job.parts) ? job.parts : [],
         status: job.status,
-        date: job.date,
-        originalCreatedDate: job.originalCreatedDate,
-        sourceType: job.sourceType,
-        carriedOver: job.carriedOver,
-        isImportant: job.isImportant,
-        qiStatus: job.qiStatus,
-        holdCustomerRemarks: job.holdCustomerRemarks,
-        subletRemarks: job.subletRemarks,
-        originalJobId: job.originalJobId?.toString(),
-        carryOverChain: job.carryOverChain,
-        createdAt: job.createdAt,
-        updatedAt: job.updatedAt
+        date: job.date || new Date(),
+        originalCreatedDate: job.originalCreatedDate || job.createdAt || new Date(),
+        sourceType: job.sourceType || 'direct',
+        carriedOver: !!job.carriedOver,
+        isImportant: !!job.isImportant,
+        qiStatus: job.qiStatus ?? null,
+        holdCustomerRemarks: job.holdCustomerRemarks || undefined,
+        subletRemarks: job.subletRemarks || undefined,
+        originalJobId: job.originalJobId ? String(job.originalJobId) : undefined,
+        carryOverChain: Array.isArray(job.carryOverChain) ? job.carryOverChain : [],
+        createdAt: job.createdAt || new Date(),
+        updatedAt: job.updatedAt || new Date()
       })),
       statistics: stats,
       carryOverJobs: carryOverJobs

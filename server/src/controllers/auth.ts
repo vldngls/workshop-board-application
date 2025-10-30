@@ -6,6 +6,7 @@ const { connectToMongo } = require('../config/mongo.js')
 const { User } = require('../models/User.js')
 
 const router = Router()
+const logger = require('../utils/logger.ts')
 
 const loginSchema = z.object({
   email: z.string().optional(),
@@ -26,10 +27,16 @@ router.post('/login', async (req, res) => {
     // Find user by email or username
     const query = email ? { email } : { username }
     const user = await User.findOne(query).lean()
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' })
+    if (!user) {
+      await logger.audit('Login failed - user not found', { context: { query } })
+      return res.status(401).json({ error: 'Invalid credentials' })
+    }
 
     const ok = await bcrypt.compare(password, user.passwordHash)
-    if (!ok) return res.status(401).json({ error: 'Invalid credentials' })
+    if (!ok) {
+      await logger.audit('Login failed - bad password', { context: { userId: user._id, email: user.email } })
+      return res.status(401).json({ error: 'Invalid credentials' })
+    }
 
     // Generate JWT token
     const jwtSecret = process.env.JWT_SECRET
@@ -49,6 +56,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '8h' }
     )
 
+    await logger.audit('Login success', { userId: String(user._id), userEmail: user.email, userRole: user.role })
     return res.json({
       token,
       user: {

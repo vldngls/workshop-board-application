@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import type { Role } from '@/types/auth'
 
 interface MaintenanceModeProps {
   children: React.ReactNode
@@ -10,21 +11,22 @@ export default function MaintenanceMode({ children }: MaintenanceModeProps) {
   const [isUnderMaintenance, setIsUnderMaintenance] = useState(false)
   const [maintenanceMessage, setMaintenanceMessage] = useState('')
   const [loading, setLoading] = useState(true)
+  const [userRole, setUserRole] = useState<Role | null>(null)
+  const [checkingRole, setCheckingRole] = useState(true)
+  // dedicated admin login route handles auth during maintenance
 
   useEffect(() => {
     checkMaintenanceStatus()
+    checkRole()
   }, [])
 
   const checkMaintenanceStatus = async () => {
     try {
-      const response = await fetch('/api/maintenance/settings', {
-        credentials: 'include'
-      })
-      
+      const response = await fetch('/api/maintenance/status', { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
-        setIsUnderMaintenance(data.isUnderMaintenance)
-        setMaintenanceMessage(data.maintenanceMessage)
+        setIsUnderMaintenance(!!data.isUnderMaintenance)
+        setMaintenanceMessage(data.maintenanceMessage || '')
       }
     } catch (error) {
       console.error('Error checking maintenance status:', error)
@@ -33,7 +35,25 @@ export default function MaintenanceMode({ children }: MaintenanceModeProps) {
     }
   }
 
-  if (loading) {
+  const checkRole = async () => {
+    try {
+      const response = await fetch('/api/auth/me', { credentials: 'include' })
+      if (response.ok) {
+        const data = await response.json()
+        setUserRole(data.user?.role as Role)
+      } else {
+        setUserRole(null)
+      }
+    } catch {
+      setUserRole(null)
+    } finally {
+      setCheckingRole(false)
+    }
+  }
+
+  // admin login handled at /admin-login
+
+  if (loading || checkingRole) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -41,7 +61,14 @@ export default function MaintenanceMode({ children }: MaintenanceModeProps) {
     )
   }
 
-  if (isUnderMaintenance) {
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname
+    if (path === '/admin-login') {
+      return <>{children}</>
+    }
+  }
+
+  if (isUnderMaintenance && userRole !== 'superadmin') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
@@ -57,7 +84,7 @@ export default function MaintenanceMode({ children }: MaintenanceModeProps) {
             {maintenanceMessage || 'We are currently performing scheduled maintenance. Please check back later.'}
           </p>
           
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-500 mb-4">
             We apologize for any inconvenience. Thank you for your patience.
           </div>
         </div>

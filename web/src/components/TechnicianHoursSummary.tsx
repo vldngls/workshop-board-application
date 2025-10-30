@@ -87,7 +87,7 @@ export default function TechnicianHoursSummary({ date }: TechnicianHoursSummaryP
   const totalRemaining = technicianSlots.reduce((sum, slot) => sum + slot.dailyHoursRemaining, 0)
 
   return (
-    <div className="floating-card">
+    <div className="floating-card overflow-hidden">
       {/* Compact Header */}
       <div 
         className="p-3 cursor-pointer hover:bg-neutral-50 transition-colors"
