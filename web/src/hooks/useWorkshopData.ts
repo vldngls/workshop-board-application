@@ -110,25 +110,74 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
           setTechnicians([])
         }
         setAppointments([])
-        // Derive queues from snapshot data so status sections still work
-        const pendingQI = mapped.filter((job: any) => job.status === 'QI' && job.qiStatus === 'pending')
-        const forRelease = mapped.filter((job: any) => job.status === 'FR')
-        const waitingParts = mapped.filter((job: any) => job.status === 'WP')
-        const forPlotting = mapped.filter((job: any) => job.status === 'UA')
-        const holdCustomer = mapped.filter((job: any) => job.status === 'HC')
-        const holdWarranty = mapped.filter((job: any) => job.status === 'HW')
-        const holdInsurance = mapped.filter((job: any) => job.status === 'HI')
-        const finishedUnclaimed = mapped.filter((job: any) => job.status === 'FU')
-        const carriedOver = mapped.filter((job: any) => job.carriedOver && !['FR','FU','CP'].includes(job.status))
-        setQiJobs(pendingQI as any)
-        setForReleaseJobs(forRelease as any)
-        setWaitingPartsJobs(waitingParts as any)
-        setForPlottingJobs(forPlotting as any)
-        setHoldCustomerJobs(holdCustomer as any)
-        setHoldWarrantyJobs(holdWarranty as any)
-        setHoldInsuranceJobs(holdInsurance as any)
-        setFinishedUnclaimedJobs(finishedUnclaimed as any)
-        setCarriedOverJobs(carriedOver as any)
+
+        // Derive queues from ALL jobs (global, not date-specific) for consistent sections
+        try {
+          const allJobsRes = await fetch('/api/job-orders?limit=1000')
+          if (allJobsRes.ok) {
+            const allJobsData = await allJobsRes.json()
+            const allJobs = (allJobsData.jobOrders || []) as JobOrderWithDetails[]
+
+            const pendingQI = allJobs.filter((job: any) => job.status === 'QI' && job.qiStatus === 'pending')
+            const forRelease = allJobs.filter((job: any) => job.status === 'FR')
+            const waitingParts = allJobs.filter((job: any) => job.status === 'WP')
+            const forPlotting = allJobs.filter((job: any) => job.status === 'UA')
+            const holdCustomer = allJobs.filter((job: any) => job.status === 'HC')
+            const holdWarranty = allJobs.filter((job: any) => job.status === 'HW')
+            const holdInsurance = allJobs.filter((job: any) => job.status === 'HI')
+            const finishedUnclaimed = allJobs.filter((job: any) => job.status === 'FU')
+            const carriedOver = allJobs.filter((job: any) => job.carriedOver && !['FR','FU','CP'].includes(job.status))
+
+            setQiJobs(pendingQI as any)
+            setForReleaseJobs(forRelease as any)
+            setWaitingPartsJobs(waitingParts as any)
+            setForPlottingJobs(forPlotting as any)
+            setHoldCustomerJobs(holdCustomer as any)
+            setHoldWarrantyJobs(holdWarranty as any)
+            setHoldInsuranceJobs(holdInsurance as any)
+            setFinishedUnclaimedJobs(finishedUnclaimed as any)
+            setCarriedOverJobs(carriedOver as any)
+          } else {
+            // Fallback to snapshot-derived queues if global fetch fails
+            const pendingQI = mapped.filter((job: any) => job.status === 'QI' && job.qiStatus === 'pending')
+            const forRelease = mapped.filter((job: any) => job.status === 'FR')
+            const waitingParts = mapped.filter((job: any) => job.status === 'WP')
+            const forPlotting = mapped.filter((job: any) => job.status === 'UA')
+            const holdCustomer = mapped.filter((job: any) => job.status === 'HC')
+            const holdWarranty = mapped.filter((job: any) => job.status === 'HW')
+            const holdInsurance = mapped.filter((job: any) => job.status === 'HI')
+            const finishedUnclaimed = mapped.filter((job: any) => job.status === 'FU')
+            const carriedOver = mapped.filter((job: any) => job.carriedOver && !['FR','FU','CP'].includes(job.status))
+            setQiJobs(pendingQI as any)
+            setForReleaseJobs(forRelease as any)
+            setWaitingPartsJobs(waitingParts as any)
+            setForPlottingJobs(forPlotting as any)
+            setHoldCustomerJobs(holdCustomer as any)
+            setHoldWarrantyJobs(holdWarranty as any)
+            setHoldInsuranceJobs(holdInsurance as any)
+            setFinishedUnclaimedJobs(finishedUnclaimed as any)
+            setCarriedOverJobs(carriedOver as any)
+          }
+        } catch {
+          const pendingQI = mapped.filter((job: any) => job.status === 'QI' && job.qiStatus === 'pending')
+          const forRelease = mapped.filter((job: any) => job.status === 'FR')
+          const waitingParts = mapped.filter((job: any) => job.status === 'WP')
+          const forPlotting = mapped.filter((job: any) => job.status === 'UA')
+          const holdCustomer = mapped.filter((job: any) => job.status === 'HC')
+          const holdWarranty = mapped.filter((job: any) => job.status === 'HW')
+          const holdInsurance = mapped.filter((job: any) => job.status === 'HI')
+          const finishedUnclaimed = mapped.filter((job: any) => job.status === 'FU')
+          const carriedOver = mapped.filter((job: any) => job.carriedOver && !['FR','FU','CP'].includes(job.status))
+          setQiJobs(pendingQI as any)
+          setForReleaseJobs(forRelease as any)
+          setWaitingPartsJobs(waitingParts as any)
+          setForPlottingJobs(forPlotting as any)
+          setHoldCustomerJobs(holdCustomer as any)
+          setHoldWarrantyJobs(holdWarranty as any)
+          setHoldInsuranceJobs(holdInsurance as any)
+          setFinishedUnclaimedJobs(finishedUnclaimed as any)
+          setCarriedOverJobs(carriedOver as any)
+        }
         setIsSnapshot(true)
         setLoading(false)
         return
@@ -136,62 +185,33 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
         setIsSnapshot(false)
       }
 
-      // Fetch all data in parallel (live view)
-      const [
-        jobOrdersResponse,
-        techniciansResponse,
-        qiResponse,
-        frResponse,
-        wpResponse,
-        fpResponse,
-        hcResponse,
-        hwResponse,
-        hiResponse,
-        fuResponse,
-        carriedOverResponse,
-        appointmentsResponse
-      ] = await Promise.all([
-        fetch(`/api/job-orders?date=${dateStr}`),
+      // Fetch minimal set in parallel (live view)
+      const [jobOrdersResponse, techniciansResponse, carriedOverResponse, appointmentsResponse, allJobsResponse] = await Promise.all([
+        fetch(`/api/job-orders?date=${dateStr}&limit=1000`), // date-specific for timetable
         fetch('/api/users'),
-        fetch('/api/job-orders?status=QI'),
-        fetch('/api/job-orders?status=FR'),
-        fetch('/api/job-orders?status=WP'),
-        fetch('/api/job-orders?status=UA'),
-        fetch('/api/job-orders?status=HC'),
-        fetch('/api/job-orders?status=HW'),
-        fetch('/api/job-orders?status=HI'),
-        fetch('/api/job-orders?status=FU'),
-        fetch('/api/job-orders'), // Fetch all carry-over jobs regardless of date
-        fetch(`/api/appointments?date=${dateStr}`).catch(() => ({ ok: false }))
+        fetch('/api/job-orders?carriedOver=true&limit=1000'),
+        fetch(`/api/appointments?date=${dateStr}`).catch(() => ({ ok: false })),
+        fetch('/api/job-orders?limit=1000') // global for status queues
       ])
 
       // Process responses
       const jobOrdersData = await jobOrdersResponse.json()
       const techniciansData = await techniciansResponse.json()
-      const qiData = await qiResponse.json()
-      const frData = await frResponse.json()
-      const wpData = await wpResponse.json()
-      const fpData = await fpResponse.json()
-      const hcData = await hcResponse.json()
-      const hwData = await hwResponse.json()
-      const hiData = await hiResponse.json()
-      const fuData = await fuResponse.json()
       const carriedOverData = await carriedOverResponse.json()
+      const allJobsData = allJobsResponse.ok ? await allJobsResponse.json() : { jobOrders: [] }
 
-      // Filter and sort data
-      const pendingQI = (qiData.jobOrders || []).filter((job: JobOrderWithDetails) => job.qiStatus === 'pending')
-      const forRelease = frData.jobOrders || []
-      const waitingParts = wpData.jobOrders || []
-      const forPlotting = fpData.jobOrders || []
-      const holdCustomer = hcData.jobOrders || []
-      const holdWarranty = hwData.jobOrders || []
-      const holdInsurance = hiData.jobOrders || []
-      const finishedUnclaimed = fuData.jobOrders || []
-      const carriedOver = (carriedOverData.jobOrders || []).filter((job: JobOrderWithDetails) => 
-        job.carriedOver && 
-        job.status !== 'FR' && 
-        job.status !== 'FU' && 
-        job.status !== 'CP'
+      // Derive category lists from ALL jobs (global) for consistent status queues
+      const allJobs = (allJobsData.jobOrders || []) as JobOrderWithDetails[]
+      const pendingQI = allJobs.filter((job: JobOrderWithDetails) => job.status === 'QI' && job.qiStatus === 'pending')
+      const forRelease = allJobs.filter((job: JobOrderWithDetails) => job.status === 'FR')
+      const waitingParts = allJobs.filter((job: JobOrderWithDetails) => job.status === 'WP')
+      const forPlotting = allJobs.filter((job: JobOrderWithDetails) => job.status === 'UA')
+      const holdCustomer = allJobs.filter((job: JobOrderWithDetails) => job.status === 'HC')
+      const holdWarranty = allJobs.filter((job: JobOrderWithDetails) => job.status === 'HW')
+      const holdInsurance = allJobs.filter((job: JobOrderWithDetails) => job.status === 'HI')
+      const finishedUnclaimed = allJobs.filter((job: JobOrderWithDetails) => job.status === 'FU')
+      const carriedOver = allJobs.filter((job: JobOrderWithDetails) =>
+        job.carriedOver && job.status !== 'FR' && job.status !== 'FU' && job.status !== 'CP'
       )
 
       // Filter timetable jobs (exclude statuses that should only appear in sections below)
@@ -199,9 +219,7 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
       // Combine jobs from date-specific fetch and carry-over jobs that might be reassigned to this date
       const allJobsForDate = [
         ...(jobOrdersData.jobOrders || []),
-        ...(carriedOverData.jobOrders || []).filter((job: JobOrderWithDetails) => 
-          job.date === dateStr // Only include carry-over jobs that are scheduled for this date
-        )
+        ...(carriedOverData.jobOrders || []).filter((job: JobOrderWithDetails) => job.date === dateStr)
       ]
       
       // Debug logging

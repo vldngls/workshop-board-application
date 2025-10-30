@@ -15,7 +15,7 @@ router.get('/', verifyToken, async (req, res) => {
   try {
     await connectToMongo()
     
-    const { status, technician, date, search, assignedToMe, page = '1', limit = '10' } = req.query
+    const { status, technician, date, search, assignedToMe, carriedOver, page = '1', limit = '10' } = req.query
     
     const filter: Record<string, any> = {}
     if (status) filter.status = status
@@ -29,6 +29,12 @@ router.get('/', verifyToken, async (req, res) => {
       const endDate = new Date(startDate)
       endDate.setDate(endDate.getDate() + 1)
       filter.date = { $gte: startDate, $lt: endDate }
+    }
+
+    // Optional carriedOver boolean filter
+    if (typeof carriedOver !== 'undefined') {
+      if (carriedOver === 'true') filter.carriedOver = true
+      else if (carriedOver === 'false') filter.carriedOver = { $ne: true }
     }
     
     // Add search functionality

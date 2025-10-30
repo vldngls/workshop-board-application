@@ -1,10 +1,8 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 export default function AdminLoginPage() {
-  const router = useRouter()
   const [emailOrUsername, setEmailOrUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -51,7 +49,7 @@ export default function AdminLoginPage() {
       } else {
         setError('Unable to verify user role')
       }
-    } catch (err) {
+    } catch {
       setError("Network error - please try again")
     } finally {
       setIsLoading(false)
