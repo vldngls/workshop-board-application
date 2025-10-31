@@ -89,7 +89,7 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
       
       // First, check for a saved snapshot for the date
       if (shouldCheckSnapshot) {
-        const snapshotRes = await fetch(`/api/job-orders/snapshot/${dateStr}`).catch(() => ({ ok: false, status: 404 } as any))
+        const snapshotRes = await fetch(`/api/job-orders/snapshot/${dateStr}`, { credentials: 'include' }).catch(() => ({ ok: false, status: 404 } as any))
         if (snapshotRes.ok) {
           const snapshotData = await snapshotRes.json()
           const snapJobs = (snapshotData?.snapshot?.jobOrders || snapshotData?.jobOrders || []) as any[]
@@ -124,7 +124,7 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
           setJobOrders(mapped)
           // still show technicians list to render timetable rows
           try {
-            const usersRes = await fetch('/api/users')
+            const usersRes = await fetch('/api/users', { credentials: 'include' })
             if (usersRes.ok) {
               const usersData = await usersRes.json()
               setTechnicians(usersData.users?.filter((u: any) => u.role === 'technician') || [])
@@ -138,7 +138,9 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
 
           // Derive queues from ALL jobs (global, not date-specific) for consistent sections
           try {
-            const allJobsRes = await fetch('/api/job-orders?limit=1000')
+            const allJobsRes = await fetch('/api/job-orders?limit=1000', {
+              credentials: 'include'
+            })
             if (allJobsRes.ok) {
               const allJobsData = await allJobsRes.json()
               const allJobs = (allJobsData.jobOrders || []) as JobOrderWithDetails[]
@@ -215,10 +217,10 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
       // Add cache-busting timestamp to ensure fresh data after reassignments
       const cacheBuster = `&_t=${Date.now()}`
       const [jobOrdersResponse, techniciansResponse, carriedOverResponse, allJobsResponse] = await Promise.all([
-        fetch(`/api/job-orders?date=${dateStr}&limit=1000${cacheBuster}`), // date-specific for timetable
-        fetch('/api/users'),
-        fetch(`/api/job-orders?carriedOver=true&limit=1000${cacheBuster}`),
-        fetch(`/api/job-orders?limit=1000${cacheBuster}`) // global for status queues
+        fetch(`/api/job-orders?date=${dateStr}&limit=1000${cacheBuster}`, { credentials: 'include' }), // date-specific for timetable
+        fetch('/api/users', { credentials: 'include' }),
+        fetch(`/api/job-orders?carriedOver=true&limit=1000${cacheBuster}`, { credentials: 'include' }),
+        fetch(`/api/job-orders?limit=1000${cacheBuster}`, { credentials: 'include' }) // global for status queues
       ])
 
       // Process responses

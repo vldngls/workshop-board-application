@@ -38,15 +38,26 @@ router.post('/', verifyToken, async (req, res) => {
     
     const { subject, description, imageData, imageMimeType, currentPage, userAgent } = parsed.data;
     
+    // Fetch user data to populate email and name
+    const userId = req.user?.sub;
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    
+    const user = await User.findById(userId).select('name email role').lean();
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
     const bugReport = new BugReport({
       subject,
       description,
       imageData,
       imageMimeType,
-      submittedBy: req.user?.sub,
-      submittedByEmail: undefined,
-      submittedByName: undefined,
-      submittedByRole: req.user?.role,
+      submittedBy: userId,
+      submittedByEmail: user.email || 'unknown@example.com',
+      submittedByName: user.name || 'Unknown User',
+      submittedByRole: user.role || req.user?.role || 'user',
       currentPage,
       userAgent,
     });
