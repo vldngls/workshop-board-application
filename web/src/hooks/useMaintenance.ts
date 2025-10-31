@@ -1,14 +1,23 @@
 import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 
-export function useBugReports() {
+export function useBugReports(enabled: boolean = true) {
   return useQuery<{ bugReports: any[] }>({
     queryKey: ['bug-reports'],
     queryFn: async () => {
       const res = await fetch('/api/bug-reports', { credentials: 'include' })
-      if (!res.ok) throw new Error('Failed to fetch bug reports')
+      if (!res.ok) {
+        // Don't throw for 401/403 - user might not have permission
+        if (res.status === 401 || res.status === 403) {
+          return { bugReports: [] }
+        }
+        throw new Error('Failed to fetch bug reports')
+      }
       return res.json()
     },
+    enabled, // Only run when explicitly enabled
     staleTime: 60_000,
+    retry: false, // Don't retry on error to avoid spam
+    refetchOnWindowFocus: false, // Prevent auto-refetch on focus to reduce errors
   })
 }
 

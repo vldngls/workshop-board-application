@@ -36,10 +36,21 @@ export default function MaintenancePage() {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const queryClient = useQueryClient()
 
-  // Queries
-  const bugReportsQuery = useBugReports()
+  // Queries - only fetch bug reports when on the bug-reports tab
+  const bugReportsQuery = useBugReports(activeTab === 'bug-reports')
   const statsQuery = useSystemStats()
   const settingsQuery = useMaintenanceSettings()
+
+  // Handle bug reports query errors silently (user might not have permission)
+  useEffect(() => {
+    if (bugReportsQuery.error) {
+      // Only log unexpected errors (not permission errors)
+      const errorMessage = bugReportsQuery.error.message || ''
+      if (!errorMessage.includes('401') && !errorMessage.includes('403') && !errorMessage.includes('500')) {
+        console.error('Bug reports query error:', bugReportsQuery.error)
+      }
+    }
+  }, [bugReportsQuery.error])
   // Logs filters and infinite scroll
   const [logLevel, setLogLevel] = useState<string>('')
   const [logEmail, setLogEmail] = useState<string>('')

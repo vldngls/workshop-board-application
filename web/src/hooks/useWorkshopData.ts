@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { JobOrder, User } from '@/types/jobOrder'
 import type { Appointment } from '@/types/appointment'
 
@@ -43,7 +44,6 @@ interface UseWorkshopDataReturn {
 export function useWorkshopData(date: Date): UseWorkshopDataReturn {
   const [jobOrders, setJobOrders] = useState<JobOrderWithDetails[]>([])
   const [technicians, setTechnicians] = useState<User[]>([])
-  const [appointments, setAppointments] = useState<Appointment[]>([])
   const [qiJobs, setQiJobs] = useState<JobOrderWithDetails[]>([])
   const [forReleaseJobs, setForReleaseJobs] = useState<JobOrderWithDetails[]>([])
   const [waitingPartsJobs, setWaitingPartsJobs] = useState<JobOrderWithDetails[]>([])
@@ -57,13 +57,35 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
   const [updating, setUpdating] = useState(false)
   const [isSnapshot, setIsSnapshot] = useState(false)
 
+  const dateStr = date.toISOString().split('T')[0]
+  const todayStr = new Date().toISOString().split('T')[0]
+  const isHistoricalDate = dateStr < todayStr
+
+  // Use React Query for appointments so it auto-updates when appointments change
+  const { data: appointmentsData } = useQuery({
+    queryKey: ['workshop-appointments', dateStr],
+    queryFn: async () => {
+      const response = await fetch(`/api/appointments?date=${dateStr}`, {
+        credentials: 'include'
+      })
+      if (!response.ok) {
+        return { appointments: [] }
+      }
+      const data = await response.json()
+      return { appointments: data.appointments || [] }
+    },
+    enabled: !isHistoricalDate, // Only fetch for current/future dates, not historical
+    staleTime: 0, // Always refetch to get latest appointments
+    refetchInterval: 5000, // Refetch every 5 seconds to catch cross-tab changes
+  })
+
+  const appointments = appointmentsData?.appointments || []
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
       
-      const dateStr = date.toISOString().split('T')[0]
-      const todayStr = new Date().toISOString().split('T')[0]
-      const shouldCheckSnapshot = dateStr < todayStr // only check snapshots for past dates
+      const shouldCheckSnapshot = isHistoricalDate // only check snapshots for past dates
       
       // First, check for a saved snapshot for the date
       if (shouldCheckSnapshot) {
@@ -112,7 +134,7 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
           } catch {
             setTechnicians([])
           }
-          setAppointments([])
+          // Appointments are handled by React Query, skip for snapshots
 
           // Derive queues from ALL jobs (global, not date-specific) for consistent sections
           try {
@@ -192,11 +214,10 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
       // Fetch minimal set in parallel (live view)
       // Add cache-busting timestamp to ensure fresh data after reassignments
       const cacheBuster = `&_t=${Date.now()}`
-      const [jobOrdersResponse, techniciansResponse, carriedOverResponse, appointmentsResponse, allJobsResponse] = await Promise.all([
+      const [jobOrdersResponse, techniciansResponse, carriedOverResponse, allJobsResponse] = await Promise.all([
         fetch(`/api/job-orders?date=${dateStr}&limit=1000${cacheBuster}`), // date-specific for timetable
         fetch('/api/users'),
         fetch(`/api/job-orders?carriedOver=true&limit=1000${cacheBuster}`),
-        fetch(`/api/appointments?date=${dateStr}`).catch(() => ({ ok: false })),
         fetch(`/api/job-orders?limit=1000${cacheBuster}`) // global for status queues
       ])
 
@@ -205,6 +226,8 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
       const techniciansData = await techniciansResponse.json()
       const carriedOverData = await carriedOverResponse.json()
       const allJobsData = allJobsResponse.ok ? await allJobsResponse.json() : { jobOrders: [] }
+
+      // Appointments are now handled by React Query above
 
       // Derive category lists from ALL jobs (global) for consistent status queues
       const allJobs = (allJobsData.jobOrders || []) as JobOrderWithDetails[]
@@ -262,19 +285,13 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
       setCarriedOverJobs(carriedOver)
       setIsSnapshot(false)
 
-      // Handle appointments separately since it might fail
-      if (appointmentsResponse.ok) {
-        const appointmentsData = await (appointmentsResponse as Response).json()
-        setAppointments(appointmentsData.appointments || [])
-      } else {
-        setAppointments([])
-      }
+      // Appointments are now handled by React Query above, no need to set state here
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
       setLoading(false)
     }
-  }, [date])
+  }, [date, dateStr, isHistoricalDate])
 
   useEffect(() => {
     fetchData()

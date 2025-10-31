@@ -40,7 +40,7 @@ export default function AppointmentsPage() {
     serviceAdvisor: '',
     plateNumber: '',
     startTime: '07:00',
-    duration: 300 // Duration in minutes (default 5 hours)
+    duration: 120 // Duration in minutes (default 2 hours)
   })
 
   // Calculate end time based on start time and duration
@@ -161,6 +161,7 @@ export default function AppointmentsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['workshop-appointments'] }) // Invalidate workshop appointments to update timetable
       queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
       toast.success('Appointment added!')
       // Clear only plate number for quick re-entry
@@ -187,6 +188,7 @@ export default function AppointmentsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['workshop-appointments'] }) // Invalidate workshop appointments to update timetable
       queryClient.invalidateQueries({ queryKey: ['no-show-appointments'] })
       queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
       toast.success('Appointment marked as no show')
@@ -208,6 +210,7 @@ export default function AppointmentsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['workshop-appointments'] }) // Invalidate workshop appointments to update timetable
       queryClient.invalidateQueries({ queryKey: ['no-show-appointments'] })
       queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
       toast.success('All no-show appointments deleted')
@@ -229,6 +232,7 @@ export default function AppointmentsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['workshop-appointments'] }) // Invalidate workshop appointments to update timetable
       queryClient.invalidateQueries({ queryKey: ['no-show-appointments'] })
       queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
       toast.success('Appointment deleted')
@@ -262,6 +266,7 @@ export default function AppointmentsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['workshop-appointments'] }) // Invalidate workshop appointments to update timetable
       queryClient.invalidateQueries({ queryKey: ['no-show-appointments'] })
       queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
       toast.success('Appointment rescheduled')
@@ -480,6 +485,22 @@ export default function AppointmentsPage() {
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Plate Number *
+              </label>
+              <input
+                ref={plateInputRef}
+                type="text"
+                value={formData.plateNumber}
+                onChange={(e) => setFormData({ ...formData, plateNumber: e.target.value.toUpperCase() })}
+                placeholder="ABC1234"
+                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/80 backdrop-blur-sm uppercase"
+                required
+                suppressHydrationWarning
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Work Duration *
               </label>
               <select
@@ -573,22 +594,6 @@ export default function AppointmentsPage() {
               <div className="text-xs text-neutral-500 mt-1">
                 End time: {endTime}
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Plate Number *
-              </label>
-              <input
-                ref={plateInputRef}
-                type="text"
-                value={formData.plateNumber}
-                onChange={(e) => setFormData({ ...formData, plateNumber: e.target.value.toUpperCase() })}
-                placeholder="ABC1234"
-                className="w-full px-4 py-2.5 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/80 backdrop-blur-sm uppercase"
-                required
-                suppressHydrationWarning
-              />
             </div>
 
             <button

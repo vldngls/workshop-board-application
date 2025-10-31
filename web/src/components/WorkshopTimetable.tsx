@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import toast, { Toaster } from 'react-hot-toast'
 import { FiCalendar } from 'react-icons/fi'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { JobOrder } from '@/types/jobOrder'
 import type { Appointment } from '@/types/appointment'
 import type { Role } from '@/types/auth'
@@ -36,6 +36,7 @@ interface WorkshopTimetableProps {
 
 function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = false, historicalJobOrders }: WorkshopTimetableProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [userRole, setUserRole] = useState<Role | null>(null)
   const { data: meData } = useMe()
   useEffect(() => {
@@ -288,8 +289,10 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
         throw new Error('Failed to delete appointment')
       }
 
-      // Update appointments state
-      // Note: This would need to be handled in the useWorkshopData hook
+      // Invalidate workshop appointments query to refresh timetable
+      queryClient.invalidateQueries({ queryKey: ['workshop-appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
       toast.success('Appointment deleted (no show)')
     } catch (error) {
       console.error('Error deleting appointment:', error)

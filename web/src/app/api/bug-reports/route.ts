@@ -22,6 +22,12 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body)
     })
     
+    // Handle 500 errors from backend gracefully
+    if (response.status === 500) {
+      console.error('Backend returned 500 for bug-reports POST endpoint')
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+    
     const text = await response.text()
     try {
       const data = JSON.parse(text)
@@ -29,7 +35,8 @@ export async function POST(request: NextRequest) {
     } catch {
       return new NextResponse(text, { status: response.status })
     }
-  } catch (e) {
+  } catch (e: any) {
+    console.error('Error in bug-reports POST route:', e)
     return NextResponse.json({ error: "Upstream error" }, { status: 502 })
   }
 }
@@ -54,6 +61,12 @@ export async function GET(request: NextRequest) {
       } 
     })
     
+    // Handle 500 errors from backend gracefully
+    if (response.status === 500) {
+      console.error('Backend returned 500 for bug-reports endpoint')
+      return NextResponse.json({ error: 'Internal server error', bugReports: [] }, { status: 500 })
+    }
+    
     const text = await response.text()
     try {
       const data = JSON.parse(text)
@@ -61,7 +74,9 @@ export async function GET(request: NextRequest) {
     } catch {
       return new NextResponse(text, { status: response.status })
     }
-  } catch (e) {
-    return NextResponse.json({ error: "Upstream error" }, { status: 502 })
+  } catch (e: any) {
+    console.error('Error in bug-reports GET route:', e)
+    // Return empty array instead of error to prevent UI issues
+    return NextResponse.json({ error: "Upstream error", bugReports: [] }, { status: 502 })
   }
 }
