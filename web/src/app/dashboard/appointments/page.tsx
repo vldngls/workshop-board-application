@@ -10,6 +10,14 @@ import ConfirmDialog from '@/components/ConfirmDialog'
 import TechnicianScheduleView from '@/components/TechnicianScheduleView'
 import RoleGuard from "@/components/RoleGuard"
 
+// Helper function to get local date in YYYY-MM-DD format without timezone issues
+const getLocalISODate = (): string => {
+  const now = new Date()
+  const tzOffsetMs = now.getTimezoneOffset() * 60000
+  const local = new Date(now.getTime() - tzOffsetMs)
+  return local.toISOString().split('T')[0]
+}
+
 interface Technician {
   _id: string
   name: string
@@ -459,7 +467,7 @@ export default function AppointmentsPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    const today = new Date().toISOString().split('T')[0]
+                    const today = getLocalISODate()
                     setSelectedDate(today)
                   }}
                   className="px-4 py-2.5 ford-gradient text-white text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
@@ -641,7 +649,7 @@ export default function AppointmentsPage() {
               
               <button
                 onClick={() => {
-                  const today = new Date().toISOString().split('T')[0]
+                  const today = getLocalISODate()
                   setSelectedDate(today)
                 }}
                 className="px-4 py-2 text-sm font-medium ford-gradient text-white rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 flex-shrink-0"
