@@ -22,13 +22,22 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body)
     })
     
-    // Handle 500 errors from backend gracefully
+    const text = await response.text()
+    
+    // Handle 500 errors from backend gracefully - but still return proper error structure
     if (response.status === 500) {
       console.error('Backend returned 500 for bug-reports POST endpoint')
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+      try {
+        const errorData = JSON.parse(text)
+        return NextResponse.json({ 
+          error: errorData.error || 'Internal server error',
+          details: errorData.details 
+        }, { status: 500 })
+      } catch {
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+      }
     }
     
-    const text = await response.text()
     try {
       const data = JSON.parse(text)
       return NextResponse.json(data, { status: response.status })

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef } from 'react'
+import toast from 'react-hot-toast'
 import { CreateBugReportRequest } from '@/types/bugReport'
 
 interface BugReportModalProps {
@@ -69,22 +70,27 @@ export default function BugReportModal({ isOpen, onClose }: BugReportModalProps)
       let imageMimeType: string | undefined
 
       if (imageFile) {
-        // Convert image to base64
-        const reader = new FileReader()
-        reader.onload = async () => {
-          const base64 = reader.result as string
-          imageData = base64.split(',')[1] // Remove data:image/...;base64, prefix
-          imageMimeType = imageFile.type
-          
-          await submitBugReport(imageData, imageMimeType)
-        }
-        reader.readAsDataURL(imageFile)
-      } else {
-        await submitBugReport(imageData, imageMimeType)
+        // Convert image to base64 using Promise
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => {
+            const result = reader.result as string
+            resolve(result.split(',')[1]) // Remove data:image/...;base64, prefix
+          }
+          reader.onerror = reject
+          reader.readAsDataURL(imageFile!)
+        })
+        
+        imageData = base64
+        imageMimeType = imageFile.type
       }
-    } catch (err) {
+      
+      await submitBugReport(imageData, imageMimeType)
+    } catch (err: any) {
       console.error('Error submitting bug report:', err)
-      setError('Failed to submit bug report. Please try again.')
+      const errorMessage = err?.message || 'Failed to submit bug report. Please try again.'
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -114,6 +120,15 @@ export default function BugReportModal({ isOpen, onClose }: BugReportModalProps)
       try {
         const errorData = await response.json()
         errorMessage = errorData.error || errorMessage
+        
+        // Provide more specific error messages
+        if (response.status === 401) {
+          errorMessage = 'You are not authorized to submit bug reports. Please log in again.'
+        } else if (response.status === 500) {
+          errorMessage = 'Server error occurred. Please try again later or contact support.'
+        } else if (response.status === 413) {
+          errorMessage = 'Image file is too large. Please use a smaller image (max 2MB).'
+        }
       } catch {
         // If response is not JSON, use status text
         errorMessage = response.status === 413 
@@ -123,6 +138,8 @@ export default function BugReportModal({ isOpen, onClose }: BugReportModalProps)
       throw new Error(errorMessage)
     }
 
+    const responseData = await response.json()
+    toast.success('Bug report submitted successfully!')
     setSuccess(true)
     setTimeout(() => {
       handleClose()
