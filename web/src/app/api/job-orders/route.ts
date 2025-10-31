@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getRawToken } from '../_lib/auth'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'
+const API_KEY = process.env.API_KEY
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
     
     const response = await fetch(url, {
       headers: {
+        'x-api-key': API_KEY || '',
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-api-key': API_KEY || '',
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(body),

@@ -345,7 +345,7 @@ export function useJobActions({
       })
       if (!response.ok) throw new Error('Failed to reject QI')
       await fetchData()
-      toast.error('Job order rejected and sent to Unassigned')
+      toast.error('Job order rejected and sent back to On Going')
     } catch (error) {
       console.error('Error rejecting QI:', error)
       toast.error('Failed to reject QI')
@@ -412,25 +412,15 @@ export function useJobActions({
   const redoJob = useCallback(async (jobId: string) => {
     try {
       setUpdating(true)
-      // Optimistic: move from For Release back to QI
-      let movedJob: any = null
-      updateForReleaseJobs(prev => {
-        const job = prev.find(j => j._id === jobId)
-        if (job) {
-          movedJob = { ...job, status: 'QI' as any }
-        }
-        return prev.filter(j => j._id !== jobId)
-      })
-      if (movedJob) {
-        updateQiJobs(prev => [movedJob, ...prev])
-      }
+      // Optimistic: remove from For Release list
+      updateForReleaseJobs(prev => prev.filter(j => j._id !== jobId))
 
       const response = await fetch(`/api/job-orders/${jobId}/redo`, {
         method: 'PATCH'
       })
       if (!response.ok) throw new Error('Failed to redo job')
       await fetchData()
-      toast.success('Job sent back to Quality Inspection')
+      toast.success('Job sent back to On Going for rework')
     } catch (error) {
       console.error('Error redoing job:', error)
       toast.error('Failed to redo job')

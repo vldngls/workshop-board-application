@@ -785,13 +785,13 @@ const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   'OG': ['WP', 'UA', 'QI', 'HC', 'HW', 'HI', 'HF', 'SU', 'OG'], // Can stay OG or move to other statuses
   'WP': ['UA', 'OG', 'HC', 'HW', 'HI', 'HF', 'SU', 'WP'], // Waiting parts can go to unassigned or other statuses
   'UA': ['OG', 'WP', 'UA'], // Unassigned can be assigned to ongoing or back to WP
-  'QI': ['FR', 'UA', 'QI'], // QI can approve to release or reject to unassigned
+  'QI': ['FR', 'OG', 'QI'], // QI can approve to release or reject back to On Going
   'HC': ['OG', 'WP', 'UA', 'HC'], // Hold customer can resume
   'HW': ['OG', 'WP', 'UA', 'HW'], // Hold warranty can resume
   'HI': ['OG', 'WP', 'UA', 'HI'], // Hold insurance can resume
   'HF': ['OG', 'WP', 'UA', 'HF'], // Hold Ford can resume
   'SU': ['OG', 'WP', 'UA', 'SU'], // Sublet can resume
-  'FR': ['FU', 'CP', 'QI', 'FR'], // For release can complete, finish unclaimed, or redo back to QI
+  'FR': ['FU', 'CP', 'OG', 'FR'], // For release can complete, finish unclaimed, or redo back to On Going
   'FU': ['CP', 'FU'], // Finished unclaimed can be marked complete
   'CP': ['CP'] // Complete is final state
 }
@@ -1212,7 +1212,7 @@ router.patch('/:id/reject-qi', verifyToken, requireRole(['administrator', 'job-c
       return res.status(400).json({ error: 'Job order is not pending QI' })
     }
     
-    jobOrder.status = 'UA'
+    jobOrder.status = 'OG'  // Back to On Going for rework
     jobOrder.qiStatus = 'rejected'
     await jobOrder.save()
     
@@ -1309,8 +1309,8 @@ router.patch('/:id/redo', verifyToken, requireRole(['administrator', 'job-contro
       return res.status(400).json({ error: 'Job order is not marked for release' })
     }
     
-    jobOrder.status = 'QI'  // Back to Quality Inspection for rework
-    jobOrder.qiStatus = 'pending'  // Reset QI status to pending
+    jobOrder.status = 'OG'  // Back to On Going for rework
+    jobOrder.qiStatus = null  // Reset QI status
     await jobOrder.save()
     
     const updatedJobOrder = await JobOrder.findById(jobOrder._id)
@@ -1319,7 +1319,7 @@ router.patch('/:id/redo', verifyToken, requireRole(['administrator', 'job-contro
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    try { await logger.audit('Job order redo to QI', { userId: req.user?.sub, userEmail: undefined, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
+    try { await logger.audit('Job order redo to On Going', { userId: req.user?.sub, userEmail: undefined, userRole: req.user?.role, context: { jobId: String(jobOrder._id) } }) } catch {}
 
     return res.json({ jobOrder: updatedJobOrder })
   } catch (error) {
