@@ -18,17 +18,23 @@ export default function RoleGuard({ children, allowedRoles, fallbackPath = "/log
   const userRole: Role | null = (meData?.user?.role as Role) ?? null
 
   useEffect(() => {
-    if (status === 'success') {
-      if (!userRole || !allowedRoles.includes(userRole)) {
+    // Only redirect if we have a definitive answer (status is success)
+    // and the user doesn't have permission
+    if (status === 'success' && userRole && !allowedRoles.includes(userRole)) {
+      // Prevent redirect loops by checking current path
+      const currentPath = window.location.pathname
+      if (currentPath !== fallbackPath) {
         router.push(fallbackPath)
       }
     }
   }, [userRole, status, allowedRoles, router, fallbackPath])
 
-  if (status !== 'success') {
+  // Show loading while checking auth status
+  if (status === 'pending' || status === 'loading') {
     return <div>Loading...</div>
   }
 
+  // If not authenticated or role not allowed, don't render
   if (!userRole || !allowedRoles.includes(userRole)) {
     return null
   }

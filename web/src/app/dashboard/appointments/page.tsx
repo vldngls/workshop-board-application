@@ -419,7 +419,7 @@ export default function AppointmentsPage() {
   }, [])
 
   return (
-    <RoleGuard allowedRoles={['administrator', 'job-controller']}>
+    <RoleGuard allowedRoles={['administrator', 'job-controller', 'superadmin']}>
       <div className="space-y-6">
         <Toaster position="top-right" />
       
