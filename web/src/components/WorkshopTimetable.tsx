@@ -217,7 +217,8 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
     updateUnassignedJobs: updateHoldCustomerJobs, // Using same function for now
     updateFinishedUnclaimedJobs,
     setSelectedJob,
-    fetchData
+    fetchData,
+    onCloseModal: () => setShowModal(false) // Pass modal close callback
   })
 
   // Wrap complete job to use UI dialog instead of native confirm
@@ -301,7 +302,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
       setShowDeleteConfirm(false)
       setAppointmentToDelete(null)
     }
-  }, [appointmentToDelete])
+  }, [appointmentToDelete, queryClient])
 
   const cancelDeleteAppointment = useCallback(() => {
     setShowDeleteConfirm(false)
@@ -539,6 +540,9 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
         onCarryOver={isHistorical || userRole === 'technician' ? undefined : (jobId: string) => {
           const job = jobOrders.find(j => j._id === jobId)
           if (job) {
+            // Close the job details modal first
+            setShowModal(false)
+            // Then open reassignment modal
             handleCarryOverReassign(job)
           }
         }}

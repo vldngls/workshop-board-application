@@ -25,6 +25,7 @@ interface UseJobActionsProps {
   updateFinishedUnclaimedJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
   setSelectedJob: (job: JobOrderWithDetails | null) => void
   fetchData: () => Promise<void>
+  onCloseModal?: () => void
 }
 
 export function useJobActions({
@@ -44,7 +45,8 @@ export function useJobActions({
   updateUnassignedJobs,
   updateFinishedUnclaimedJobs,
   setSelectedJob,
-  fetchData
+  fetchData,
+  onCloseModal
 }: UseJobActionsProps) {
   
   const getCurrentTime = useCallback((): string => {
@@ -296,13 +298,17 @@ export function useJobActions({
       
       await fetchData()
       toast.success('Job order submitted for Quality Inspection')
+      // Close modal after successful submission
+      if (onCloseModal) {
+        onCloseModal()
+      }
     } catch (error: any) {
       console.error('Error submitting for QI:', error)
       toast.error(error.message || 'Failed to submit for QI')
     } finally {
       setUpdating(false)
     }
-  }, [selectedJob, getCurrentTime, fetchData, setUpdating])
+  }, [selectedJob, getCurrentTime, fetchData, setUpdating, onCloseModal])
 
   const approveQI = useCallback(async (jobId: string) => {
     try {
