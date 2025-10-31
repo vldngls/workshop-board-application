@@ -358,30 +358,52 @@ export function useJobActions({
     try {
       setUpdating(true)
       
-      let endpoint, successMessage
+      // If claimed, we need to transition from FR -> FU -> CP
+      // First, move from FR to FU, then from FU to CP
       if (isClaimed) {
-        // If claimed, mark as complete (final status)
-        endpoint = `/api/job-orders/${jobId}/mark-complete`
-        successMessage = 'Job marked as Complete and released to customer'
+        // Step 1: Move from FR to FU (Finished Unclaimed)
+        const completeResponse = await fetch(`/api/job-orders/${jobId}/complete`, {
+          method: 'PATCH'
+        })
+        if (!completeResponse.ok) {
+          const errorData = await completeResponse.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Failed to complete job')
+        }
+        
+        // Step 2: Move from FU to CP (Complete)
+        const markCompleteResponse = await fetch(`/api/job-orders/${jobId}/mark-complete`, {
+          method: 'PATCH'
+        })
+        if (!markCompleteResponse.ok) {
+          const errorData = await markCompleteResponse.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Failed to mark job as complete')
+        }
+        
+        // Remove from For Release list immediately
+        updateForReleaseJobs(prev => prev.filter(job => job._id !== jobId))
+        
+        await fetchData()
+        toast.success('Job marked as Complete and released to customer')
       } else {
-        // If not claimed, mark as finished unclaimed
-        endpoint = `/api/job-orders/${jobId}/complete`
-        successMessage = 'Job marked as Finished Unclaimed'
+        // If not claimed, mark as finished unclaimed (FR -> FU)
+        const response = await fetch(`/api/job-orders/${jobId}/complete`, {
+          method: 'PATCH'
+        })
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Failed to complete job')
+        }
+        
+        // Remove from For Release list immediately
+        updateForReleaseJobs(prev => prev.filter(job => job._id !== jobId))
+        
+        await fetchData()
+        toast.success('Job marked as Finished Unclaimed')
       }
-      
-      const response = await fetch(endpoint, {
-        method: 'PATCH'
-      })
-      if (!response.ok) throw new Error('Failed to complete job')
-      
-      // Remove from For Release list immediately
-      updateForReleaseJobs(prev => prev.filter(job => job._id !== jobId))
-      
-      await fetchData()
-      toast.success(successMessage)
     } catch (error) {
       console.error('Error completing job:', error)
-      toast.error('Failed to complete job')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to complete job'
+      toast.error(errorMessage)
     } finally {
       setUpdating(false)
     }
