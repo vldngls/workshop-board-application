@@ -13,7 +13,7 @@ interface ReassignTimeSlotModalProps {
   date: string
   startTime: string
   endTime: string
-  onJobAssigned: () => void
+  onJobAssigned: (responseData?: any) => void
 }
 
 interface AvailableJob extends JobOrder {
@@ -100,8 +100,9 @@ export default function ReassignTimeSlotModal({
         throw new Error(error.error || 'Failed to assign job')
       }
 
+      const responseData = await response.json()
       toast.success('Job assigned successfully!')
-      onJobAssigned()
+      onJobAssigned(responseData)
       onClose()
     } catch (error: any) {
       console.error('Error assigning job:', error)

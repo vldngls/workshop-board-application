@@ -8,7 +8,7 @@ import TechnicianScheduleView from './TechnicianScheduleView'
 
 interface AddJobOrderModalProps {
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (responseData?: any) => void
   prefilledData?: Partial<CreateJobOrderRequest>
 }
 
@@ -147,8 +147,8 @@ export default function AddJobOrderModal({ onClose, onSuccess, prefilledData }: 
     e.preventDefault()
     
     createJobMutation.mutate(formData, {
-      onSuccess: () => {
-        onSuccess()
+      onSuccess: (data) => {
+        onSuccess(data)
       }
     })
   }

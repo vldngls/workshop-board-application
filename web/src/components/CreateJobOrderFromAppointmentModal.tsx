@@ -9,7 +9,7 @@ import { useUsers, useAvailableTechnicians } from '@/hooks/useJobOrders'
 interface CreateJobOrderFromAppointmentModalProps {
   appointment: Appointment
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (responseData?: any) => void
   onConflictsResolved?: () => void
 }
 
@@ -195,7 +195,8 @@ export default function CreateJobOrderFromAppointmentModal({
         throw new Error(errorData.error || 'Failed to create job order')
       }
       
-      onSuccess()
+      const responseData = await response.json()
+      onSuccess(responseData)
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')

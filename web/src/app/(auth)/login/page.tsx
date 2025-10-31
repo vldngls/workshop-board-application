@@ -34,8 +34,8 @@ export default function LoginPage() {
 
       const data = await login.mutateAsync(loginData)
       if (data.ok && data.role) {
-        // Force a page refresh to ensure cookies are set
-        window.location.href = "/dashboard"
+        // Use router.push for client-side navigation (no full page refresh)
+        router.push("/dashboard")
       } else {
         setError(data.error || "Invalid credentials")
       }

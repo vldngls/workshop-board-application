@@ -190,12 +190,14 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
       }
 
       // Fetch minimal set in parallel (live view)
+      // Add cache-busting timestamp to ensure fresh data after reassignments
+      const cacheBuster = `&_t=${Date.now()}`
       const [jobOrdersResponse, techniciansResponse, carriedOverResponse, appointmentsResponse, allJobsResponse] = await Promise.all([
-        fetch(`/api/job-orders?date=${dateStr}&limit=1000`), // date-specific for timetable
+        fetch(`/api/job-orders?date=${dateStr}&limit=1000${cacheBuster}`), // date-specific for timetable
         fetch('/api/users'),
-        fetch('/api/job-orders?carriedOver=true&limit=1000'),
+        fetch(`/api/job-orders?carriedOver=true&limit=1000${cacheBuster}`),
         fetch(`/api/appointments?date=${dateStr}`).catch(() => ({ ok: false })),
-        fetch('/api/job-orders?limit=1000') // global for status queues
+        fetch(`/api/job-orders?limit=1000${cacheBuster}`) // global for status queues
       ])
 
       // Process responses

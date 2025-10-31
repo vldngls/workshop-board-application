@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import type { Role } from "@/types/auth"
 import { useLogout, useMe } from "@/hooks/useAuth"
@@ -60,6 +60,7 @@ function getNavForRole(role: Role | null): { title: string; items: NavItem[] } {
 }
 
 export default function Sidebar({ role, name }: { role: Role | null; name?: string | null }) {
+  const router = useRouter()
   const { data: meData } = useMe()
   const resolvedRole = (meData?.user?.role as Role) ?? role
   const resolvedName = meData?.user?.name ?? name ?? null
@@ -77,11 +78,11 @@ export default function Sidebar({ role, name }: { role: Role | null; name?: stri
     
     try {
       await logout.mutateAsync()
-        window.location.href = '/login'
+        router.push('/login')
     } catch (error) {
       console.error('Logout error:', error)
       // Still redirect to login even if logout API fails
-      window.location.href = '/login'
+      router.push('/login')
     } finally {
       setIsLoggingOut(false)
     }

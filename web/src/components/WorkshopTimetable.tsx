@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, memo } from 'react'
+import { useRouter } from 'next/navigation'
 import toast, { Toaster } from 'react-hot-toast'
 import { FiCalendar } from 'react-icons/fi'
 import { useQuery } from '@tanstack/react-query'
@@ -34,6 +35,7 @@ interface WorkshopTimetableProps {
 }
 
 function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = false, historicalJobOrders }: WorkshopTimetableProps) {
+  const router = useRouter()
   const [userRole, setUserRole] = useState<Role | null>(null)
   const { data: meData } = useMe()
   useEffect(() => {
@@ -303,25 +305,69 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
     setAppointmentToDelete(null)
   }, [])
 
-  const handleCreateJobOrderSuccess = useCallback(() => {
+  const handleCreateJobOrderSuccess = useCallback((responseData?: any) => {
     setShowCreateJobOrderModal(false)
     setSelectedAppointment(null)
-    fetchData()
+    
+    // Optimistically add job if created for current date
+    if (responseData?.jobOrder) {
+      const newJob = responseData.jobOrder
+      const jobDateStr = newJob.date 
+        ? (typeof newJob.date === 'string' ? newJob.date : new Date(newJob.date).toISOString().split('T')[0])
+        : null
+      const todayDateStr = date.toISOString().split('T')[0]
+      
+      if (jobDateStr === todayDateStr && newJob.assignedTechnician && newJob.timeRange?.start && newJob.timeRange?.end && newJob.timeRange.start !== '00:00' && newJob.timeRange.end !== '00:00') {
+        updateJobOrders(prev => {
+          if (prev.some(job => job._id === newJob._id)) {
+            return prev.map(job => job._id === newJob._id ? newJob : job)
+          }
+          return [...prev, newJob]
+        })
+      }
+    }
+    
+    // Small delay then refresh all data
+    setTimeout(() => {
+      fetchData()
+    }, 500)
     toast.success('Job order created from appointment!')
-  }, [fetchData])
+  }, [fetchData, date, updateJobOrders])
 
   const handleAvailableSlotClick = useCallback((technicianId: string, startTime: string, endTime: string) => {
     setSelectedAvailableSlot({ technicianId, startTime, endTime })
     setShowAvailableSlotModal(true)
   }, [])
 
-  const handleAvailableSlotJobCreated = useCallback(() => {
+  const handleAvailableSlotJobCreated = useCallback((responseData?: any) => {
     setShowAvailableSlotModal(false)
     setSelectedAvailableSlot(null)
-    fetchData()
-    refetchAvailableSlots()
+    
+    // Optimistically add job if created for current date
+    if (responseData?.jobOrder) {
+      const newJob = responseData.jobOrder
+      const jobDateStr = newJob.date 
+        ? (typeof newJob.date === 'string' ? newJob.date : new Date(newJob.date).toISOString().split('T')[0])
+        : null
+      const todayDateStr = date.toISOString().split('T')[0]
+      
+      if (jobDateStr === todayDateStr && newJob.assignedTechnician && newJob.timeRange?.start && newJob.timeRange?.end && newJob.timeRange.start !== '00:00' && newJob.timeRange.end !== '00:00') {
+        updateJobOrders(prev => {
+          if (prev.some(job => job._id === newJob._id)) {
+            return prev.map(job => job._id === newJob._id ? newJob : job)
+          }
+          return [...prev, newJob]
+        })
+      }
+    }
+    
+    // Small delay then refresh all data
+    setTimeout(() => {
+      fetchData()
+      refetchAvailableSlots()
+    }, 500)
     toast.success('Job order created!')
-  }, [fetchData, refetchAvailableSlots])
+  }, [fetchData, refetchAvailableSlots, date, updateJobOrders])
 
   const handleConflictsResolved = useCallback(() => {
     // Refresh data when conflicts are resolved
@@ -344,9 +390,27 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
         throw new Error(error.error || 'Failed to reassign technician')
       }
       const data = await response.json()
-      setSelectedJob(data.jobOrder)
+      const updatedJob = data.jobOrder
+      
+      // Update selected job
+      setSelectedJob(updatedJob)
+      
+      // Optimistically update timetable if job is on current date
+      const jobDateStr = updatedJob.date 
+        ? (typeof updatedJob.date === 'string' ? updatedJob.date : new Date(updatedJob.date).toISOString().split('T')[0])
+        : null
+      const todayDateStr = date.toISOString().split('T')[0]
+      
+      if (jobDateStr === todayDateStr) {
+        updateJobOrders(prev => prev.map(job => job._id === updatedJob._id ? updatedJob : job))
+      }
+      
       setShowTechnicianModal(false)
-      await fetchData()
+      
+      // Small delay then refresh all data
+      setTimeout(() => {
+        fetchData()
+      }, 500)
       toast.success('Technician reassigned successfully')
     } catch (error: any) {
       console.error('Error reassigning technician:', error)
@@ -354,7 +418,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
     } finally {
       setUpdating(false)
     }
-  }, [selectedJob, fetchData, setUpdating])
+  }, [selectedJob, fetchData, setUpdating, date, updateJobOrders])
 
   // Fetch available technicians when modal opens
   useEffect(() => {
@@ -477,7 +541,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
         }}
         onViewInJobOrders={(jobId: string) => {
           // Navigate to job orders page with the specific job highlighted
-          window.location.href = `/dashboard/job-orders?highlight=${jobId}`
+          router.push(`/dashboard/job-orders?highlight=${jobId}`)
         }}
       />
 
@@ -551,8 +615,28 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
           date={date.toISOString().split('T')[0]}
           startTime={reassignmentSlot.startTime}
           endTime={reassignmentSlot.endTime}
-          onJobAssigned={() => {
-            fetchData()
+          onJobAssigned={async (responseData) => {
+            // Optimistically update if job is assigned to current date
+            if (responseData?.jobOrder) {
+              const newJob = responseData.jobOrder
+              const jobDateStr = newJob.date 
+                ? (typeof newJob.date === 'string' ? newJob.date : new Date(newJob.date).toISOString().split('T')[0])
+                : null
+              const todayDateStr = date.toISOString().split('T')[0]
+              
+              if (jobDateStr === todayDateStr && newJob.assignedTechnician && newJob.timeRange?.start && newJob.timeRange?.end && newJob.timeRange.start !== '00:00' && newJob.timeRange.end !== '00:00') {
+                updateJobOrders(prev => {
+                  if (prev.some(job => job._id === newJob._id)) {
+                    return prev.map(job => job._id === newJob._id ? newJob : job)
+                  }
+                  return [...prev, newJob]
+                })
+              }
+            }
+            // Small delay then refresh all data
+            setTimeout(() => {
+              fetchData()
+            }, 500)
           }}
         />
       )}
@@ -564,8 +648,28 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
           jobId={selectedJob._id}
           jobNumber={selectedJob.jobNumber}
           currentDate={selectedJob.date.split('T')[0]}
-          onSuccess={() => {
-            fetchData()
+          onSuccess={async (responseData) => {
+            // Optimistically update if job is replotted to current date
+            if (responseData?.jobOrder) {
+              const newJob = responseData.jobOrder
+              const jobDateStr = newJob.date 
+                ? (typeof newJob.date === 'string' ? newJob.date : new Date(newJob.date).toISOString().split('T')[0])
+                : null
+              const todayDateStr = date.toISOString().split('T')[0]
+              
+              if (jobDateStr === todayDateStr && newJob.assignedTechnician && newJob.timeRange?.start && newJob.timeRange?.end && newJob.timeRange.start !== '00:00' && newJob.timeRange.end !== '00:00') {
+                updateJobOrders(prev => {
+                  if (prev.some(job => job._id === newJob._id)) {
+                    return prev.map(job => job._id === newJob._id ? newJob : job)
+                  }
+                  return [...prev, newJob]
+                })
+              }
+            }
+            // Small delay then refresh all data
+            setTimeout(() => {
+              fetchData()
+            }, 500)
           }}
         />
       )}
@@ -615,10 +719,39 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
             setShowCarryOverReassignModal(false)
             setSelectedCarryOverJob(null)
           }}
-          onSuccess={() => {
+          onSuccess={async (reassignedJob) => {
             setShowCarryOverReassignModal(false)
             setSelectedCarryOverJob(null)
-            fetchData()
+            
+            // Note: carriedOverJobs will be updated when fetchData() completes
+            
+            // If the reassigned job is for the current timetable date, add it optimistically
+            if (reassignedJob?.jobOrder) {
+              const newJob = reassignedJob.jobOrder
+              // Convert date to string format for comparison (handle both string and Date objects)
+              const reassignedDateStr = newJob.date 
+                ? (typeof newJob.date === 'string' ? newJob.date : new Date(newJob.date).toISOString().split('T')[0])
+                : null
+              const todayDateStr = date.toISOString().split('T')[0]
+              
+              // Only add if date matches and has required fields for timetable
+              if (reassignedDateStr === todayDateStr && newJob.assignedTechnician && newJob.timeRange?.start && newJob.timeRange?.end && newJob.timeRange.start !== '00:00' && newJob.timeRange.end !== '00:00') {
+                updateJobOrders(prev => {
+                  // Check if job already exists (avoid duplicates)
+                  if (prev.some(job => job._id === newJob._id)) {
+                    // Update existing job
+                    return prev.map(job => job._id === newJob._id ? newJob : job)
+                  }
+                  // Add new job
+                  return [...prev, newJob]
+                })
+              }
+            }
+            
+            // Small delay to ensure backend has processed, then refresh all data
+            setTimeout(() => {
+              fetchData()
+            }, 500)
           }}
         />
       )}

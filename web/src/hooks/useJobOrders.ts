@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import type { JobOrder, CreateJobOrderRequest, JobStatus, JobItemStatus } from '@/types/jobOrder'
 import toast from 'react-hot-toast'
 
@@ -168,6 +169,7 @@ export function useCreateJobOrder() {
 // Hook to update job order status
 export function useUpdateJobOrderStatus() {
   const queryClient = useQueryClient()
+  const router = useRouter()
   
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: JobStatus }) => {
@@ -183,7 +185,7 @@ export function useUpdateJobOrderStatus() {
       if (!response.ok) {
         if (response.status === 401) {
           toast.error('Your session has expired. Please log in again.')
-          setTimeout(() => window.location.href = '/login', 1500)
+          setTimeout(() => router.push('/login'), 1500)
           throw new Error('Session expired')
         }
         const errorData = await response.json().catch(() => ({}))
@@ -241,6 +243,7 @@ export function useUpdateJobOrderStatus() {
 // Hook to update job order (generic)
 export function useUpdateJobOrder() {
   const queryClient = useQueryClient()
+  const router = useRouter()
   
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Record<string, any> }) => {
@@ -256,7 +259,7 @@ export function useUpdateJobOrder() {
       if (!response.ok) {
         if (response.status === 401) {
           toast.error('Your session has expired. Please log in again.')
-          setTimeout(() => window.location.href = '/login', 1500)
+          setTimeout(() => router.push('/login'), 1500)
           throw new Error('Session expired')
         }
         const errorData = await response.json().catch(() => ({}))
@@ -315,6 +318,7 @@ export function useUpdateJobOrder() {
 // Hook to toggle important status
 export function useToggleImportant() {
   const queryClient = useQueryClient()
+  const router = useRouter()
   
   return useMutation({
     mutationFn: async (id: string) => {
@@ -326,7 +330,7 @@ export function useToggleImportant() {
       if (!response.ok) {
         if (response.status === 401) {
           toast.error('Your session has expired. Please log in again.')
-          setTimeout(() => window.location.href = '/login', 1500)
+          setTimeout(() => router.push('/login'), 1500)
           throw new Error('Session expired')
         }
         throw new Error('Failed to toggle important status')

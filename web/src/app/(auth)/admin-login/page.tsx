@@ -1,9 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { useLogin, useLogout, useMe } from "@/hooks/useAuth"
 
 export default function AdminLoginPage() {
+  const router = useRouter()
   const [emailOrUsername, setEmailOrUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -32,7 +34,7 @@ export default function AdminLoginPage() {
       const refreshed = await refetchMe()
       const role = refreshed.data?.user?.role
       if (role === 'superadmin') {
-          window.location.href = "/dashboard/maintenance"
+          router.push("/dashboard/maintenance")
         } else {
           setError('Only superadmin is allowed during maintenance')
         await logout.mutateAsync()

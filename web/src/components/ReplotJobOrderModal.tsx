@@ -11,7 +11,7 @@ interface ReplotJobOrderModalProps {
   jobId: string
   jobNumber: string
   currentDate?: string
-  onSuccess: () => void
+  onSuccess: (responseData?: any) => void
 }
 
 export default function ReplotJobOrderModal({
@@ -129,8 +129,9 @@ export default function ReplotJobOrderModal({
         throw new Error(error.error || 'Failed to replot job order')
       }
 
+      const responseData = await response.json()
       toast.success('Job order replotted successfully!')
-      onSuccess()
+      onSuccess(responseData)
       onClose()
     } catch (error: any) {
       console.error('Error replotting job:', error)

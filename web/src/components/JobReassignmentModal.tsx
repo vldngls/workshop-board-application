@@ -17,7 +17,7 @@ import TechnicianScheduleView from './TechnicianScheduleView'
 interface JobReassignmentModalProps {
   jobOrder: JobOrder
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (responseData?: any) => void
 }
 
 interface Technician {
@@ -179,7 +179,9 @@ export default function JobReassignmentModal({
           fontWeight: '500'
         }
       })
-      onSuccess()
+      
+      // Pass the reassigned job data to onSuccess for optimistic update
+      onSuccess(responseData)
       
       // Small delay to let user see the success message
       setTimeout(() => {
