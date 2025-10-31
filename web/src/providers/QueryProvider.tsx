@@ -19,21 +19,10 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         retry: 1,
         // Only refetch on mount when stale to leverage cache effectively
         refetchOnMount: true,
-        // Handle errors globally to prevent unhandled promise rejections
-        onError: (error: Error) => {
-          // Only log errors that aren't expected (401/403/404)
-          if (error.message && !error.message.includes('401') && !error.message.includes('403') && !error.message.includes('404')) {
-            console.error('Query error:', error)
-          }
-        },
       },
       mutations: {
         // Retry mutations once on failure
         retry: 1,
-        // Handle mutation errors globally
-        onError: (error: Error) => {
-          console.error('Mutation error:', error)
-        },
       },
     },
   }))
