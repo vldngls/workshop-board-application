@@ -190,7 +190,7 @@ echo "🗄️  Setting up MongoDB..."
 if [ "$USE_DOCKER" = true ]; then
     if [ "$MODE" = "network" ]; then
         echo "🐳 Starting MongoDB with network configuration..."
-        docker-compose -f docker-compose.network.yml up -d mongodb
+        docker-compose -f docker/docker-compose.network.yml up -d mongodb
         if [ $? -eq 0 ]; then
             echo "✅ MongoDB started successfully"
             echo "   MongoDB Express: http://localhost:8081 (admin/admin)"
@@ -199,7 +199,7 @@ if [ "$USE_DOCKER" = true ]; then
         fi
     else
         echo "🐳 Starting MongoDB with local configuration..."
-        docker-compose -f docker-compose.dev.yml up -d mongodb
+        docker-compose -f docker/docker-compose.dev.yml up -d mongodb
         if [ $? -eq 0 ]; then
             echo "✅ MongoDB started successfully"
             echo "   MongoDB Express: http://localhost:8081 (admin/admin)"
@@ -267,8 +267,8 @@ echo "   npm run dev"
 
 echo ""
 echo "📚 For more information, see:"
-echo "   - DEPLOYMENT.md for detailed instructions"
-echo "   - WORKFLOW_DOCUMENTATION.md for feature details"
+echo "   - docs/DEPLOYMENT.md for detailed instructions"
+echo "   - docs/WORKFLOW_DOCUMENTATION.md for feature details"
 
 echo ""
-echo "🆘 Need help? Check the troubleshooting section in DEPLOYMENT.md"
+echo "🆘 Need help? Check the troubleshooting section in docs/DEPLOYMENT.md"

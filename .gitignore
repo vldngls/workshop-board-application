@@ -72,9 +72,10 @@ out/
 # Nuxt.js build / generate output
 .nuxt
 dist
+*/dist
 server/dist
-server/api/*.d.ts
-server/api/*.d.ts.map
+server/api
+server/api/*
 server/scripts/*.d.mts
 server/scripts/*.d.mts.map
 

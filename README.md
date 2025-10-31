@@ -104,7 +104,7 @@ workshop-board-application/
 
 ## Deployment
 
-For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)
+For detailed deployment instructions, see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 
 ### Quick Deployment Overview
 1. **Local Development**: Use automated setup scripts
@@ -113,8 +113,8 @@ For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ## Documentation
 
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete deployment guide
-- **[WORKFLOW_DOCUMENTATION.md](./WORKFLOW_DOCUMENTATION.md)** - Detailed workflow and features
+- **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** - Complete deployment guide
+- **[docs/WORKFLOW_DOCUMENTATION.md](./docs/WORKFLOW_DOCUMENTATION.md)** - Detailed workflow and features
 
 ## Support
 
