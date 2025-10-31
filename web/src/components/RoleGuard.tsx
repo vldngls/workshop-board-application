@@ -30,7 +30,7 @@ export default function RoleGuard({ children, allowedRoles, fallbackPath = "/log
   }, [userRole, status, allowedRoles, router, fallbackPath])
 
   // Show loading while checking auth status
-  if (status === 'pending' || status === 'loading') {
+  if (status === 'pending') {
     return <div>Loading...</div>
   }
 
