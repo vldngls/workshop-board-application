@@ -20,14 +20,19 @@ export default function Home() {
   useEffect(() => {
     const checkMaintenanceAndAuth = async () => {
       try {
-        // First check maintenance status
-        const maintenanceResponse = await fetch('/api/maintenance/settings/public', {
+        // Maintenance status is already checked by middleware, but we need it for UI
+        // Use the status endpoint which has better caching
+        const maintenanceResponse = await fetch('/api/maintenance/status', {
           method: 'GET',
+          cache: 'no-store' // Always get fresh data for maintenance status
         })
 
         if (maintenanceResponse.ok) {
           const maintenanceData = await maintenanceResponse.json()
-          setMaintenanceStatus(maintenanceData)
+          setMaintenanceStatus({
+            isUnderMaintenance: maintenanceData.isUnderMaintenance || false,
+            maintenanceMessage: maintenanceData.maintenanceMessage || ''
+          })
           
           // If under maintenance, don't proceed with auth check
           if (maintenanceData.isUnderMaintenance) {

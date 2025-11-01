@@ -3,12 +3,14 @@ const { z } = require('zod');
 const { connectToMongo } = require('../config/mongo');
 const { MaintenanceSettings } = require('../models/MaintenanceSettings');
 const { verifyToken, requireRole } = require('../middleware/auth');
+const { validateApiKey } = require('../utils/apiKeyValidator');
 
 const router = Router();
 
 const updateSettingsSchema = z.object({
   isUnderMaintenance: z.boolean(),
-  maintenanceMessage: z.string()
+  maintenanceMessage: z.string(),
+  apiKey: z.string().optional() // API key is optional - can be updated separately
 });
 
 // Public endpoint to check maintenance status (no auth required)
@@ -19,14 +21,25 @@ router.get('/public', async (req, res) => {
     // Get maintenance settings document
     const settings = await MaintenanceSettings.findOne();
     
-    if (!settings) {
-      // If no settings exist, assume not under maintenance
+    // Check API key validation first (from database, not env)
+    if (settings && settings.apiKey) {
+      const isValid = await validateApiKey(settings.apiKey);
+      
+      if (!isValid) {
+        return res.json({
+          isUnderMaintenance: true,
+          maintenanceMessage: 'Invalid or missing API key. Please contact the administrator.'
+        });
+      }
+    } else {
+      // If no API key is set in database, block access (required by default)
       return res.json({
-        isUnderMaintenance: false,
-        maintenanceMessage: 'The system is currently under maintenance. Please try again later.'
+        isUnderMaintenance: true,
+        maintenanceMessage: 'API key not configured. Please contact the administrator.'
       });
     }
     
+    // API key is valid, now check maintenance status
     return res.json({
       isUnderMaintenance: settings.isUnderMaintenance,
       maintenanceMessage: settings.maintenanceMessage
@@ -58,9 +71,30 @@ router.get('/', verifyToken, requireRole(['superadmin']), async (req, res) => {
       await settings.save();
     }
     
+    // Validate API key if it exists
+    let apiKeyStatus = {
+      isSet: false,
+      isValid: false,
+      lastValidated: null as Date | null
+    };
+    
+    if (settings.apiKey) {
+      apiKeyStatus.isSet = true;
+      try {
+        apiKeyStatus.isValid = await validateApiKey(settings.apiKey);
+        if (apiKeyStatus.isValid) {
+          apiKeyStatus.lastValidated = new Date();
+        }
+      } catch (error) {
+        apiKeyStatus.isValid = false;
+      }
+    }
+    
     return res.json({
       isUnderMaintenance: settings.isUnderMaintenance,
-      maintenanceMessage: settings.maintenanceMessage
+      maintenanceMessage: settings.maintenanceMessage,
+      apiKey: settings.apiKey ? '***' : null, // Return masked value to show if it's set
+      apiKeyStatus // Include validation status
     });
   } catch (error) {
     console.error('Error fetching maintenance settings:', error);
@@ -84,7 +118,7 @@ router.put('/', verifyToken, requireRole(['superadmin']), async (req, res) => {
       });
     }
     
-    const { isUnderMaintenance, maintenanceMessage } = parsed.data;
+    const { isUnderMaintenance, maintenanceMessage, apiKey } = parsed.data;
     
     // Get or create maintenance settings document
     let settings = await MaintenanceSettings.findOne();
@@ -97,6 +131,11 @@ router.put('/', verifyToken, requireRole(['superadmin']), async (req, res) => {
     const previousState = settings.isUnderMaintenance;
     settings.isUnderMaintenance = isUnderMaintenance;
     settings.maintenanceMessage = maintenanceMessage;
+    
+    // Update API key if provided (allow clearing by sending empty string)
+    if (apiKey !== undefined) {
+      settings.apiKey = apiKey || null;
+    }
     
     // Track who enabled/disabled maintenance
     if (isUnderMaintenance && !previousState) {
@@ -125,11 +164,32 @@ router.put('/', verifyToken, requireRole(['superadmin']), async (req, res) => {
     
     await settings.save();
     
+    // Validate API key status after saving
+    let apiKeyStatus = {
+      isSet: false,
+      isValid: false,
+      lastValidated: null as Date | null
+    };
+    
+    if (settings.apiKey) {
+      apiKeyStatus.isSet = true;
+      try {
+        apiKeyStatus.isValid = await validateApiKey(settings.apiKey);
+        if (apiKeyStatus.isValid) {
+          apiKeyStatus.lastValidated = new Date();
+        }
+      } catch (error) {
+        apiKeyStatus.isValid = false;
+      }
+    }
+    
     return res.json({ 
       message: 'Maintenance settings updated successfully',
       settings: {
         isUnderMaintenance: settings.isUnderMaintenance,
-        maintenanceMessage: settings.maintenanceMessage
+        maintenanceMessage: settings.maintenanceMessage,
+        apiKey: settings.apiKey ? '***' : null, // Don't return actual API key
+        apiKeyStatus // Include validation status
       }
     });
   } catch (error) {

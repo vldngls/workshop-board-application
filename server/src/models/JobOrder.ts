@@ -154,12 +154,17 @@ const jobOrderSchema = new Schema({
 }, { timestamps: true })
 
 // Index for efficient queries
+// Note: jobNumber already has unique index from schema definition (unique: true)
 jobOrderSchema.index({ status: 1, date: -1 })
 jobOrderSchema.index({ assignedTechnician: 1, date: 1 })
 jobOrderSchema.index({ createdBy: 1 })
 jobOrderSchema.index({ isImportant: 1, date: -1 })
 jobOrderSchema.index({ carriedOver: 1, date: -1 })
 jobOrderSchema.index({ qiStatus: 1 })
+jobOrderSchema.index({ 'timeRange.start': 1, 'timeRange.end': 1 }) // For time slot queries
+jobOrderSchema.index({ date: 1, status: 1, carriedOver: 1 }) // Composite index for common dashboard queries
+jobOrderSchema.index({ plateNumber: 1 }) // For search queries
+jobOrderSchema.index({ vin: 1 }) // For search queries
 
 const JobOrder = mongoose.models.JobOrder || mongoose.model('JobOrder', jobOrderSchema)
 

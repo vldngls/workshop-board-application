@@ -24,7 +24,7 @@ class SessionStore {
     // Clean up expired sessions every 10 minutes
     this.cleanupInterval = setInterval(() => {
       const now = Date.now()
-      const maxAge = 15 * 60 * 1000 // 15 minutes (token expiry)
+      const maxAge = 8 * 60 * 60 * 1000 // 8 hours (token expiry)
       for (const [tokenId, session] of this.sessions.entries()) {
         if (now - session.lastActivity > maxAge) {
           this.sessions.delete(tokenId)

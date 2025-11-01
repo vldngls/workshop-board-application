@@ -4,6 +4,7 @@ const { Schema } = mongoose
 interface MaintenanceSettingsDoc {
   isUnderMaintenance: boolean
   maintenanceMessage: string
+  apiKey?: string // API key for validation (stored encrypted/hashed in production)
   enabledBy: any // mongoose.Types.ObjectId
   enabledByName: string
   enabledByEmail: string
@@ -24,6 +25,11 @@ const maintenanceSettingsSchema = new Schema({
     type: String, 
     required: true,
     default: 'The system is currently under maintenance. Please try again later.'
+  },
+  apiKey: {
+    type: String,
+    required: false,
+    default: null
   },
   enabledBy: { type: Schema.Types.ObjectId, ref: 'User' },
   enabledByName: { type: String },

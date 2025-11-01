@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       sameSite: "lax",
       secure: isProduction,
       path: "/",
-      maxAge: 60 * 15, // 15 minutes to match access token exp
+      maxAge: 60 * 60 * 8, // 8 hours to match access token expiration
     })
     
     return res

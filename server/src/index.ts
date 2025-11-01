@@ -2,6 +2,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const mongoose = require('mongoose');
 const { connectToMongo } = require('./config/mongo');
 const authRouter = require('./controllers/auth');
 const usersRouter = require('./controllers/users');
@@ -52,11 +53,15 @@ app.use(
   })
 );
 
-// Ensure MongoDB connection on Vercel (production/serverless)
+// Ensure MongoDB connection is ready (production/serverless)
+// Only check connection state, don't reconnect on every request
 if (!isDevelopment) {
   app.use(async (_req, _res, next) => {
     try {
-      await connectToMongo();
+      // Only connect if not already connected (connection reuse)
+      if (mongoose.connection.readyState !== 1) {
+        await connectToMongo();
+      }
       next();
     } catch (err) {
       console.error('Failed to connect to MongoDB (production):', err);
@@ -68,6 +73,11 @@ if (!isDevelopment) {
 // JWT authentication for protected routes
 const { verifyToken } = require('./middleware/auth');
 const { requestLogger } = require('./middleware/requestLogger');
+const { apiKeyValidatorMiddleware } = require('./middleware/apiKeyValidator');
+
+// API Key validation middleware (runs before JWT auth)
+// This ensures API key is valid before allowing any protected routes
+app.use(apiKeyValidatorMiddleware);
 
 app.use((req, res, next) => {
   // Public routes that don't need authentication

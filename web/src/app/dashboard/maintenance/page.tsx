@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import { FiCheckCircle, FiXCircle, FiRefreshCw, FiAlertCircle } from 'react-icons/fi'
 import { BugReport } from '@/types/bugReport'
 import RoleGuard from '@/components/RoleGuard'
 import ConfirmDialog from '@/components/ConfirmDialog'
@@ -20,17 +21,33 @@ interface SystemStats {
   lastBackup: string
 }
 
+interface ApiKeyStatus {
+  isSet: boolean
+  isValid: boolean
+  lastValidated: string | null
+}
+
 interface MaintenanceSettings {
   isUnderMaintenance: boolean
   maintenanceMessage: string
+  apiKey?: string | null // API key (masked when returned from server)
+  apiKeyStatus?: ApiKeyStatus // API key validation status
 }
 
 export default function MaintenancePage() {
   const [bugReports, setBugReports] = useState<BugReport[]>([])
   const [maintenanceSettings, setMaintenanceSettings] = useState<MaintenanceSettings>({
     isUnderMaintenance: false,
-    maintenanceMessage: ''
+    maintenanceMessage: '',
+    apiKey: null,
+    apiKeyStatus: {
+      isSet: false,
+      isValid: false,
+      lastValidated: null
+    }
   })
+  const [apiKeyInput, setApiKeyInput] = useState<string>('') // Separate state for API key input (for editing)
+  const [isValidatingApiKey, setIsValidatingApiKey] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'bug-reports' | 'settings' | 'logs'>('overview')
   const [selectedBugReport, setSelectedBugReport] = useState<BugReport | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -80,10 +97,35 @@ export default function MaintenancePage() {
     if (settingsQuery.data) {
       setMaintenanceSettings({
         isUnderMaintenance: !!settingsQuery.data.isUnderMaintenance,
-        maintenanceMessage: settingsQuery.data.maintenanceMessage || ''
+        maintenanceMessage: settingsQuery.data.maintenanceMessage || '',
+        apiKey: settingsQuery.data.apiKey || null,
+        apiKeyStatus: settingsQuery.data.apiKeyStatus || {
+          isSet: false,
+          isValid: false,
+          lastValidated: null
+        }
       })
+      // Don't populate input with actual key if masked (shows ***)
+      if (settingsQuery.data.apiKey && settingsQuery.data.apiKey !== '***') {
+        setApiKeyInput(settingsQuery.data.apiKey)
+      } else {
+        setApiKeyInput('') // Clear input if key is masked or not set
+      }
     }
   }, [settingsQuery.data])
+  
+  // Function to manually refresh API key status
+  const refreshApiKeyStatus = async () => {
+    setIsValidatingApiKey(true)
+    try {
+      await settingsQuery.refetch()
+      toast.success('API key status updated')
+    } catch {
+      toast.error('Failed to validate API key')
+    } finally {
+      setIsValidatingApiKey(false)
+    }
+  }
 
   // Logs are streamed via `logsInfinite`; no local copy needed
 
@@ -106,8 +148,41 @@ export default function MaintenancePage() {
   }
 
   const updateMaintenanceSettings = async () => {
-    await settingsQuery.updateSettings.mutateAsync(maintenanceSettings)
-    toast.success('Maintenance settings updated successfully')
+    const payload: any = {
+      isUnderMaintenance: maintenanceSettings.isUnderMaintenance,
+      maintenanceMessage: maintenanceSettings.maintenanceMessage
+    }
+    
+    // Only include API key if it was entered (to update it)
+    // If empty, don't send it (keeps existing key)
+    if (apiKeyInput.trim()) {
+      payload.apiKey = apiKeyInput.trim()
+    }
+    
+    const response = await settingsQuery.updateSettings.mutateAsync(payload)
+    
+    // Update local state with API key status from response
+    if (response.settings?.apiKeyStatus) {
+      setMaintenanceSettings(prev => ({
+        ...prev,
+        apiKeyStatus: response.settings.apiKeyStatus
+      }))
+    }
+    
+    // Show success message with API key status
+    if (payload.apiKey) {
+      const status = response.settings?.apiKeyStatus
+      if (status?.isValid) {
+        toast.success('Maintenance settings updated successfully. API key is valid!')
+      } else {
+        toast.error('Maintenance settings updated, but API key is invalid. System will be in maintenance mode.')
+      }
+    } else {
+      toast.success('Maintenance settings updated successfully')
+    }
+    
+    // Clear input after save (will be masked on next fetch)
+    setApiKeyInput('')
   }
 
   const getStatusColor = (status: string) => {
@@ -379,6 +454,93 @@ export default function MaintenancePage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Enter maintenance message to display to users..."
                   />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700">
+                      API Key
+                    </label>
+                    {/* API Key Status Indicator */}
+                    {maintenanceSettings.apiKeyStatus && (
+                      <div className="flex items-center gap-2">
+                        {maintenanceSettings.apiKeyStatus.isSet ? (
+                          maintenanceSettings.apiKeyStatus.isValid ? (
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-50 border border-green-200">
+                              <FiCheckCircle className="w-4 h-4 text-green-600" />
+                              <span className="text-xs font-medium text-green-700">Valid</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-50 border border-red-200">
+                              <FiXCircle className="w-4 h-4 text-red-600" />
+                              <span className="text-xs font-medium text-red-700">Invalid</span>
+                            </div>
+                          )
+                        ) : (
+                          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-yellow-50 border border-yellow-200">
+                            <FiAlertCircle className="w-4 h-4 text-yellow-600" />
+                            <span className="text-xs font-medium text-yellow-700">Not Set</span>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={refreshApiKeyStatus}
+                          disabled={isValidatingApiKey}
+                          className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Refresh API key status"
+                        >
+                          <FiRefreshCw className={`w-4 h-4 ${isValidatingApiKey ? 'animate-spin' : ''}`} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <input
+                      type="password"
+                      id="apiKey"
+                      value={apiKeyInput}
+                      onChange={(e) => setApiKeyInput(e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        maintenanceSettings.apiKeyStatus?.isSet && !maintenanceSettings.apiKeyStatus?.isValid
+                          ? 'border-red-300 bg-red-50'
+                          : maintenanceSettings.apiKeyStatus?.isValid
+                          ? 'border-green-300 bg-green-50'
+                          : 'border-gray-300'
+                      }`}
+                      placeholder={maintenanceSettings.apiKey ? "API key is set (enter new key to update)" : "Enter API key from https://api-key-manager-one.vercel.app/"}
+                    />
+                    <div className="flex items-start gap-2">
+                      {maintenanceSettings.apiKeyStatus?.isSet ? (
+                        maintenanceSettings.apiKeyStatus.isValid ? (
+                          <>
+                            <FiCheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-green-700">
+                              API key is valid and working. Enter a new key above to update it, or leave empty to keep the current key.
+                              {maintenanceSettings.apiKeyStatus.lastValidated && (
+                                <span className="block text-gray-500 mt-0.5">
+                                  Last validated: {new Date(maintenanceSettings.apiKeyStatus.lastValidated).toLocaleString()}
+                                </span>
+                              )}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <FiXCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-red-700">
+                              API key is invalid. The system is currently in maintenance mode. Please update with a valid key from https://api-key-manager-one.vercel.app/
+                            </p>
+                          </>
+                        )
+                      ) : (
+                        <>
+                          <FiAlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-yellow-700">
+                            API key is required. Get your key from https://api-key-manager-one.vercel.app/. The system will be in maintenance mode until a valid key is set.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <button

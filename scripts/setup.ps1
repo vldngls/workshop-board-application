@@ -95,8 +95,9 @@ if ($Mode -eq "local") {
     # Create web/.env.local
     $webEnvContent = @"
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
-JWT_SECRET=workshopjwtsecrettigerlily
 API_KEY=workshopapikeytigerlily
+JWT_SECRET=workshopjwtsecrettigerlily
+NEXT_JWT_ENC_SECRET=workshopjwtencsecrettigerlily
 "@
     $webEnvContent | Out-File -FilePath "web/.env.local" -Encoding UTF8
     Write-Host "✅ Created web/.env.local" -ForegroundColor Green
@@ -128,8 +129,9 @@ NODE_ENV=development
     # Create web/.env.local
     $webEnvContent = @"
 NEXT_PUBLIC_API_BASE_URL=http://$localIP:4000
-JWT_SECRET=workshopjwtsecrettigerlily
 API_KEY=workshopapikeytigerlily
+JWT_SECRET=workshopjwtsecrettigerlily
+NEXT_JWT_ENC_SECRET=workshopjwtencsecrettigerlily
 "@
     $webEnvContent | Out-File -FilePath "web/.env.local" -Encoding UTF8
     Write-Host "✅ Created web/.env.local" -ForegroundColor Green
@@ -137,7 +139,6 @@ API_KEY=workshopapikeytigerlily
     # Create server/.env
     $serverEnvContent = @"
 PORT=4000
-HOST=0.0.0.0
 MONGODB_URI=mongodb://localhost:27017/workshop_board
 JWT_SECRET=workshopjwtsecrettigerlily
 API_KEY=workshopapikeytigerlily
