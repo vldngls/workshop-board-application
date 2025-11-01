@@ -44,12 +44,16 @@ router.post('/login', async (req, res) => {
       return res.status(500).json({ error: 'Server configuration error' })
     }
 
+    // Enhanced JWT with token ID for security tracking
+    const { addTokenIdToPayload } = require('../middleware/jwtSecurity')
+    const payload = addTokenIdToPayload({
+      sub: String(user._id),
+      role: user.role,
+    })
+    
     // Minimal claims: subject and role only; short-lived access token
     const token = jwt.sign(
-      {
-        sub: String(user._id),
-        role: user.role,
-      },
+      payload,
       jwtSecret,
       { expiresIn: '15m' }
     )

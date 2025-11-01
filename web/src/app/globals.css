@@ -90,12 +90,94 @@ body {
   background: linear-gradient(135deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.3));
 }
 
-/* Glass Morphism Effect */
+/* Liquid Glass Effect - True refraction (light bending, not just blur) */
 .glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  position: relative;
+  
+  /* Create refraction effect with backdrop-filter - minimal blur, more distortion */
+  backdrop-filter: 
+    blur(8px) 
+    saturate(180%) 
+    brightness(115%)
+    contrast(105%);
+  -webkit-backdrop-filter: 
+    blur(8px) 
+    saturate(180%) 
+    brightness(115%)
+    contrast(105%);
+  
+  /* Reflective border with gradient - simulates light refraction at edges */
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-top: 1px solid rgba(255, 255, 255, 0.7);
+  border-left: 1px solid rgba(255, 255, 255, 0.6);
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  
+  /* Refraction shadows - creates depth through light distortion */
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.15),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.3);
+  
+  /* Subtle transform to enhance refraction illusion */
+  transform: translateZ(0);
+}
+
+/* Refraction distortion layer - creates wavy light effect */
+.glass::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: 
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    linear-gradient(45deg, transparent 0%, rgba(255, 255, 255, 0.05) 100%),
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+  background-size: 200% 200%, 150% 150%, 300px 300px, 400px 400px;
+  background-position: 0% 0%, 100% 100%, 20% 30%, 80% 70%;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.6;
+  mix-blend-mode: overlay;
+}
+
+/* Light refraction highlight - simulates light bending through glass */
+.glass::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.2) 30%,
+    rgba(255, 255, 255, 0.05) 60%,
+    transparent 100%
+  );
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  mask: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    transparent 100%
+  );
 }
 
 .glass-dark {
@@ -403,7 +485,7 @@ button {
 }
 
 /* Default button styling for better visibility */
-button:not([class*="bg-"]):not([class*="text-"]) {
+button:not([class*="bg-"]):not([class*="text-"]):not(.glass) {
   background: linear-gradient(135deg, var(--ford-blue) 0%, var(--ford-blue-light) 100%);
   color: white;
   border: none;
@@ -414,7 +496,7 @@ button:not([class*="bg-"]):not([class*="text-"]) {
   box-shadow: var(--ios-shadow-sm);
 }
 
-button:not([class*="bg-"]):not([class*="text-"]):hover {
+button:not([class*="bg-"]):not([class*="text-"]):not(.glass):hover {
   background: linear-gradient(135deg, var(--ford-blue-light) 0%, var(--ford-blue) 100%);
   box-shadow: var(--ios-shadow-md);
   transform: translateY(-1px);

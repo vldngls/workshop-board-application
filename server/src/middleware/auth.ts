@@ -29,8 +29,29 @@ function verifyToken(req: any, res: any, next: any) {
   }
 
   try {
-    const decoded = jwt.verify(token, jwtSecret) as JWTPayload
+    const decoded = jwt.verify(token, jwtSecret) as JWTPayload & { jti?: string }
     req.user = decoded
+    
+    // Enhanced security: validate token with IP and session tracking
+    try {
+      const { validateJWTToken, checkConcurrentSessions } = require('./jwtSecurity')
+      const validation = validateJWTToken(req, decoded)
+      
+      if (!validation.valid) {
+        console.error(`[AUTH] Security validation failed: ${validation.reason}`)
+        return res.status(403).json({ error: 'Security validation failed' })
+      }
+      
+      // Check for too many concurrent sessions (potential account sharing)
+      if (!checkConcurrentSessions(decoded.sub, 3)) {
+        console.warn(`[AUTH] Too many concurrent sessions for user ${decoded.sub}`)
+        // Log but don't block - allow access but flag for review
+      }
+    } catch (securityErr) {
+      // If security module fails, log but continue (backward compatibility)
+      console.warn('[AUTH] Security validation error:', securityErr)
+    }
+    
     console.log(`[AUTH] Token verified for userId: ${decoded.sub} (${decoded.role})`)
     next()
   } catch (err) {

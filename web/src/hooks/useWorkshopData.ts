@@ -85,14 +85,12 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
     try {
       setLoading(true)
       
-      const shouldCheckSnapshot = isHistoricalDate // only check snapshots for past dates
-      
-      // First, check for a saved snapshot for the date
-      if (shouldCheckSnapshot) {
-        const snapshotRes = await fetch(`/api/job-orders/snapshot/${dateStr}`, { credentials: 'include' }).catch(() => ({ ok: false, status: 404 } as any))
-        if (snapshotRes.ok) {
-          const snapshotData = await snapshotRes.json()
-          const snapJobs = (snapshotData?.snapshot?.jobOrders || snapshotData?.jobOrders || []) as any[]
+      // Check for snapshot for ANY date (including today if snapshot exists)
+      // This allows viewing today's snapshot even if it was just created
+      const snapshotRes = await fetch(`/api/job-orders/snapshot/${dateStr}`, { credentials: 'include' }).catch(() => ({ ok: false, status: 404 } as any))
+      if (snapshotRes.ok) {
+        const snapshotData = await snapshotRes.json()
+        const snapJobs = (snapshotData?.snapshot?.jobOrders || snapshotData?.jobOrders || []) as any[]
           // Map snapshot jobs to JobOrderWithDetails shape used by the timetable
           const mapped = snapJobs.map((job: any) => ({
             _id: job._id,
@@ -121,7 +119,18 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
             updatedAt: job.updatedAt
           })) as unknown as JobOrderWithDetails[]
 
-          setJobOrders(mapped)
+          // For snapshots, filter jobs that should appear on timetable
+          // Include jobs with assigned technicians and proper time ranges
+          // This preserves the "screenshot" - showing jobs as they were on the timetable
+          const snapshotTimetableJobs = mapped.filter((job: any) => 
+            job.assignedTechnician &&
+            job.timeRange?.start &&
+            job.timeRange?.end &&
+            job.timeRange.start !== '00:00' &&
+            job.timeRange.end !== '00:00'
+          )
+          
+          setJobOrders(snapshotTimetableJobs)
           // still show technicians list to render timetable rows
           try {
             const usersRes = await fetch('/api/users', { credentials: 'include' })
@@ -209,9 +218,9 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
           setLoading(false)
           return
         }
-      } else {
-        setIsSnapshot(false)
-      }
+      
+      // If no snapshot found, proceed with live data fetch
+      setIsSnapshot(false)
 
       // Fetch minimal set in parallel (live view)
       // Add cache-busting timestamp to ensure fresh data after reassignments

@@ -290,10 +290,29 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
         throw new Error('Failed to delete appointment')
       }
 
-      // Invalidate workshop appointments query to refresh timetable
-      queryClient.invalidateQueries({ queryKey: ['workshop-appointments'] })
-      queryClient.invalidateQueries({ queryKey: ['appointments'] })
-      queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
+      // Invalidate all workshop appointments queries (with and without date) to refresh timetable
+      const dateStr = date.toISOString().split('T')[0]
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['workshop-appointments', dateStr] }),
+        queryClient.invalidateQueries({ queryKey: ['workshop-appointments'] }),
+        queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+        queryClient.invalidateQueries({ queryKey: ['technician-schedule'] }),
+        // Invalidate available slots query so it recalculates after appointment deletion
+        queryClient.invalidateQueries({ queryKey: ['workshop-slots', dateStr] }),
+        queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
+      ])
+      
+      // Force immediate refetch
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['workshop-appointments', dateStr] }),
+        queryClient.refetchQueries({ queryKey: ['workshop-slots', dateStr] })
+      ])
+      
+      // Also manually refetch available slots if refetch function is available
+      if (refetchAvailableSlots) {
+        refetchAvailableSlots()
+      }
+      
       toast.success('Appointment deleted (no show)')
     } catch (error) {
       console.error('Error deleting appointment:', error)
@@ -302,7 +321,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
       setShowDeleteConfirm(false)
       setAppointmentToDelete(null)
     }
-  }, [appointmentToDelete, queryClient])
+  }, [appointmentToDelete, queryClient, date, refetchAvailableSlots])
 
   const cancelDeleteAppointment = useCallback(() => {
     setShowDeleteConfirm(false)

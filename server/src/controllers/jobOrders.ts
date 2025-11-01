@@ -1027,6 +1027,9 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
     
     console.log('💾 SERVER - Final update data:', JSON.stringify(updateData, null, 2))
     
+    // Capture before state for audit logging
+    const beforeState = JSON.parse(JSON.stringify(jobOrder.toObject()))
+    
     const updatedJobOrder = await JobOrder.findByIdAndUpdate(
       jobOrder._id,
       updateData,
@@ -1037,14 +1040,33 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
       .populate('serviceAdvisor', 'name email')
       .lean()
     
+    // Enhanced audit logging with before/after states
     try {
-      await logger.audit('Job order updated', {
-        userId: req.user?.sub,
-        userEmail: undefined,
-        userRole: req.user?.role,
-        context: { jobId: String(jobOrder._id), changes: updateData }
-      })
-    } catch {}
+      const auditLogger = require('../utils/auditLogger')
+      await auditLogger.audit(
+        updateData.status && updateData.status !== jobOrder.status ? 'status_change' : 'update',
+        'JobOrder',
+        String(jobOrder._id),
+        {
+          req,
+          userId: req.user?.sub,
+          userRole: req.user?.role,
+          requestBody: updateData
+        },
+        beforeState,
+        updatedJobOrder
+      )
+    } catch (auditErr) {
+      // Fallback to basic logging if enhanced logging fails
+      try {
+        await logger.audit('Job order updated', {
+          userId: req.user?.sub,
+          userEmail: undefined,
+          userRole: req.user?.role,
+          context: { jobId: String(jobOrder._id), changes: updateData }
+        })
+      } catch {}
+    }
 
     console.log('✅ SERVER - Job order updated successfully:', {
       _id: updatedJobOrder?._id,
@@ -1342,7 +1364,8 @@ router.post('/end-of-day', verifyToken, requireRole(['administrator', 'job-contr
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
-    // Get all jobs for today to create snapshot
+    // Get all jobs for today to create snapshot - INCLUDING jobs marked as carry-over
+    // This is a "screenshot" of the day, so all jobs should be preserved as they were
     const todayJobs = await JobOrder.find({
       date: { $gte: today, $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) }
     })
@@ -1350,6 +1373,9 @@ router.post('/end-of-day', verifyToken, requireRole(['administrator', 'job-contr
       .populate('assignedTechnician', 'name email')
       .populate('serviceAdvisor', 'name email')
       .lean()
+    
+    // Include ALL jobs regardless of carry-over status - snapshot is a screenshot of the day
+    // This ensures carry-over jobs are preserved in the snapshot exactly as they were
     
     // Calculate statistics
     const stats = {
