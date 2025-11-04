@@ -166,7 +166,7 @@ Write-Host "🗄️  Setting up MongoDB..." -ForegroundColor Blue
 if ($useDocker) {
     if ($Mode -eq "network") {
         Write-Host "🐳 Starting MongoDB with network configuration..." -ForegroundColor Cyan
-        docker-compose -f docker/docker-compose.network.yml up -d mongodb
+        docker-compose -f workspace/docker/docker-compose.network.yml up -d mongodb
         if ($LASTEXITCODE -eq 0) {
             Write-Host "✅ MongoDB started successfully" -ForegroundColor Green
             Write-Host "   MongoDB Express: http://localhost:8081 (admin/admin)" -ForegroundColor White
@@ -175,7 +175,7 @@ if ($useDocker) {
         }
     } else {
         Write-Host "🐳 Starting MongoDB with local configuration..." -ForegroundColor Cyan
-        docker-compose -f docker/docker-compose.dev.yml up -d mongodb
+        docker-compose -f workspace/docker/docker-compose.dev.yml up -d mongodb
         if ($LASTEXITCODE -eq 0) {
             Write-Host "✅ MongoDB started successfully" -ForegroundColor Green
             Write-Host "   MongoDB Express: http://localhost:8081 (admin/admin)" -ForegroundColor White
@@ -239,8 +239,8 @@ Write-Host "   npm run dev" -ForegroundColor White
 
 Write-Host ""
 Write-Host "📚 For more information, see:" -ForegroundColor Cyan
-Write-Host "   - docs/DEPLOYMENT.md for detailed instructions" -ForegroundColor White
-Write-Host "   - docs/WORKFLOW_DOCUMENTATION.md for feature details" -ForegroundColor White
+Write-Host "   - workspace/docs/DEPLOYMENT.md for detailed instructions" -ForegroundColor White
+Write-Host "   - workspace/docs/WORKFLOW_DOCUMENTATION.md for feature details" -ForegroundColor White
 
 Write-Host ""
-Write-Host "🆘 Need help? Check the troubleshooting section in docs/DEPLOYMENT.md" -ForegroundColor Yellow
+Write-Host "🆘 Need help? Check the troubleshooting section in workspace/docs/DEPLOYMENT.md" -ForegroundColor Yellow

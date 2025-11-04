@@ -12,7 +12,7 @@ A comprehensive guide for deploying the Workshop Board Application across differ
 
 ### Unified Setup Script Features
 
-The new unified setup script (`scripts/setup.ps1` / `scripts/setup.sh`) provides:
+The new unified setup script (`workspace/scripts/setup.ps1` / `workspace/scripts/setup.sh`) provides:
 
 - **Interactive mode selection**: Choose between local or network deployment
 - **Automatic environment file creation**: Generates correct .env files based on your choice
@@ -30,11 +30,14 @@ cd workshop-board-application
 
 # Run unified setup script
 # Windows PowerShell:
-.\scripts\setup.ps1
+.\workspace\scripts\setup.ps1
 
 # Unix/Linux/macOS:
-chmod +x scripts/setup.sh
-./scripts/setup.sh
+chmod +x workspace/scripts/setup.sh
+./workspace/scripts/setup.sh
+
+# Or use npm scripts:
+npm run init
 
 # The script will prompt you to choose:
 # 1. Local Development (localhost only)
@@ -80,18 +83,24 @@ API_KEY=workshopapikeytigerlily
 ```bash
 # Option 1: Use unified setup script and choose network mode
 # Windows PowerShell:
-.\scripts\setup.ps1
+.\workspace\scripts\setup.ps1
 
 # Unix/Linux/macOS:
-chmod +x scripts/setup.sh
-./scripts/setup.sh
+chmod +x workspace/scripts/setup.sh
+./workspace/scripts/setup.sh
+
+# Or use npm scripts:
+npm run init
 
 # Option 2: Specify network mode directly
 # Windows PowerShell:
-.\scripts\setup.ps1 -Mode network
+.\workspace\scripts\setup.ps1 -Mode network
 
 # Unix/Linux/macOS:
-./scripts/setup.sh --mode network
+./workspace/scripts/setup.sh --mode network
+
+# Or use npm scripts:
+npm run init -- --mode network
 ```
 
 **Server (.env):**
@@ -236,11 +245,14 @@ npm run seed:comprehensive
 
 ```bash
 # Windows PowerShell:
-.\scripts\setup.ps1
+.\workspace\scripts\setup.ps1
 
 # Unix/Linux/macOS:
-chmod +x scripts/setup.sh
-./scripts/setup.sh
+chmod +x workspace/scripts/setup.sh
+./workspace/scripts/setup.sh
+
+# Or use npm scripts:
+npm run init
 ```
 
 ### Manual Network Configuration

@@ -35,11 +35,14 @@ cd workshop-board-application
 
 # Run unified setup script
 # Windows PowerShell:
-.\scripts\setup.ps1
+.\workspace\scripts\setup.ps1
 
 # Unix/Linux/macOS:
-chmod +x scripts/setup.sh
-./scripts/setup.sh
+chmod +x workspace/scripts/setup.sh
+./workspace/scripts/setup.sh
+
+# Or use npm scripts:
+npm run init
 
 # The script will prompt you to choose:
 # 1. Local Development (localhost only)
@@ -76,6 +79,10 @@ npm run dev
 
 ```
 workshop-board-application/
+├── workspace/                 # Workspace utilities
+│   ├── scripts/               # Setup and deployment scripts
+│   ├── docs/                  # Documentation
+│   └── docker/                # Docker configurations
 ├── server/                    # Express API
 │   ├── src/
 │   │   ├── controllers/       # Route controllers
@@ -96,6 +103,8 @@ workshop-board-application/
 
 | Command | Description |
 |---------|-------------|
+| `npm run init` | Run setup script (interactive mode selection) |
+| `npm run deploy` | Run setup script for network deployment |
 | `npm run dev` | Start both frontend and backend |
 | `npm run server:dev` | Start only backend |
 | `npm run web:dev` | Start only frontend |
@@ -104,7 +113,7 @@ workshop-board-application/
 
 ## Deployment
 
-For detailed deployment instructions, see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
+For detailed deployment instructions, see [workspace/docs/DEPLOYMENT.md](./workspace/docs/DEPLOYMENT.md)
 
 ### Quick Deployment Overview
 1. **Local Development**: Use automated setup scripts
@@ -113,8 +122,8 @@ For detailed deployment instructions, see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT
 
 ## Documentation
 
-- **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** - Complete deployment guide
-- **[docs/WORKFLOW_DOCUMENTATION.md](./docs/WORKFLOW_DOCUMENTATION.md)** - Detailed workflow and features
+- **[workspace/docs/DEPLOYMENT.md](./workspace/docs/DEPLOYMENT.md)** - Complete deployment guide
+- **[workspace/docs/WORKFLOW_DOCUMENTATION.md](./workspace/docs/WORKFLOW_DOCUMENTATION.md)** - Detailed workflow and features
 
 ## Support
 
