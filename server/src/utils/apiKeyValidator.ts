@@ -22,7 +22,7 @@ export async function validateApiKey(apiKey: string | undefined): Promise<boolea
 
   try {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 2000) // 2 second timeout (reduced from 5s)
 
     const response = await fetch(API_KEY_VALIDATOR_URL, {
       method: 'POST',

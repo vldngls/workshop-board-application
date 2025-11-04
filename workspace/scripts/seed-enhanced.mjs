@@ -14,38 +14,14 @@ const UserSchema = new mongoose.Schema({
     enum: ['untrained', 'level-0', 'level-1', 'level-2', 'level-3'],
     required: function() { return this.role === 'technician' }
   },
-}, { timestamps: true })
-
-const JobOrderSchema = new mongoose.Schema({
-  jobNumber: { type: String, required: true, unique: true },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  assignedTechnician: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
-  serviceAdvisor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
-  plateNumber: { type: String, required: true },
-  vin: { type: String, required: true },
-  timeRange: {
-    start: { type: String, required: true },
-    end: { type: String, required: true }
-  },
-  jobList: [{
-    description: { type: String, required: true },
-    status: { type: String, enum: ['Finished', 'Unfinished'], default: 'Unfinished' }
-  }],
-  parts: [{
-    name: { type: String, required: true },
-    availability: { type: String, enum: ['Available', 'Unavailable'], default: 'Available' }
-  }],
-  status: { type: String, enum: ['OG', 'WP', 'QI', 'HC', 'HW', 'HI', 'FR', 'FU'], default: 'OG' },
-  date: { type: Date, required: true },
-  originalCreatedDate: { type: Date, required: true, default: Date.now },
-  sourceType: { type: String, enum: ['appointment', 'carry-over', 'direct'], default: 'direct' },
-  carriedOver: { type: Boolean, default: false },
-  isImportant: { type: Boolean, default: false },
-  qiStatus: { type: String, enum: ['pending', 'approved', 'rejected', null], default: null }
+  breakTimes: [{
+    startTime: { type: String, required: true },
+    endTime: { type: String, required: true },
+    description: { type: String, default: 'Break' }
+  }]
 }, { timestamps: true })
 
 const User = mongoose.models.User || mongoose.model('User', UserSchema)
-const JobOrder = mongoose.models.JobOrder || mongoose.model('JobOrder', JobOrderSchema)
 
 async function main() {
   const uri = process.env.MONGODB_URI
@@ -53,19 +29,15 @@ async function main() {
   await mongoose.connect(uri)
 
   await User.createIndexes()
-  await JobOrder.createIndexes()
 
-  // Clear ALL existing data including users
-  await JobOrder.deleteMany({})
+  // Clear ALL existing data
   await User.deleteMany({})
-  console.log('Cleared all existing data (users and job orders)')
+  console.log('Cleared all existing users')
 
-  // Create users with password 'test123456'
   const passwordHash = await bcrypt.hash('test123456', 10)
   const superAdminPasswordHash = await bcrypt.hash('Vldngls04182002!@', 10)
-  const users = []
   
-  // Super Admin
+  // Super Admin (vldngls)
   const superAdmin = await User.create({
     name: 'Super Admin',
     email: 'vldngls@workshop.com',
@@ -73,19 +45,26 @@ async function main() {
     passwordHash: superAdminPasswordHash,
     role: 'superadmin',
   })
-  users.push(superAdmin)
-  console.log('Created Super Admin: username: vldngls / password: Vldngls04182002!@')
+  console.log('✅ Created Super Admin: username: vldngls / password: Vldngls04182002!@')
   
-  // Admin
-  const admin = await User.create({
-    name: 'Admin',
-    email: 'admin@workshop.com',
-    username: 'admin',
+  // Admins (2)
+  const admin1 = await User.create({
+    name: 'Admin 1',
+    email: 'admin1@workshop.com',
+    username: 'admin1',
     passwordHash,
     role: 'administrator',
   })
-  users.push(admin)
-  console.log('Created Admin: username: admin / password: test123456')
+  console.log('✅ Created Admin 1: username: admin1 / password: test123456')
+
+  const admin2 = await User.create({
+    name: 'Admin 2',
+    email: 'admin2@workshop.com',
+    username: 'admin2',
+    passwordHash,
+    role: 'administrator',
+  })
+  console.log('✅ Created Admin 2: username: admin2 / password: test123456')
 
   // Job Controller
   const jobController = await User.create({
@@ -95,10 +74,9 @@ async function main() {
     passwordHash,
     role: 'job-controller',
   })
-  users.push(jobController)
-  console.log('Created Job Controller: username: jobcontroller / password: test123456')
+  console.log('✅ Created Job Controller: username: jobcontroller / password: test123456')
 
-  // Technicians 1-5
+  // Technicians (5) with break times
   const technicianData = [
     { name: 'Technician 1', email: 'tech1@workshop.com', username: 'technician1', level: 'level-3' },
     { name: 'Technician 2', email: 'tech2@workshop.com', username: 'technician2', level: 'level-2' },
@@ -116,12 +94,13 @@ async function main() {
       passwordHash,
       role: 'technician',
       level: techData.level,
+      breakTimes: [{ startTime: '12:00', endTime: '13:00', description: 'Lunch Break' }]
     })
     technicians.push(tech)
-    console.log(`Created ${techData.name}: username: ${techData.username} / password: test123456`)
+    console.log(`✅ Created ${techData.name}: username: ${techData.username} / password: test123456`)
   }
 
-  // Service Advisors 1-5
+  // Service Advisors (5)
   const serviceAdvisorData = [
     { name: 'Service Advisor 1', email: 'sa1@workshop.com', username: 'serviceadvisor1' },
     { name: 'Service Advisor 2', email: 'sa2@workshop.com', username: 'serviceadvisor2' },
@@ -140,21 +119,23 @@ async function main() {
       role: 'service-advisor',
     })
     serviceAdvisors.push(sa)
-    console.log(`Created ${saData.name}: username: ${saData.username} / password: test123456`)
+    console.log(`✅ Created ${saData.name}: username: ${saData.username} / password: test123456`)
   }
 
-  console.log(`Created ${technicians.length} technicians`)
-  console.log(`Created ${serviceAdvisors.length} service advisors`)
-  console.log('Seed data completed successfully!')
-  console.log('Total users created:', users.length + technicians.length + serviceAdvisors.length)
+  console.log('\n✅ Enhanced seed data completed successfully!')
+  console.log('📊 Summary:')
+  console.log(`   - Total users: ${1 + 2 + 1 + technicians.length + serviceAdvisors.length}`)
+  console.log('   - 1 superadmin (vldngls)')
+  console.log('   - 2 administrators')
+  console.log('   - 1 job-controller')
+  console.log(`   - ${technicians.length} technicians`)
+  console.log(`   - ${serviceAdvisors.length} service-advisors`)
 
   await mongoose.disconnect()
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err)
   process.exit(1)
 })
-
 

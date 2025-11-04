@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import React, { memo } from 'react'
 import TechnicianGridRow from './TechnicianGridRow'
 import AvailableSlotSpan from './AvailableSlotSpan'
 import { TIME_SLOTS, formatTime } from '@/utils/timetableUtils'
@@ -87,12 +87,31 @@ const TimetableGrid = memo(({
   }
   
   // Generate all available slot spans
-  const allAvailableSlotSpans = technicians.flatMap((technician, rowIndex) => 
-    generateAvailableSlotSpans(technician._id, availableSlotsData[technician._id] || []).map(span => ({
-      ...span,
-      technicianRowIndex: rowIndex
-    }))
-  )
+  const allAvailableSlotSpans = React.useMemo(() => {
+    const spans: any[] = []
+    
+    technicians.forEach((technician, rowIndex) => {
+      const techId = String(technician._id)
+      const techIdObj = technician._id
+      
+      // Try multiple ID formats for matching
+      const slots = availableSlotsData[techId] || 
+                    availableSlotsData[techIdObj] || 
+                    availableSlotsData[String(techIdObj)] || 
+                    []
+      
+      const generatedSpans = generateAvailableSlotSpans(techId, slots)
+      
+      generatedSpans.forEach(span => {
+        spans.push({
+          ...span,
+          technicianRowIndex: rowIndex
+        })
+      })
+    })
+    
+    return spans
+  }, [technicians, availableSlotsData])
   return (
     <div className="floating-card overflow-hidden">
       <div className="overflow-x-auto">
@@ -138,18 +157,25 @@ const TimetableGrid = memo(({
           ))}
           
           {/* Available Slot Spans */}
-          {allAvailableSlotSpans.map((span, index) => (
-            <AvailableSlotSpan
-              key={`${span.technicianId}-${span.startSlotIndex}-${index}`}
-              technicianId={span.technicianId}
-              startSlotIndex={span.startSlotIndex}
-              endSlotIndex={span.endSlotIndex}
-              startTime={span.startTime}
-              endTime={span.endTime}
-              technicianRowIndex={span.technicianRowIndex}
-              onAvailableSlotClick={onAvailableSlotClick || (() => {})}
-            />
-          ))}
+          {allAvailableSlotSpans.length > 0 && (
+            <>
+              {allAvailableSlotSpans.map((span, index) => {
+                const key = `available-${span.technicianId}-${span.startSlotIndex}-${span.endSlotIndex}-${index}`
+                return (
+                  <AvailableSlotSpan
+                    key={key}
+                    technicianId={span.technicianId}
+                    startSlotIndex={span.startSlotIndex}
+                    endSlotIndex={span.endSlotIndex}
+                    startTime={span.startTime}
+                    endTime={span.endTime}
+                    technicianRowIndex={span.technicianRowIndex}
+                    onAvailableSlotClick={onAvailableSlotClick || (() => {})}
+                  />
+                )
+              })}
+            </>
+          )}
         </div>
       </div>
     </div>

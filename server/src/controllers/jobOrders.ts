@@ -1460,10 +1460,24 @@ router.post('/end-of-day', verifyToken, requireRole(['administrator', 'job-contr
     }
     
     // Find jobs that will be marked as carry over
+    // Include both previous days' unfinished jobs AND today's ongoing jobs that aren't completed
+    const endOfDay = new Date(today.getTime() + 24 * 60 * 60 * 1000)
+    
     const unfinishedJobs = await JobOrder.find({
-      date: { $lt: today }, // Only jobs from previous days
-      status: { $nin: ['FR', 'FU', 'CP'] }, // Not completed statuses
-      carriedOver: { $ne: true } // Not already marked as carried over
+      $or: [
+        // Previous days' unfinished jobs
+        {
+          date: { $lt: today },
+          status: { $nin: ['FR', 'FU', 'CP'] }, // Not completed statuses
+          carriedOver: { $ne: true } // Not already marked as carried over
+        },
+        // Today's ongoing jobs that aren't completed
+        {
+          date: { $gte: today, $lt: endOfDay },
+          status: { $in: ['OG', 'WP', 'UA', 'QI', 'HC', 'HW', 'HI'] }, // Ongoing or hold statuses
+          carriedOver: { $ne: true } // Not already marked as carried over
+        }
+      ]
     })
       .populate('createdBy', 'name email')
       .populate('assignedTechnician', 'name email')

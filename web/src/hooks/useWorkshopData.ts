@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { JobOrder, User } from '@/types/jobOrder'
 import type { Appointment } from '@/types/appointment'
 
@@ -42,6 +42,7 @@ interface UseWorkshopDataReturn {
 }
 
 export function useWorkshopData(date: Date): UseWorkshopDataReturn {
+  const queryClient = useQueryClient()
   const [jobOrders, setJobOrders] = useState<JobOrderWithDetails[]>([])
   const [technicians, setTechnicians] = useState<User[]>([])
   const [qiJobs, setQiJobs] = useState<JobOrderWithDetails[]>([])
@@ -290,8 +291,8 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
       setIsSnapshot(false)
 
       // Appointments are now handled by React Query above, no need to set state here
-    } catch (error) {
-      console.error('Error fetching data:', error)
+      } catch (error) {
+      // Error fetching data - silently fail to avoid console noise
     } finally {
       setLoading(false)
     }
@@ -300,6 +301,90 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // Listen for query invalidations and mutations to trigger refetch
+  useEffect(() => {
+    let refetchTimeout: NodeJS.Timeout | null = null
+    
+    // Debounced refetch function to avoid multiple rapid refetches
+    const debouncedRefetch = () => {
+      if (refetchTimeout) {
+        clearTimeout(refetchTimeout)
+      }
+      refetchTimeout = setTimeout(() => {
+        fetchData()
+      }, 500)
+    }
+
+    // Subscribe to mutation cache to detect when mutations succeed
+    const mutationUnsubscribe = queryClient.getMutationCache().subscribe((event) => {
+      if (event?.type === 'updated' && event?.mutation?.state?.status === 'success') {
+        const mutationKey = event.mutation.options.mutationKey
+        const mutationFn = event.mutation.options.mutationFn
+        
+        // Check if this is a job order or appointment related mutation
+        const hasRelevantKey = mutationKey && Array.isArray(mutationKey) && 
+          mutationKey.some((key: any) => 
+            typeof key === 'string' && 
+            (key.toLowerCase().includes('job') || key.toLowerCase().includes('appointment'))
+          )
+        
+        const hasRelevantFn = mutationFn && typeof mutationFn === 'function' && 
+          (mutationFn.toString().toLowerCase().includes('job-order') ||
+           mutationFn.toString().toLowerCase().includes('appointment'))
+        
+        const isRelevant = hasRelevantKey || hasRelevantFn
+        
+        if (isRelevant) {
+          debouncedRefetch()
+        }
+      }
+    })
+
+    // Subscribe to query cache to detect when queries are invalidated
+    const queryUnsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      try {
+        // Only listen for query removal events (which happen on invalidation)
+        if (event?.type === 'removed' && event?.query) {
+          const queryKey = event.query.queryKey
+          if (
+            queryKey &&
+            Array.isArray(queryKey) &&
+            queryKey.length > 0 &&
+            typeof queryKey[0] === 'string' &&
+            (
+              queryKey[0] === 'jobOrders' ||
+              queryKey[0] === 'workshop-appointments' ||
+              queryKey[0] === 'appointments' ||
+              queryKey[0] === 'technician-schedule' ||
+              queryKey[0] === 'workshop-slots'
+            )
+          ) {
+            debouncedRefetch()
+          }
+        }
+      } catch (err) {
+        // Silently ignore errors in query cache subscription
+        // This can happen if React Query internals change
+      }
+    })
+
+    // Also refetch periodically to catch changes from other tabs/windows
+    const interval = setInterval(() => {
+      if (!isHistoricalDate) {
+        fetchData()
+      }
+    }, 15000) // Refetch every 15 seconds for live data (less aggressive than before)
+
+    return () => {
+      mutationUnsubscribe()
+      queryUnsubscribe()
+      clearInterval(interval)
+      if (refetchTimeout) {
+        clearTimeout(refetchTimeout)
+      }
+    }
+  }, [queryClient, fetchData, isHistoricalDate])
 
   return {
     // Data

@@ -18,6 +18,8 @@
     "install:server": "npm --prefix server install",
     "install:web": "npm --prefix web install",
     "seed": "npm --prefix server run seed",
+    "seed:enhanced": "npm --prefix server run seed:enhanced",
+    "seed:comprehensive": "npm --prefix server run seed:comprehensive",
     "seed:realistic": "npm --prefix server run seed-realistic",
     "create-superadmin": "npm --prefix server run create-superadmin"
   },

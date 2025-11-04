@@ -21,16 +21,21 @@ class SessionStore {
   private cleanupInterval: NodeJS.Timeout
 
   constructor() {
-    // Clean up expired sessions every 10 minutes
+    // Clean up expired sessions every 5 minutes (more frequent)
     this.cleanupInterval = setInterval(() => {
       const now = Date.now()
       const maxAge = 8 * 60 * 60 * 1000 // 8 hours (token expiry)
+      let cleaned = 0
       for (const [tokenId, session] of this.sessions.entries()) {
         if (now - session.lastActivity > maxAge) {
           this.sessions.delete(tokenId)
+          cleaned++
         }
       }
-    }, 10 * 60 * 1000)
+      if (cleaned > 0) {
+        console.log(`[SESSION] Cleaned up ${cleaned} expired sessions`)
+      }
+    }, 5 * 60 * 1000) // Every 5 minutes instead of 10
   }
 
   createSession(tokenId: string, userId: string, ip: string, userAgent: string): void {
@@ -192,32 +197,60 @@ export function getUserActiveSessions(userId: string): Session[] {
   return sessionStore.getUserSessions(userId)
 }
 
+// Cache for session check results to avoid checking too frequently
+const sessionCheckCache = new Map<string, { lastCheck: number; result: boolean }>()
+const SESSION_CHECK_THROTTLE = 60000 // Only check once per minute per user
+
 /**
  * Check if user has too many active sessions (potential account sharing)
  */
-export function checkConcurrentSessions(userId: string, maxSessions: number = 3): boolean {
-  const sessions = sessionStore.getUserSessions(userId)
-  if (sessions.length > maxSessions) {
-    logger.warn('Too many concurrent sessions detected', {
-      userId,
-      sessionCount: sessions.length,
-      maxAllowed: maxSessions
-    })
-    
-    AuditLog.create({
-      action: 'permission_denied',
-      entityType: 'System',
-      entityId: 'security',
-      userId,
-      isSuspicious: true,
-      suspiciousReason: `Too many concurrent sessions: ${sessions.length} (max: ${maxSessions})`,
-      severity: 'high',
-      description: 'Potential account sharing or unauthorized access'
-    }).catch(() => {})
-    
-    return false
+export function checkConcurrentSessions(userId: string, maxSessions: number = 5): boolean {
+  const now = Date.now()
+  const cached = sessionCheckCache.get(userId)
+  
+  // Use cached result if checked recently
+  if (cached && (now - cached.lastCheck) < SESSION_CHECK_THROTTLE) {
+    return cached.result
   }
-  return true
+  
+  const sessions = sessionStore.getUserSessions(userId)
+  const result = sessions.length <= maxSessions
+  
+  // Cache the result
+  sessionCheckCache.set(userId, { lastCheck: now, result })
+  
+  // Clean up old cache entries (older than 5 minutes)
+  if (sessionCheckCache.size > 1000) {
+    for (const [uid, check] of sessionCheckCache.entries()) {
+      if (now - check.lastCheck > 5 * 60 * 1000) {
+        sessionCheckCache.delete(uid)
+      }
+    }
+  }
+  
+  if (!result && sessions.length > maxSessions) {
+    // Only log if significantly over limit to reduce noise
+    if (sessions.length > maxSessions + 2) {
+      logger.warn('Too many concurrent sessions detected', {
+        userId,
+        sessionCount: sessions.length,
+        maxAllowed: maxSessions
+      })
+      
+      AuditLog.create({
+        action: 'permission_denied',
+        entityType: 'System',
+        entityId: 'security',
+        userId,
+        isSuspicious: true,
+        suspiciousReason: `Too many concurrent sessions: ${sessions.length} (max: ${maxSessions})`,
+        severity: 'high',
+        description: 'Potential account sharing or unauthorized access'
+      }).catch(() => {})
+    }
+  }
+  
+  return result
 }
 
 module.exports = {

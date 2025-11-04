@@ -43,7 +43,10 @@ function verifyToken(req: any, res: any, next: any) {
       }
       
       // Check for too many concurrent sessions (potential account sharing)
-      if (!checkConcurrentSessions(decoded.sub, 3)) {
+      // Only check occasionally to avoid excessive logging (every 100th request or so)
+      // Use a simple hash of userId + timestamp to create a pseudo-random check
+      const shouldCheck = (parseInt(decoded.sub.slice(-2), 16) + Math.floor(Date.now() / 60000)) % 100 === 0
+      if (shouldCheck && !checkConcurrentSessions(decoded.sub, 5)) {
         console.warn(`[AUTH] Too many concurrent sessions for user ${decoded.sub}`)
         // Log but don't block - allow access but flag for review
       }

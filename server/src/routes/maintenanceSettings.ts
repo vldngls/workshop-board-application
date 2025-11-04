@@ -7,6 +7,14 @@ const { validateApiKey } = require('../utils/apiKeyValidator');
 
 const router = Router();
 
+// Cache for API key validation (60 seconds) to avoid excessive external API calls
+let publicApiKeyValidationCache: {
+  isValid: boolean;
+  timestamp: number;
+} | null = null;
+
+const PUBLIC_API_KEY_CACHE_TTL = 60000; // 60 seconds
+
 const updateSettingsSchema = z.object({
   isUnderMaintenance: z.boolean(),
   maintenanceMessage: z.string(),
@@ -23,7 +31,32 @@ router.get('/public', async (req, res) => {
     
     // Check API key validation first (from database, not env)
     if (settings && settings.apiKey) {
-      const isValid = await validateApiKey(settings.apiKey);
+      // Use cache to avoid repeated validation calls
+      const now = Date.now();
+      let isValid = false;
+      
+      if (publicApiKeyValidationCache && (now - publicApiKeyValidationCache.timestamp) < PUBLIC_API_KEY_CACHE_TTL) {
+        // Use cached value
+        isValid = publicApiKeyValidationCache.isValid;
+      } else {
+        // Cache miss or expired, validate API key (with shorter timeout)
+        try {
+          isValid = await validateApiKey(settings.apiKey);
+          // Update cache
+          publicApiKeyValidationCache = {
+            isValid,
+            timestamp: now
+          };
+        } catch (error) {
+          // If validation fails (timeout, network error), use cached value if available
+          if (publicApiKeyValidationCache) {
+            isValid = publicApiKeyValidationCache.isValid;
+          } else {
+            // No cache available, fail validation
+            isValid = false;
+          }
+        }
+      }
       
       if (!isValid) {
         return res.json({
@@ -41,15 +74,14 @@ router.get('/public', async (req, res) => {
     
     // API key is valid, now check maintenance status
     return res.json({
-      isUnderMaintenance: settings.isUnderMaintenance,
-      maintenanceMessage: settings.maintenanceMessage
+      isUnderMaintenance: settings?.isUnderMaintenance || false,
+      maintenanceMessage: settings?.maintenanceMessage || ''
     });
   } catch (error) {
-    console.error('Error fetching public maintenance status:', error);
     // If there's an error, assume not under maintenance to avoid blocking users
     return res.json({
       isUnderMaintenance: false,
-      maintenanceMessage: 'The system is currently under maintenance. Please try again later.'
+      maintenanceMessage: ''
     });
   }
 });

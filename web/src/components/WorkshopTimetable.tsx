@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, memo } from 'react'
+import React, { useState, useEffect, useCallback, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import toast, { Toaster } from 'react-hot-toast'
 import { FiCalendar } from 'react-icons/fi'
@@ -116,26 +116,111 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
   const [showAvailableSlotModal, setShowAvailableSlotModal] = useState(false)
   
   // Fetch available slots for workshop timetable
-  const { data: availableSlotsData, refetch: refetchAvailableSlots } = useQuery({
-    queryKey: ['workshop-slots', date.toISOString().split('T')[0]],
+  const dateStr = date.toISOString().split('T')[0]
+  // Enable query when not historical/snapshot - don't wait for technicians (they're loaded separately)
+  const isQueryEnabled = !isHistorical && !isSnapshot
+  
+  const { 
+    data: availableSlotsData, 
+    refetch: refetchAvailableSlots, 
+    isLoading: loadingSlots, 
+    error: slotsError, 
+    status: queryStatus, 
+    isFetching,
+    isSuccess 
+  } = useQuery({
+    queryKey: ['workshop-slots', dateStr],
     queryFn: async () => {
-      const response = await fetch(`/api/job-orders/workshop-slots?date=${encodeURIComponent(date.toISOString().split('T')[0])}`, {
-        credentials: 'include'
-      })
-      if (!response.ok) {
-        throw new Error('Failed to fetch available slots')
+      try {
+        const url = `/api/job-orders/workshop-slots?date=${encodeURIComponent(dateStr)}`
+        
+        const response = await fetch(url, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        })
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          let errorData
+          try {
+            errorData = JSON.parse(errorText)
+          } catch {
+            errorData = { error: errorText || `HTTP ${response.status}: ${response.statusText}` }
+          }
+          throw new Error(errorData.error || `Failed to fetch available slots: ${response.status} ${response.statusText}`)
+        }
+        
+        const data = await response.json()
+        return data
+      } catch (err) {
+        throw err
       }
-      return response.json()
     },
-    enabled: !isHistorical, // Only fetch for current date, not historical
-    staleTime: 1000 * 60 * 2, // 2 minutes
+    enabled: isQueryEnabled,
+    staleTime: 60000, // Consider data fresh for 1 minute
+    gcTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnWindowFocus: false, // Don't refetch on window focus to reduce requests
+    refetchInterval: (query) => {
+      // Only refetch if query is successful, not if it's in error state
+      if (query.state.error) {
+        return false // Don't refetch if there's an error
+      }
+      return 60000 // Refetch every 60 seconds if successful
+    },
+    retry: 1, // Only retry once on failure
+    retryDelay: 5000, // Wait 5 seconds before retry
   })
   
+  // Store refetch function in ref to avoid dependency issues
+  const refetchRef = React.useRef(refetchAvailableSlots)
+  refetchRef.current = refetchAvailableSlots
+  
+  // Invalidate and refetch on mount and when date changes
+  useEffect(() => {
+    if (isQueryEnabled) {
+      // Only invalidate if we don't have data for this date yet
+      const queryData = queryClient.getQueryData(['workshop-slots', dateStr])
+      if (!queryData) {
+        // Invalidate the query cache to force fresh fetch only if no cached data
+        queryClient.invalidateQueries({ queryKey: ['workshop-slots', dateStr] })
+      }
+      
+      // Only trigger refetch if we don't have data and aren't currently loading
+      if (!availableSlotsData && !loadingSlots) {
+        const timeoutId = setTimeout(() => {
+          refetchRef.current().catch(() => {
+            // Silently handle refetch errors
+          })
+        }, 200)
+        return () => clearTimeout(timeoutId)
+      }
+    }
+  }, [dateStr, isQueryEnabled, queryClient, availableSlotsData, loadingSlots])
+  
   // Transform available slots data into a format suitable for the grid
-  const availableSlotsMap = availableSlotsData?.technicianSlots?.reduce((acc: any, technicianSlot: any) => {
-    acc[technicianSlot.technician._id] = technicianSlot.availableSlots
-    return acc
-  }, {}) || {}
+  const availableSlotsMap = React.useMemo(() => {
+    if (!availableSlotsData?.technicianSlots || !Array.isArray(availableSlotsData.technicianSlots)) {
+      return {}
+    }
+    
+    const map: Record<string, any[]> = {}
+    
+    // Process each technician slot from the API
+    availableSlotsData.technicianSlots.forEach((technicianSlot: any) => {
+      const techId = String(technicianSlot?.technician?._id || '')
+      const slots = technicianSlot?.availableSlots || []
+      
+      if (techId && Array.isArray(slots) && slots.length > 0) {
+        // Store using string ID
+        map[techId] = slots
+      }
+    })
+    
+    return map
+  }, [availableSlotsData, technicians])
   const { data: techniciansData } = useUsers({ role: 'technician' })
   const techniciansWithBreakTimes = techniciansData?.users || []
 
@@ -315,7 +400,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
       
       toast.success('Appointment deleted (no show)')
     } catch (error) {
-      console.error('Error deleting appointment:', error)
+      // Error deleting appointment
       toast.error('Failed to delete appointment')
     } finally {
       setShowDeleteConfirm(false)
@@ -331,6 +416,15 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
   const handleCreateJobOrderSuccess = useCallback((responseData?: any) => {
     setShowCreateJobOrderModal(false)
     setSelectedAppointment(null)
+    
+    const dateStr = date.toISOString().split('T')[0]
+    
+    // Invalidate queries to trigger refetch
+    queryClient.invalidateQueries({ queryKey: ['jobOrders'] })
+    queryClient.invalidateQueries({ queryKey: ['workshop-appointments', dateStr] })
+    queryClient.invalidateQueries({ queryKey: ['workshop-appointments'] })
+    queryClient.invalidateQueries({ queryKey: ['workshop-slots', dateStr] })
+    queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
     
     // Optimistically add job if created for current date
     if (responseData?.jobOrder) {
@@ -353,9 +447,10 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
     // Small delay then refresh all data
     setTimeout(() => {
       fetchData()
+      refetchAvailableSlots()
     }, 500)
     toast.success('Job order created from appointment!')
-  }, [fetchData, date, updateJobOrders])
+  }, [fetchData, date, updateJobOrders, queryClient, refetchAvailableSlots])
 
   const handleAvailableSlotClick = useCallback((technicianId: string, startTime: string, endTime: string) => {
     setSelectedAvailableSlot({ technicianId, startTime, endTime })
@@ -436,7 +531,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
       }, 500)
       toast.success('Technician reassigned successfully')
     } catch (error: any) {
-      console.error('Error reassigning technician:', error)
+      // Error reassigning technician
       toast.error(error.message || 'Failed to reassign technician')
     } finally {
       setUpdating(false)
@@ -457,7 +552,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
         const data = await response.json()
         setAvailableTechnicians(data.technicians || [])
       } catch (error) {
-        console.error('Error fetching technicians:', error)
+        // Error fetching technicians
         toast.error('Failed to fetch available technicians')
       }
     }

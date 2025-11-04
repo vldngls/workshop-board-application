@@ -8,9 +8,12 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "vercel-build": "npm run build",
-    "seed": "node ./scripts/seed.mjs",
-    "seed-realistic": "node ./scripts/seed-realistic.mjs",
-    "create-superadmin": "node ./scripts/create-superadmin.mjs"
+    "seed": "node ../workspace/scripts/seed.mjs",
+    "seed:enhanced": "node ../workspace/scripts/seed-enhanced.mjs",
+    "seed:comprehensive": "node ../workspace/scripts/seed-comprehensive.mjs",
+    "seed-realistic": "node ../workspace/scripts/seed-realistic.mjs",
+    "create-superadmin": "node ../workspace/scripts/create-superadmin.mjs",
+    "set-api-key": "node ../workspace/scripts/set-api-key.mjs"
   },
   "keywords": [],
   "author": "",

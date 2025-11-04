@@ -251,11 +251,62 @@ if [ "$seed_choice" != "1" ]; then
     echo "✅ Database seeded successfully"
     echo ""
     echo "🔑 Default login credentials:"
-    echo "   Administrator: admin / test123456"
-    echo "   Job Controller: jobcontroller / test123456"
-    echo "   Technician 1: technician1 / test123456"
-    echo "   Service Advisor 1: serviceadvisor1 / test123456"
+    if [ "$seed_choice" = "2" ]; then
+        echo "   Super Admin: vldngls / Vldngls04182002!@"
+        echo "   Administrator: admin / test123456"
+        echo "   Job Controller: jobcontroller / test123456"
+        echo "   Technician 1: technician1 / test123456"
+        echo "   Service Advisor 1: serviceadvisor1 / test123456"
+    elif [ "$seed_choice" = "3" ]; then
+        echo "   Super Admin: vldngls / Vldngls04182002!@"
+        echo "   Administrators: admin1, admin2 / test123456"
+        echo "   Job Controller: jobcontroller / test123456"
+        echo "   Technicians: technician1-5 / test123456"
+        echo "   Service Advisors: serviceadvisor1-5 / test123456"
+    elif [ "$seed_choice" = "4" ]; then
+        echo "   Super Admin: vldngls / Vldngls04182002!@"
+        echo "   Administrators: admin1, admin2 / test123456"
+        echo "   Job Controller: jobcontroller / test123456"
+        echo "   Technicians: technician1-5 / test123456"
+        echo "   Service Advisors: serviceadvisor1-5 / test123456"
+        echo "   (30 job orders created across yesterday and today)"
+    fi
 fi
+
+# API Key setup option
+echo ""
+echo "🔑 API Key Configuration:"
+echo "1. Skip API key setup (use default or set later)"
+echo "2. Set API key now"
+
+while true; do
+    read -p "Choose API key option (1-2): " api_key_choice
+    case $api_key_choice in
+        1)
+            break
+            ;;
+        2)
+            read -p "Enter API key: " api_key
+            if [ -n "$api_key" ]; then
+                echo "🔑 Setting API key..."
+                cd server
+                API_KEY="$api_key" node ./scripts/set-api-key.mjs "$api_key"
+                cd ..
+                if [ $? -eq 0 ]; then
+                    echo "✅ API key configured successfully"
+                else
+                    echo "⚠️  Failed to set API key. You can set it later in the maintenance settings."
+                fi
+            else
+                echo "⚠️  No API key provided. Skipping..."
+            fi
+            break
+            ;;
+        *)
+            echo "Please enter 1 or 2"
+            ;;
+    esac
+done
 
 # Final instructions
 echo ""

@@ -158,6 +158,8 @@ export function useCreateJobOrder() {
       // Invalidate all job orders queries to refetch
       queryClient.invalidateQueries({ queryKey: jobOrderKeys.all })
       queryClient.invalidateQueries({ queryKey: userKeys.available('', '', '') })
+      // Invalidate workshop slots so available slots update
+      queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
       toast.success('Job order created successfully')
     },
     onError: (error: Error) => {
@@ -231,11 +233,13 @@ export function useUpdateJobOrderStatus() {
       }
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
       toast.success('Job status updated successfully')
     },
     onSettled: () => {
       // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: jobOrderKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
     },
   })
 }
@@ -311,6 +315,8 @@ export function useUpdateJobOrder() {
       // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: jobOrderKeys.all })
       queryClient.invalidateQueries({ queryKey: userKeys.available('', '', '') })
+      // Invalidate workshop slots so available slots update
+      queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
     },
   })
 }
@@ -373,11 +379,13 @@ export function useToggleImportant() {
       toast.error('Failed to toggle important status')
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
       toast.success(data.jobOrder.isImportant ? 'Job marked as important' : 'Job unmarked as important')
     },
     onSettled: () => {
       // Refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: jobOrderKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
     },
   })
 }
@@ -400,6 +408,7 @@ export function useSubmitForQI() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: jobOrderKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
       toast.success('Job order submitted for Quality Inspection')
     },
     onError: (error: Error) => {
@@ -422,6 +431,7 @@ export function useApproveQI() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: jobOrderKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
       toast.success('Job order approved and marked for release')
     },
     onError: () => {
@@ -444,6 +454,7 @@ export function useRejectQI() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: jobOrderKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
       toast.error('Job order rejected and sent to Unassigned')
     },
     onError: () => {
@@ -466,6 +477,7 @@ export function useCompleteJob() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: jobOrderKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
       toast.success('Job marked as Complete and released to customer')
     },
     onError: () => {
@@ -488,6 +500,7 @@ export function useRedoJob() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: jobOrderKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['workshop-slots'] })
       toast.success('Job sent back for rework')
     },
     onError: () => {

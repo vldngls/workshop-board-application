@@ -163,6 +163,7 @@ export default function AppointmentsPage() {
       queryClient.invalidateQueries({ queryKey: ['appointments'] })
       queryClient.invalidateQueries({ queryKey: ['workshop-appointments'] }) // Invalidate workshop appointments to update timetable
       queryClient.invalidateQueries({ queryKey: ['technician-schedule'] })
+      queryClient.invalidateQueries({ queryKey: ['workshop-slots'] }) // Invalidate workshop slots so available slots update
       toast.success('Appointment added!')
       // Clear only plate number for quick re-entry
       setFormData(prev => ({ ...prev, plateNumber: '' }))

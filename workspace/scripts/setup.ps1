@@ -228,11 +228,59 @@ if ($seedChoice -ne "1") {
     Write-Host "[OK] Database seeded successfully" -ForegroundColor Green
     Write-Host ""
     Write-Host "[CREDENTIALS] Default login credentials:" -ForegroundColor Cyan
-    Write-Host "   Administrator: admin / test123456" -ForegroundColor White
-    Write-Host "   Job Controller: jobcontroller / test123456" -ForegroundColor White
-    Write-Host "   Technician 1: technician1 / test123456" -ForegroundColor White
-    Write-Host "   Service Advisor 1: serviceadvisor1 / test123456" -ForegroundColor White
+    if ($seedChoice -eq "2") {
+        Write-Host "   Super Admin: vldngls / Vldngls04182002!@" -ForegroundColor White
+        Write-Host "   Administrator: admin / test123456" -ForegroundColor White
+        Write-Host "   Job Controller: jobcontroller / test123456" -ForegroundColor White
+        Write-Host "   Technician 1: technician1 / test123456" -ForegroundColor White
+        Write-Host "   Service Advisor 1: serviceadvisor1 / test123456" -ForegroundColor White
+    } elseif ($seedChoice -eq "3") {
+        Write-Host "   Super Admin: vldngls / Vldngls04182002!@" -ForegroundColor White
+        Write-Host "   Administrators: admin1, admin2 / test123456" -ForegroundColor White
+        Write-Host "   Job Controller: jobcontroller / test123456" -ForegroundColor White
+        Write-Host "   Technicians: technician1-5 / test123456" -ForegroundColor White
+        Write-Host "   Service Advisors: serviceadvisor1-5 / test123456" -ForegroundColor White
+    } elseif ($seedChoice -eq "4") {
+        Write-Host "   Super Admin: vldngls / Vldngls04182002!@" -ForegroundColor White
+        Write-Host "   Administrators: admin1, admin2 / test123456" -ForegroundColor White
+        Write-Host "   Job Controller: jobcontroller / test123456" -ForegroundColor White
+        Write-Host "   Technicians: technician1-5 / test123456" -ForegroundColor White
+        Write-Host "   Service Advisors: serviceadvisor1-5 / test123456" -ForegroundColor White
+        Write-Host "   (30 job orders created across yesterday and today)" -ForegroundColor White
+    }
 }
+
+# API Key setup option
+Write-Host ""
+Write-Host "[API] API Key Configuration:" -ForegroundColor Blue
+Write-Host "1. Skip API key setup (use default or set later)" -ForegroundColor White
+Write-Host "2. Set API key now" -ForegroundColor White
+
+do {
+    $apiKeyChoice = Read-Host "Choose API key option (1-2)"
+    switch ($apiKeyChoice) {
+        "1" { break }
+        "2" { 
+            $apiKey = Read-Host "Enter API key"
+            if ($apiKey) {
+                Write-Host "[API] Setting API key..." -ForegroundColor Cyan
+                Push-Location server
+                $env:API_KEY = $apiKey
+                node ./scripts/set-api-key.mjs $apiKey
+                Pop-Location
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "[OK] API key configured successfully" -ForegroundColor Green
+                } else {
+                    Write-Host "[WARNING] Failed to set API key. You can set it later in the maintenance settings." -ForegroundColor Yellow
+                }
+            } else {
+                Write-Host "[WARNING] No API key provided. Skipping..." -ForegroundColor Yellow
+            }
+            break
+        }
+        default { Write-Host "Please enter 1 or 2" -ForegroundColor Red }
+    }
+} while ($apiKeyChoice -notmatch "^[1-2]$")
 
 # Final instructions
 Write-Host ""
