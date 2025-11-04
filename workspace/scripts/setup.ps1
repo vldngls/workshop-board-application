@@ -1,9 +1,14 @@
 # Workshop Board Application - Unified Setup Script (PowerShell)
 # This script allows you to choose between local and network deployment
+# Requires PowerShell 5.1 or later
 
 param(
     [string]$Mode = ""
 )
+
+# Set output encoding to UTF-8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 Write-Host "🚀 Workshop Board Application Setup" -ForegroundColor Green
 Write-Host "=================================" -ForegroundColor Green
@@ -99,7 +104,8 @@ API_KEY=workshopapikeytigerlily
 JWT_SECRET=workshopjwtsecrettigerlily
 NEXT_JWT_ENC_SECRET=workshopjwtencsecrettigerlily
 "@
-    $webEnvContent | Out-File -FilePath "web/.env.local" -Encoding UTF8
+    $webEnvPath = Join-Path "web" ".env.local"
+    Set-Content -Path $webEnvPath -Value $webEnvContent -Encoding UTF8
     Write-Host "✅ Created web/.env.local" -ForegroundColor Green
     
     # Create server/.env
@@ -110,7 +116,8 @@ JWT_SECRET=workshopjwtsecrettigerlily
 API_KEY=workshopapikeytigerlily
 NODE_ENV=development
 "@
-    $serverEnvContent | Out-File -FilePath "server/.env" -Encoding UTF8
+    $serverEnvPath = Join-Path "server" ".env"
+    Set-Content -Path $serverEnvPath -Value $serverEnvContent -Encoding UTF8
     Write-Host "✅ Created server/.env" -ForegroundColor Green
     
     Write-Host ""
@@ -133,7 +140,8 @@ API_KEY=workshopapikeytigerlily
 JWT_SECRET=workshopjwtsecrettigerlily
 NEXT_JWT_ENC_SECRET=workshopjwtencsecrettigerlily
 "@
-    $webEnvContent | Out-File -FilePath "web/.env.local" -Encoding UTF8
+    $webEnvPath = Join-Path "web" ".env.local"
+    Set-Content -Path $webEnvPath -Value $webEnvContent -Encoding UTF8
     Write-Host "✅ Created web/.env.local" -ForegroundColor Green
     
     # Create server/.env
@@ -145,7 +153,8 @@ API_KEY=workshopapikeytigerlily
 NODE_ENV=development
 WEB_ORIGIN=http://$localIP:3000
 "@
-    $serverEnvContent | Out-File -FilePath "server/.env" -Encoding UTF8
+    $serverEnvPath = Join-Path "server" ".env"
+    Set-Content -Path $serverEnvPath -Value $serverEnvContent -Encoding UTF8
     Write-Host "✅ Created server/.env" -ForegroundColor Green
     
     Write-Host ""
