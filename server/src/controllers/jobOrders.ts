@@ -90,7 +90,7 @@ router.get('/', verifyToken, async (req, res) => {
   }
 })
 
-// Get available technicians for a specific time range
+    // Get available technicians for a specific time range
 router.get('/technicians/available', verifyToken, async (req, res) => {
   try {
     await connectToMongo()
@@ -105,7 +105,7 @@ router.get('/technicians/available', verifyToken, async (req, res) => {
     const startDateTime = new Date(`${jobDate.toISOString().split('T')[0]}T${startTime}:00`)
     const endDateTime = new Date(`${jobDate.toISOString().split('T')[0]}T${endTime}:00`)
     
-    // Find technicians with conflicting job orders
+    // Find technicians with conflicting job orders - only select necessary fields
     const conflictingJobs = await JobOrder.find({
       date: {
         $gte: new Date(jobDate.toISOString().split('T')[0] || ''),
@@ -117,11 +117,15 @@ router.get('/technicians/available', verifyToken, async (req, res) => {
           'timeRange.end': { $gt: startTime }
         }
       ]
-    }).select('assignedTechnician')
+    }).select('assignedTechnician').lean() // Use lean() and only select needed field
     
-    const busyTechnicianIds = conflictingJobs.map((job: any) => job.assignedTechnician)
+    // Filter out nulls and get unique technician IDs
+    const busyTechnicianIds = [...new Set(conflictingJobs
+      .map((job: any) => job.assignedTechnician)
+      .filter((id: any) => id !== null && id !== undefined)
+      .map((id: any) => id.toString()))]
     
-    // Get all technicians excluding busy ones
+    // Get all technicians excluding busy ones - only select needed fields
     const availableTechnicians = await User.find({
       role: 'technician',
       _id: { $nin: busyTechnicianIds }
@@ -537,36 +541,102 @@ router.get('/dashboard', verifyToken, async (req, res) => {
     console.log('🔄 SERVER - Dashboard API called')
     await connectToMongo()
     
-    // Get all job orders with populated fields
-    const allJobs = await JobOrder.find({})
-      .populate('createdBy', 'name email')
-      .populate('assignedTechnician', 'name email')
-      .populate('serviceAdvisor', 'name email')
-      .sort({ createdAt: -1 })
-      .lean()
+    // Use MongoDB aggregation to calculate statistics efficiently
+    const statsPipeline = [
+      {
+        $facet: {
+          total: [{ $count: 'count' }],
+          onGoing: [{ $match: { status: 'OG' } }, { $count: 'count' }],
+          forRelease: [{ $match: { status: 'FR' } }, { $count: 'count' }],
+          onHold: [{ $match: { status: { $in: ['HC', 'HW', 'HI', 'WP'] } } }, { $count: 'count' }],
+          carriedOver: [{ $match: { carriedOver: true } }, { $count: 'count' }],
+          important: [{ $match: { isImportant: true } }, { $count: 'count' }],
+          qualityInspection: [{ $match: { status: 'QI' } }, { $count: 'count' }],
+          finishedUnclaimed: [{ $match: { status: { $in: ['FU', 'CP'] } } }, { $count: 'count' }]
+        }
+      }
+    ]
     
-    console.log('📊 Total jobs found:', allJobs.length)
+    const statsResult = await JobOrder.aggregate(statsPipeline)
+    const statsData = statsResult[0]
     
-    // Calculate statistics
+    // Calculate average completed jobs per day (last 30 days)
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    thirtyDaysAgo.setHours(0, 0, 0, 0)
+    
+    const completedJobsStats = await JobOrder.aggregate([
+      {
+        $match: {
+          status: 'CP', // Only fully completed jobs
+          updatedAt: { $gte: thirtyDaysAgo } // Last 30 days
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$updatedAt'
+            }
+          },
+          count: { $sum: 1 }
+        }
+      }
+    ])
+    
+    // Calculate average completed per day (over all 30 days, including days with 0 completions)
+    let averageCompletedPerDay = 0
+    const totalCompleted = completedJobsStats.reduce((sum, day) => sum + day.count, 0)
+    averageCompletedPerDay = totalCompleted / 30 // Divide by 30 days for true average
+    
     const stats = {
-      total: allJobs.length,
-      onGoing: allJobs.filter(job => job.status === 'OG').length,
-      forRelease: allJobs.filter(job => job.status === 'FR').length,
-      onHold: allJobs.filter(job => ['HC', 'HW', 'HI', 'WP'].includes(job.status)).length,
-      carriedOver: allJobs.filter(job => job.carriedOver === true).length,
-      important: allJobs.filter(job => job.isImportant === true).length,
-      qualityInspection: allJobs.filter(job => job.status === 'QI').length,
-      finishedUnclaimed: allJobs.filter(job => ['FU', 'CP'].includes(job.status)).length
+      total: statsData.total[0]?.count || 0,
+      onGoing: statsData.onGoing[0]?.count || 0,
+      forRelease: statsData.forRelease[0]?.count || 0,
+      onHold: statsData.onHold[0]?.count || 0,
+      carriedOver: statsData.carriedOver[0]?.count || 0,
+      important: statsData.important[0]?.count || 0,
+      qualityInspection: statsData.qualityInspection[0]?.count || 0,
+      finishedUnclaimed: statsData.finishedUnclaimed[0]?.count || 0,
+      averageCompletedPerDay: Math.round(averageCompletedPerDay * 10) / 10 // Round to 1 decimal
     }
     
-    // Categorize jobs
-    const carriedOverJobs = allJobs.filter(job => job.carriedOver === true)
-    const importantJobs = allJobs.filter(job => job.isImportant === true)
-    const anomalyJobs = allJobs.filter(job => 
-      ['HC', 'HW', 'HI', 'WP'].includes(job.status) || 
-      job.status === 'QI' || 
-      ['FU', 'CP'].includes(job.status)
-    )
+    // Fetch only the jobs we need (not all jobs)
+    const [carriedOverJobs, importantJobs, anomalyJobs] = await Promise.all([
+      // Carried over jobs
+      JobOrder.find({ carriedOver: true })
+        .populate('createdBy', 'name email')
+        .populate('assignedTechnician', 'name email')
+        .populate('serviceAdvisor', 'name email')
+        .sort({ createdAt: -1 })
+        .limit(50) // Limit for performance
+        .lean(),
+      
+      // Important jobs
+      JobOrder.find({ isImportant: true })
+        .populate('createdBy', 'name email')
+        .populate('assignedTechnician', 'name email')
+        .populate('serviceAdvisor', 'name email')
+        .sort({ createdAt: -1 })
+        .limit(50) // Limit for performance
+        .lean(),
+      
+      // Anomaly jobs (on hold, QI, finished unclaimed)
+      JobOrder.find({
+        $or: [
+          { status: { $in: ['HC', 'HW', 'HI', 'WP'] } },
+          { status: 'QI' },
+          { status: { $in: ['FU', 'CP'] } }
+        ]
+      })
+        .populate('createdBy', 'name email')
+        .populate('assignedTechnician', 'name email')
+        .populate('serviceAdvisor', 'name email')
+        .sort({ createdAt: -1 })
+        .limit(100) // Limit for performance
+        .lean()
+    ])
     
     console.log('📈 Dashboard stats:', stats)
     console.log('📋 Carried over jobs:', carriedOverJobs.length)
@@ -578,7 +648,7 @@ router.get('/dashboard', verifyToken, async (req, res) => {
       carriedOverJobs,
       importantJobs,
       anomalyJobs,
-      allJobs
+      allJobs: [] // Don't return all jobs - use separate endpoint if needed
     })
   } catch (error) {
     console.error('💥 Dashboard API error:', error)
@@ -1459,31 +1529,44 @@ router.post('/end-of-day', verifyToken, requireRole(['administrator', 'job-contr
       carryOverJobs: carryOverJobs
     })
     
-    // Mark unfinished jobs as carried over
-    const updates = unfinishedJobs.map((job: any) => 
-      JobOrder.findByIdAndUpdate(
-        job._id,
-        { 
-          carriedOver: true,
-          sourceType: 'carry-over',
-          assignedTechnician: null, // Remove technician assignment for replotting
-          timeRange: { start: '00:00', end: '00:00' }, // Reset time range
-          // If this job doesn't have an originalJobId, set it to itself (first in chain)
-          originalJobId: job.originalJobId || job._id,
-          // Add to carry-over chain
-          $push: {
-            carryOverChain: {
-              jobId: job._id,
-              date: job.date,
-              status: job.status
+    // Mark unfinished jobs as carried over - use bulk update for better performance
+    let updatedJobsForResponse: any[] = []
+    
+    if (unfinishedJobs.length > 0) {
+      const jobIds = unfinishedJobs.map((job: any) => job._id)
+      
+      // Use bulkWrite for better performance instead of individual updates
+      const bulkOps = unfinishedJobs.map((job: any) => ({
+        updateOne: {
+          filter: { _id: job._id },
+          update: {
+            $set: {
+              carriedOver: true,
+              sourceType: 'carry-over',
+              assignedTechnician: null,
+              timeRange: { start: '00:00', end: '00:00' },
+              originalJobId: job.originalJobId || job._id
+            },
+            $push: {
+              carryOverChain: {
+                jobId: job._id,
+                date: job.date,
+                status: job.status
+              }
             }
           }
-        },
-        { new: true }
-      )
-    )
-    
-    const updatedJobs = await Promise.all(updates)
+        }
+      }))
+      
+      await JobOrder.bulkWrite(bulkOps)
+      
+      // Fetch updated jobs with populated fields for response
+      updatedJobsForResponse = await JobOrder.find({ _id: { $in: jobIds } })
+        .populate('createdBy', 'name email')
+        .populate('assignedTechnician', 'name email')
+        .populate('serviceAdvisor', 'name email')
+        .lean()
+    }
     
     return res.json({ 
       message: 'End of day processing completed successfully',
@@ -1491,9 +1574,9 @@ router.post('/end-of-day', verifyToken, requireRole(['administrator', 'job-contr
         id: snapshot._id,
         date: snapshot.date,
         totalJobs: stats.totalJobs,
-        carryOverCount: updatedJobs.length
+        carryOverCount: updatedJobsForResponse.length
       },
-      carryOverJobs: updatedJobs
+      carryOverJobs: updatedJobsForResponse
     })
   } catch (error) {
     console.error('Error in end of day processing:', error)
@@ -1522,31 +1605,44 @@ router.post('/check-carry-over', verifyToken, requireRole(['administrator', 'job
       .populate('serviceAdvisor', 'name email')
       .lean()
     
-    // Mark them as carried over and update their source type
-    const updates = unfinishedJobs.map((job: any) => 
-      JobOrder.findByIdAndUpdate(
-        job._id,
-        { 
-          carriedOver: true,
-          sourceType: 'carry-over',
-          assignedTechnician: null, // Remove technician assignment for replotting
-          timeRange: { start: '00:00', end: '00:00' }, // Reset time range
-          // If this job doesn't have an originalJobId, set it to itself (first in chain)
-          originalJobId: job.originalJobId || job._id,
-          // Add to carry-over chain
-          $push: {
-            carryOverChain: {
-              jobId: job._id,
-              date: job.date,
-              status: job.status
+    // Mark them as carried over - use bulk update for better performance
+    let updatedJobs: any[] = []
+    
+    if (unfinishedJobs.length > 0) {
+      const jobIds = unfinishedJobs.map((job: any) => job._id)
+      
+      // Use bulkWrite for better performance
+      const bulkOps = unfinishedJobs.map((job: any) => ({
+        updateOne: {
+          filter: { _id: job._id },
+          update: {
+            $set: {
+              carriedOver: true,
+              sourceType: 'carry-over',
+              assignedTechnician: null,
+              timeRange: { start: '00:00', end: '00:00' },
+              originalJobId: job.originalJobId || job._id
+            },
+            $push: {
+              carryOverChain: {
+                jobId: job._id,
+                date: job.date,
+                status: job.status
+              }
             }
           }
-        },
-        { new: true }
-      )
-    )
-    
-    const updatedJobs = await Promise.all(updates)
+        }
+      }))
+      
+      await JobOrder.bulkWrite(bulkOps)
+      
+      // Fetch updated jobs for response
+      updatedJobs = await JobOrder.find({ _id: { $in: jobIds } })
+        .populate('createdBy', 'name email')
+        .populate('assignedTechnician', 'name email')
+        .populate('serviceAdvisor', 'name email')
+        .lean()
+    }
     
     return res.json({ 
       message: 'Unfinished jobs from previous days marked as carry-over successfully',
@@ -1638,6 +1734,60 @@ router.get('/snapshots', verifyToken, async (req, res) => {
     return res.json({ snapshots })
   } catch (error) {
     console.error('Error fetching workshop snapshots:', error)
+    return res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Optimized endpoint for fetching job queues by status (for frontend sections)
+router.get('/queues/by-status', verifyToken, async (req, res) => {
+  try {
+    await connectToMongo()
+    
+    const { statuses } = req.query // Comma-separated list: 'QI,FR,WP,UA,HC,HW,HI,FU'
+    
+    if (!statuses || typeof statuses !== 'string') {
+      return res.status(400).json({ error: 'statuses query parameter required' })
+    }
+    
+    const statusArray = (statuses as string).split(',').map(s => s.trim())
+    const limit = parseInt(req.query.limit as string) || 100 // Default limit per status
+    
+    // Fetch jobs for each status in parallel
+    const queuePromises = statusArray.map(async (status) => {
+      let filter: Record<string, any> = { status }
+      
+      // Special handling for QI status - only pending
+      if (status === 'QI') {
+        filter = { status: 'QI', qiStatus: 'pending' }
+      }
+      
+      // Special handling for carried over - combine with status
+      if (status === 'carriedOver') {
+        filter = { carriedOver: true, status: { $nin: ['FR', 'FU', 'CP'] } }
+      }
+      
+      const jobs = await JobOrder.find(filter)
+        .populate('createdBy', 'name email')
+        .populate('assignedTechnician', 'name email')
+        .populate('serviceAdvisor', 'name email')
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .lean()
+      
+      return { status, jobs }
+    })
+    
+    const queues = await Promise.all(queuePromises)
+    
+    // Convert to object format for easier frontend consumption
+    const result: Record<string, any[]> = {}
+    queues.forEach(({ status, jobs }) => {
+      result[status] = jobs
+    })
+    
+    return res.json({ queues: result })
+  } catch (error) {
+    console.error('Error fetching job queues:', error)
     return res.status(500).json({ error: 'Internal server error' })
   }
 })

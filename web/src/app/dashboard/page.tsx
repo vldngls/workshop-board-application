@@ -38,6 +38,7 @@ interface DashboardStats {
   important: number
   qualityInspection: number
   finishedUnclaimed: number
+  averageCompletedPerDay?: number
 }
 
 interface JobOrderWithTechnician extends JobOrder {
@@ -127,6 +128,18 @@ export default function MainDashboard() {
     },
     enabled: !!userRole && userRole !== 'technician',
     staleTime: 5 * 60_000,
+  })
+
+  // Fetch dashboard stats (including average completed per day)
+  const dashboardStatsQuery = useQuery<{ stats: DashboardStats }>({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard', { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to fetch dashboard stats')
+      return res.json()
+    },
+    enabled: !!userRole && userRole !== 'technician',
+    staleTime: 60_000,
   })
 
   // Calculate today's metrics
@@ -398,7 +411,7 @@ export default function MainDashboard() {
           </div>
 
           {/* Performance Metrics - Integrated */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 relative z-10">
             {/* Efficiency */}
             <div className="p-5 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-600/20 backdrop-blur-md border border-green-500/30">
               <div className="flex items-center gap-3 mb-3">
@@ -448,15 +461,45 @@ export default function MainDashboard() {
                 {todayMetrics.totalHoursUsed}h of {technicians.length * 7.5}h • {todayMetrics.technicianCount} technicians
               </p>
             </div>
+
+            {/* Average Completed Per Day */}
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-teal-500/20 to-green-600/20 backdrop-blur-md border border-teal-500/30">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-green-600 flex items-center justify-center shadow-lg">
+                  <FiCheckCircle size={18} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Avg Completed</h3>
+                  <p className="text-xs text-gray-700">Per day (30 days)</p>
+                </div>
+              </div>
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className="text-3xl font-bold text-gray-900">
+                  {dashboardStatsQuery.data?.stats?.averageCompletedPerDay?.toFixed(1) || '0.0'}
+                </span>
+              </div>
+              <div className="h-2 bg-white/40 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-teal-500 to-green-600 rounded-full transition-all duration-500 shadow-lg"
+                  style={{ 
+                    width: `${Math.min(100, ((dashboardStatsQuery.data?.stats?.averageCompletedPerDay || 0) / 20) * 100)}%` 
+                  }}
+                ></div>
+              </div>
+              <p className="text-xs mt-2 text-gray-700">
+                Average job orders completed per day
+              </p>
+            </div>
           </div>
 
           {/* Quick Stats Row */}
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-3 relative z-10">
+          <div className="grid grid-cols-3 md:grid-cols-7 gap-3 relative z-10">
             {[
               { icon: FiZap, label: 'Efficiency', value: `${efficiency}%`, color: 'from-green-500 to-emerald-600' },
               { icon: FiActivity, label: 'Hours', value: `${todayMetrics.totalHoursUsed}h`, color: 'from-blue-500 to-cyan-600' },
               { icon: FiUsers, label: 'Techs', value: todayMetrics.technicianCount, color: 'from-purple-500 to-violet-600' },
               { icon: FiClock, label: 'Avg Time', value: `${Math.round(todayMetrics.averageCompletionTime / 60)}h${todayMetrics.averageCompletionTime % 60}m`, color: 'from-orange-500 to-amber-600' },
+              { icon: FiTrendingUp, label: 'Avg/Day', value: dashboardStatsQuery.data?.stats?.averageCompletedPerDay?.toFixed(1) || '0.0', color: 'from-green-500 to-teal-600' },
               { icon: FiAlertTriangle, label: 'Overdue', value: todayMetrics.overdue, color: 'from-red-500 to-rose-600' },
               { icon: FiPackage, label: 'Parts', value: todayMetrics.waitingParts, color: 'from-orange-500 to-red-600' },
             ].map((metric, i) => {

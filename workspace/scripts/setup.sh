@@ -123,8 +123,9 @@ if [ "$MODE" = "local" ]; then
     # Create web/.env.local
     cat > web/.env.local << EOF
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
-JWT_SECRET=workshopjwtsecrettigerlily
 API_KEY=workshopapikeytigerlily
+JWT_SECRET=workshopjwtsecrettigerlily
+NEXT_JWT_ENC_SECRET=workshopjwtencsecrettigerlily
 EOF
     echo "✅ Created web/.env.local"
     
@@ -154,15 +155,15 @@ elif [ "$MODE" = "network" ]; then
     # Create web/.env.local
     cat > web/.env.local << EOF
 NEXT_PUBLIC_API_BASE_URL=http://$LOCAL_IP:4000
-JWT_SECRET=workshopjwtsecrettigerlily
 API_KEY=workshopapikeytigerlily
+JWT_SECRET=workshopjwtsecrettigerlily
+NEXT_JWT_ENC_SECRET=workshopjwtencsecrettigerlily
 EOF
     echo "✅ Created web/.env.local"
     
     # Create server/.env
     cat > server/.env << EOF
 PORT=4000
-HOST=0.0.0.0
 MONGODB_URI=mongodb://localhost:27017/workshop_board
 JWT_SECRET=workshopjwtsecrettigerlily
 API_KEY=workshopapikeytigerlily

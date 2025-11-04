@@ -9,7 +9,16 @@ export async function GET(request: NextRequest) {
     const token = await getRawToken()
     
     if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      // Check if it's an environment configuration issue
+      const encSecret = process.env.NEXT_JWT_ENC_SECRET || process.env.JWT_SECRET
+      if (!encSecret) {
+        console.error('[JOB-ORDERS API] Missing NEXT_JWT_ENC_SECRET or JWT_SECRET environment variable')
+        return NextResponse.json({ 
+          error: 'Server configuration error: Missing encryption secret',
+          details: 'Please ensure NEXT_JWT_ENC_SECRET or JWT_SECRET is set in environment variables'
+        }, { status: 500 })
+      }
+      return NextResponse.json({ error: 'Unauthorized - Invalid or missing authentication token' }, { status: 401 })
     }
     
     const { searchParams } = new URL(request.url)

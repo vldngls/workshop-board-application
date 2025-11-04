@@ -55,8 +55,10 @@ const appointmentSchema = new Schema({
 
 // Index for efficient queries
 appointmentSchema.index({ assignedTechnician: 1, date: 1 })
-appointmentSchema.index({ date: 1 })
+appointmentSchema.index({ date: 1, 'timeRange.start': 1 }) // Composite for date + time queries
 appointmentSchema.index({ createdBy: 1 })
+appointmentSchema.index({ noShow: 1, date: 1 }) // For filtering no-show appointments
+appointmentSchema.index({ plateNumber: 1 }) // For search queries
 
 const Appointment = mongoose.models.Appointment || mongoose.model('Appointment', appointmentSchema)
 

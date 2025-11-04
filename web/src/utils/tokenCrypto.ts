@@ -24,9 +24,18 @@ export async function encryptToken(plain: string): Promise<string> {
 }
 
 export async function decryptToken(jwe: string): Promise<string> {
-  const key = getEncKey()
-  const { plaintext } = await compactDecrypt(jwe, key)
-  return new TextDecoder().decode(plaintext)
+  try {
+    const key = getEncKey()
+    const { plaintext } = await compactDecrypt(jwe, key)
+    return new TextDecoder().decode(plaintext)
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    // Provide more specific error messages
+    if (errorMessage.includes('decryption') || errorMessage.includes('unable to decrypt')) {
+      throw new Error(`Token decryption failed: The encryption secret may have changed or the token is invalid. Please log in again.`)
+    }
+    throw error
+  }
 }
 
 
