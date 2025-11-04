@@ -6,36 +6,32 @@ param(
     [string]$Mode = ""
 )
 
-# Set output encoding to UTF-8
-$OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-
-Write-Host "🚀 Workshop Board Application Setup" -ForegroundColor Green
+Write-Host "[SETUP] Workshop Board Application Setup" -ForegroundColor Green
 Write-Host "=================================" -ForegroundColor Green
 
 # Check if Node.js is installed
 try {
     $nodeVersion = node -v
-    Write-Host "✅ Node.js version: $nodeVersion" -ForegroundColor Green
+    Write-Host "[OK] Node.js version: $nodeVersion" -ForegroundColor Green
 } catch {
-    Write-Host "❌ Node.js is not installed. Please install Node.js 18+ and try again." -ForegroundColor Red
+    Write-Host "[ERROR] Node.js is not installed. Please install Node.js 18+ and try again." -ForegroundColor Red
     exit 1
 }
 
 # Check Node.js version
 $versionNumber = [int]($nodeVersion -replace 'v(\d+)\..*', '$1')
 if ($versionNumber -lt 18) {
-    Write-Host "❌ Node.js version 18+ is required. Current version: $nodeVersion" -ForegroundColor Red
+    Write-Host "[ERROR] Node.js version 18+ is required. Current version: $nodeVersion" -ForegroundColor Red
     exit 1
 }
 
 # Check if Docker is installed (optional)
 try {
     docker --version | Out-Null
-    Write-Host "✅ Docker is available" -ForegroundColor Green
+    Write-Host "[OK] Docker is available" -ForegroundColor Green
     $useDocker = $true
 } catch {
-    Write-Host "⚠️  Docker not found. You'll need to install MongoDB manually." -ForegroundColor Yellow
+    Write-Host "[WARNING] Docker not found. You'll need to install MongoDB manually." -ForegroundColor Yellow
     $useDocker = $false
 }
 
@@ -79,23 +75,23 @@ if (-not $Mode) {
 }
 
 Write-Host ""
-Write-Host "📦 Installing dependencies..." -ForegroundColor Blue
+Write-Host "[INSTALL] Installing dependencies..." -ForegroundColor Blue
 npm run install:all
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Failed to install dependencies" -ForegroundColor Red
+    Write-Host "[ERROR] Failed to install dependencies" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "✅ Dependencies installed successfully" -ForegroundColor Green
+Write-Host "[OK] Dependencies installed successfully" -ForegroundColor Green
 
 # Setup environment files based on mode
 Write-Host ""
-Write-Host "⚙️  Setting up environment files for $Mode deployment..." -ForegroundColor Blue
+Write-Host "[CONFIG] Setting up environment files for $Mode deployment..." -ForegroundColor Blue
 
 if ($Mode -eq "local") {
     # Local Development Configuration
-    Write-Host "🔧 Configuring for local development..." -ForegroundColor Cyan
+    Write-Host "[SETUP] Configuring for local development..." -ForegroundColor Cyan
     
     # Create web/.env.local
     $webEnvContent = @"
@@ -106,7 +102,7 @@ NEXT_JWT_ENC_SECRET=workshopjwtencsecrettigerlily
 "@
     $webEnvPath = Join-Path "web" ".env.local"
     Set-Content -Path $webEnvPath -Value $webEnvContent -Encoding UTF8
-    Write-Host "✅ Created web/.env.local" -ForegroundColor Green
+    Write-Host "[OK] Created web/.env.local" -ForegroundColor Green
     
     # Create server/.env
     $serverEnvContent = @"
@@ -118,20 +114,20 @@ NODE_ENV=development
 "@
     $serverEnvPath = Join-Path "server" ".env"
     Set-Content -Path $serverEnvPath -Value $serverEnvContent -Encoding UTF8
-    Write-Host "✅ Created server/.env" -ForegroundColor Green
+    Write-Host "[OK] Created server/.env" -ForegroundColor Green
     
     Write-Host ""
-    Write-Host "🌐 Access URLs:" -ForegroundColor Cyan
+    Write-Host "[NETWORK] Access URLs:" -ForegroundColor Cyan
     Write-Host "   Frontend: http://localhost:3000" -ForegroundColor White
     Write-Host "   Backend API: http://localhost:4000" -ForegroundColor White
     
 } elseif ($Mode -eq "network") {
     # Network Deployment Configuration
-    Write-Host "🔧 Configuring for network deployment..." -ForegroundColor Cyan
+    Write-Host "[SETUP] Configuring for network deployment..." -ForegroundColor Cyan
     
     # Get local IP address
     $localIP = Get-LocalIPAddress
-    Write-Host "🌐 Detected local IP address: $localIP" -ForegroundColor Cyan
+    Write-Host "[NETWORK] Detected local IP address: $localIP" -ForegroundColor Cyan
     
     # Create web/.env.local
     $webEnvContent = @"
@@ -142,7 +138,7 @@ NEXT_JWT_ENC_SECRET=workshopjwtencsecrettigerlily
 "@
     $webEnvPath = Join-Path "web" ".env.local"
     Set-Content -Path $webEnvPath -Value $webEnvContent -Encoding UTF8
-    Write-Host "✅ Created web/.env.local" -ForegroundColor Green
+    Write-Host "[OK] Created web/.env.local" -ForegroundColor Green
     
     # Create server/.env
     $serverEnvContent = @"
@@ -155,51 +151,51 @@ WEB_ORIGIN=http://$localIP:3000
 "@
     $serverEnvPath = Join-Path "server" ".env"
     Set-Content -Path $serverEnvPath -Value $serverEnvContent -Encoding UTF8
-    Write-Host "✅ Created server/.env" -ForegroundColor Green
+    Write-Host "[OK] Created server/.env" -ForegroundColor Green
     
     Write-Host ""
-    Write-Host "🌐 Access URLs:" -ForegroundColor Cyan
+    Write-Host "[NETWORK] Access URLs:" -ForegroundColor Cyan
     Write-Host "   Local: http://localhost:3000" -ForegroundColor White
     Write-Host "   Network: http://$localIP:3000" -ForegroundColor White
     Write-Host "   Backend API: http://$localIP:4000" -ForegroundColor White
     
     Write-Host ""
-    Write-Host "⚠️  Network Setup Notes:" -ForegroundColor Yellow
+    Write-Host "[NOTE] Network Setup Notes:" -ForegroundColor Yellow
     Write-Host "   - Make sure your firewall allows connections on ports 3000 and 4000" -ForegroundColor White
     Write-Host "   - Other devices can access the app at http://$localIP:3000" -ForegroundColor White
 }
 
 # Setup MongoDB
 Write-Host ""
-Write-Host "🗄️  Setting up MongoDB..." -ForegroundColor Blue
+Write-Host "[DATABASE] Setting up MongoDB..." -ForegroundColor Blue
 
 if ($useDocker) {
     if ($Mode -eq "network") {
-        Write-Host "🐳 Starting MongoDB with network configuration..." -ForegroundColor Cyan
+        Write-Host "[DOCKER] Starting MongoDB with network configuration..." -ForegroundColor Cyan
         docker-compose -f workspace/docker/docker-compose.network.yml up -d mongodb
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "✅ MongoDB started successfully" -ForegroundColor Green
+            Write-Host "[OK] MongoDB started successfully" -ForegroundColor Green
             Write-Host "   MongoDB Express: http://localhost:8081 (admin/admin)" -ForegroundColor White
         } else {
-            Write-Host "⚠️  Failed to start MongoDB with Docker. Please check Docker is running." -ForegroundColor Yellow
+            Write-Host "[WARNING] Failed to start MongoDB with Docker. Please check Docker is running." -ForegroundColor Yellow
         }
     } else {
-        Write-Host "🐳 Starting MongoDB with local configuration..." -ForegroundColor Cyan
+        Write-Host "[DOCKER] Starting MongoDB with local configuration..." -ForegroundColor Cyan
         docker-compose -f workspace/docker/docker-compose.dev.yml up -d mongodb
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "✅ MongoDB started successfully" -ForegroundColor Green
+            Write-Host "[OK] MongoDB started successfully" -ForegroundColor Green
             Write-Host "   MongoDB Express: http://localhost:8081 (admin/admin)" -ForegroundColor White
         } else {
-            Write-Host "⚠️  Failed to start MongoDB with Docker. Please check Docker is running." -ForegroundColor Yellow
+            Write-Host "[WARNING] Failed to start MongoDB with Docker. Please check Docker is running." -ForegroundColor Yellow
         }
     }
 } else {
-    Write-Host "⚠️  Docker not available. Please ensure MongoDB is running locally on port 27017" -ForegroundColor Yellow
+    Write-Host "[WARNING] Docker not available. Please ensure MongoDB is running locally on port 27017" -ForegroundColor Yellow
 }
 
 # Seed database option
 Write-Host ""
-Write-Host "🌱 Database seeding options:" -ForegroundColor Blue
+Write-Host "[SEED] Database seeding options:" -ForegroundColor Blue
 Write-Host "1. Skip seeding" -ForegroundColor White
 Write-Host "2. Basic seed data" -ForegroundColor White
 Write-Host "3. Enhanced seed data" -ForegroundColor White
@@ -210,17 +206,17 @@ do {
     switch ($seedChoice) {
         "1" { break }
         "2" { 
-            Write-Host "🌱 Seeding database with basic data..." -ForegroundColor Cyan
+            Write-Host "[SEED] Seeding database with basic data..." -ForegroundColor Cyan
             npm run seed
             break
         }
         "3" { 
-            Write-Host "🌱 Seeding database with enhanced data..." -ForegroundColor Cyan
+            Write-Host "[SEED] Seeding database with enhanced data..." -ForegroundColor Cyan
             npm run seed:enhanced
             break
         }
         "4" { 
-            Write-Host "🌱 Seeding database with comprehensive data..." -ForegroundColor Cyan
+            Write-Host "[SEED] Seeding database with comprehensive data..." -ForegroundColor Cyan
             npm run seed:comprehensive
             break
         }
@@ -229,9 +225,9 @@ do {
 } while ($seedChoice -notmatch "^[1-4]$")
 
 if ($seedChoice -ne "1") {
-    Write-Host "✅ Database seeded successfully" -ForegroundColor Green
+    Write-Host "[OK] Database seeded successfully" -ForegroundColor Green
     Write-Host ""
-    Write-Host "🔑 Default login credentials:" -ForegroundColor Cyan
+    Write-Host "[CREDENTIALS] Default login credentials:" -ForegroundColor Cyan
     Write-Host "   Administrator: admin / test123456" -ForegroundColor White
     Write-Host "   Job Controller: jobcontroller / test123456" -ForegroundColor White
     Write-Host "   Technician 1: technician1 / test123456" -ForegroundColor White
@@ -240,17 +236,17 @@ if ($seedChoice -ne "1") {
 
 # Final instructions
 Write-Host ""
-Write-Host "🎉 Setup completed successfully!" -ForegroundColor Green
+Write-Host "[DONE] Setup completed successfully!" -ForegroundColor Green
 Write-Host "=================================" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "🚀 To start the application:" -ForegroundColor Cyan
+Write-Host "[START] To start the application:" -ForegroundColor Cyan
 Write-Host "   npm run dev" -ForegroundColor White
 
 Write-Host ""
-Write-Host "📚 For more information, see:" -ForegroundColor Cyan
+Write-Host "[DOCS] For more information, see:" -ForegroundColor Cyan
 Write-Host "   - workspace/docs/DEPLOYMENT.md for detailed instructions" -ForegroundColor White
 Write-Host "   - workspace/docs/WORKFLOW_DOCUMENTATION.md for feature details" -ForegroundColor White
 
 Write-Host ""
-Write-Host "🆘 Need help? Check the troubleshooting section in workspace/docs/DEPLOYMENT.md" -ForegroundColor Yellow
+Write-Host "[HELP] Need help? Check the troubleshooting section in workspace/docs/DEPLOYMENT.md" -ForegroundColor Yellow
