@@ -4,6 +4,10 @@ node_modules/
 server/node_modules/
 web/node_modules/
 
+# Lock files in workspace subdirectories (workspace uses root package-lock.json)
+server/package-lock.json
+web/package-lock.json
+
 # Environment variables
 .env
 .env
