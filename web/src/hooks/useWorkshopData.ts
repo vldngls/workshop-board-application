@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { JobOrder, User } from '@/types/jobOrder'
 import type { Appointment } from '@/types/appointment'
@@ -27,6 +28,7 @@ interface UseWorkshopDataReturn {
   // State
   loading: boolean
   updating: boolean
+  refreshing: boolean
   
   // Actions
   fetchData: () => Promise<void>
@@ -39,6 +41,7 @@ interface UseWorkshopDataReturn {
   updateHoldWarrantyJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
   updateHoldInsuranceJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
   updateFinishedUnclaimedJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
+  updateCarriedOverJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
 }
 
 export function useWorkshopData(date: Date): UseWorkshopDataReturn {
@@ -57,6 +60,10 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [isSnapshot, setIsSnapshot] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const initialLoadRef = useRef(true)
+  const techniciansLoadedRef = useRef(false)
+  const snapshotStatusRef = useRef<Record<string, 'missing' | 'available'>>({})
 
   const dateStr = date.toISOString().split('T')[0]
   const todayStr = new Date().toISOString().split('T')[0]
@@ -84,109 +91,103 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
 
   const fetchData = useCallback(async () => {
     try {
-      setLoading(true)
+      const isInitialLoad = initialLoadRef.current
+      if (isInitialLoad) {
+        setLoading(true)
+      } else {
+        setRefreshing(true)
+      }
       
       // Check for snapshot for ANY date (including today if snapshot exists)
-      // This allows viewing today's snapshot even if it was just created
-      const snapshotRes = await fetch(`/api/job-orders/snapshot/${dateStr}`, { credentials: 'include' }).catch(() => ({ ok: false, status: 404 } as any))
-      if (snapshotRes.ok) {
+      // Skip repeated 404 lookups by remembering missing snapshots
+      let snapshotRes: Response | null = null
+      const cachedSnapshotStatus = snapshotStatusRef.current[dateStr]
+      if (cachedSnapshotStatus !== 'missing') {
+        snapshotRes = await fetch(`/api/job-orders/snapshot/${dateStr}`, { credentials: 'include' })
+          .catch(() => null)
+      }
+
+      if (snapshotRes?.ok) {
+        snapshotStatusRef.current[dateStr] = 'available'
         const snapshotData = await snapshotRes.json()
         const snapJobs = (snapshotData?.snapshot?.jobOrders || snapshotData?.jobOrders || []) as any[]
-          // Map snapshot jobs to JobOrderWithDetails shape used by the timetable
-          const mapped = snapJobs.map((job: any) => ({
-            _id: job._id,
-            jobNumber: job.jobNumber,
-            createdBy: job.createdBy,
-            assignedTechnician: job.assignedTechnician || undefined,
-            serviceAdvisor: job.serviceAdvisor || undefined,
-            plateNumber: job.plateNumber,
-            vin: job.vin,
-            timeRange: job.timeRange,
-            actualEndTime: job.actualEndTime,
-            jobList: job.jobList || [],
-            parts: job.parts || [],
-            status: job.status,
-            date: typeof job.date === 'string' ? job.date : new Date(job.date).toISOString().split('T')[0],
-            originalCreatedDate: job.originalCreatedDate,
-            sourceType: job.sourceType,
-            carriedOver: !!job.carriedOver,
-            isImportant: !!job.isImportant,
-            qiStatus: job.qiStatus,
-            holdCustomerRemarks: job.holdCustomerRemarks,
-            subletRemarks: job.subletRemarks,
-            originalJobId: job.originalJobId,
-            carryOverChain: job.carryOverChain,
-            createdAt: job.createdAt,
-            updatedAt: job.updatedAt
-          })) as unknown as JobOrderWithDetails[]
+        // Map snapshot jobs to JobOrderWithDetails shape used by the timetable
+        const mapped = snapJobs.map((job: any) => ({
+          _id: job._id,
+          jobNumber: job.jobNumber,
+          createdBy: job.createdBy,
+          assignedTechnician: job.assignedTechnician || undefined,
+          serviceAdvisor: job.serviceAdvisor || undefined,
+          plateNumber: job.plateNumber,
+          vin: job.vin,
+          timeRange: job.timeRange,
+          actualEndTime: job.actualEndTime,
+          jobList: job.jobList || [],
+          parts: job.parts || [],
+          status: job.status,
+          date: typeof job.date === 'string' ? job.date : new Date(job.date).toISOString().split('T')[0],
+          originalCreatedDate: job.originalCreatedDate,
+          sourceType: job.sourceType,
+          carriedOver: !!job.carriedOver,
+          isImportant: !!job.isImportant,
+          qiStatus: job.qiStatus,
+          holdCustomerRemarks: job.holdCustomerRemarks,
+          subletRemarks: job.subletRemarks,
+          originalJobId: job.originalJobId,
+          carryOverChain: job.carryOverChain,
+          createdAt: job.createdAt,
+          updatedAt: job.updatedAt
+        })) as unknown as JobOrderWithDetails[]
 
-          // For snapshots, filter jobs that should appear on timetable
-          // Include jobs with assigned technicians and proper time ranges
-          // This preserves the "screenshot" - showing jobs as they were on the timetable
-          const snapshotTimetableJobs = mapped.filter((job: any) => 
-            job.assignedTechnician &&
-            job.timeRange?.start &&
-            job.timeRange?.end &&
-            job.timeRange.start !== '00:00' &&
-            job.timeRange.end !== '00:00'
-          )
-          
-          setJobOrders(snapshotTimetableJobs)
-          // still show technicians list to render timetable rows
+        // For snapshots, filter jobs that should appear on timetable
+        // Include jobs with assigned technicians and proper time ranges
+        // This preserves the "screenshot" - showing jobs as they were on the timetable
+        const snapshotTimetableJobs = mapped.filter((job: any) => 
+          job.assignedTechnician &&
+          job.timeRange?.start &&
+          job.timeRange?.end &&
+          job.timeRange.start !== '00:00' &&
+          job.timeRange.end !== '00:00'
+        )
+        
+        setJobOrders(snapshotTimetableJobs)
+        // still show technicians list to render timetable rows
+        if (!techniciansLoadedRef.current) {
           try {
             const usersRes = await fetch('/api/users', { credentials: 'include' })
             if (usersRes.ok) {
               const usersData = await usersRes.json()
               setTechnicians(usersData.users?.filter((u: any) => u.role === 'technician') || [])
+              techniciansLoadedRef.current = true
             } else {
               setTechnicians([])
             }
           } catch {
             setTechnicians([])
           }
-          // Appointments are handled by React Query, skip for snapshots
+        }
+        // Appointments are handled by React Query, skip for snapshots
 
-          // Use optimized endpoint to fetch queues by status
-          try {
-            const queuesRes = await fetch('/api/job-orders/queues/by-status?statuses=QI,FR,WP,UA,HC,HW,HI,FU,carriedOver&limit=100', {
-              credentials: 'include'
-            })
-            if (queuesRes.ok) {
-              const queuesData = await queuesRes.json()
-              const queues = queuesData.queues || {}
-              
-              setQiJobs((queues.QI || []) as any)
-              setForReleaseJobs((queues.FR || []) as any)
-              setWaitingPartsJobs((queues.WP || []) as any)
-              setForPlottingJobs((queues.UA || []) as any)
-              setHoldCustomerJobs((queues.HC || []) as any)
-              setHoldWarrantyJobs((queues.HW || []) as any)
-              setHoldInsuranceJobs((queues.HI || []) as any)
-              setFinishedUnclaimedJobs((queues.FU || []) as any)
-              setCarriedOverJobs((queues.carriedOver || []) as any)
-            } else {
-              // Fallback to snapshot-derived queues if optimized endpoint fails
-              const pendingQI = mapped.filter((job: any) => job.status === 'QI' && job.qiStatus === 'pending')
-              const forRelease = mapped.filter((job: any) => job.status === 'FR')
-              const waitingParts = mapped.filter((job: any) => job.status === 'WP')
-              const forPlotting = mapped.filter((job: any) => job.status === 'UA')
-              const holdCustomer = mapped.filter((job: any) => job.status === 'HC')
-              const holdWarranty = mapped.filter((job: any) => job.status === 'HW')
-              const holdInsurance = mapped.filter((job: any) => job.status === 'HI')
-              const finishedUnclaimed = mapped.filter((job: any) => job.status === 'FU')
-              const carriedOver = mapped.filter((job: any) => job.carriedOver && !['FR','FU','CP'].includes(job.status))
-              setQiJobs(pendingQI as any)
-              setForReleaseJobs(forRelease as any)
-              setWaitingPartsJobs(waitingParts as any)
-              setForPlottingJobs(forPlotting as any)
-              setHoldCustomerJobs(holdCustomer as any)
-              setHoldWarrantyJobs(holdWarranty as any)
-              setHoldInsuranceJobs(holdInsurance as any)
-              setFinishedUnclaimedJobs(finishedUnclaimed as any)
-              setCarriedOverJobs(carriedOver as any)
-            }
-          } catch {
-            // Final fallback to snapshot-derived queues
+        // Use optimized endpoint to fetch queues by status
+        try {
+          const queuesRes = await fetch('/api/job-orders/queues/by-status?statuses=QI,FR,WP,UA,HC,HW,HI,FU,carriedOver&limit=100', {
+            credentials: 'include'
+          })
+          if (queuesRes.ok) {
+            const queuesData = await queuesRes.json()
+            const queues = queuesData.queues || {}
+            
+            setQiJobs((queues.QI || []) as any)
+            setForReleaseJobs((queues.FR || []) as any)
+            setWaitingPartsJobs((queues.WP || []) as any)
+            setForPlottingJobs((queues.UA || []) as any)
+            setHoldCustomerJobs((queues.HC || []) as any)
+            setHoldWarrantyJobs((queues.HW || []) as any)
+            setHoldInsuranceJobs((queues.HI || []) as any)
+            setFinishedUnclaimedJobs((queues.FU || []) as any)
+            setCarriedOverJobs((queues.carriedOver || []) as any)
+          } else {
+            // Fallback to snapshot-derived queues if optimized endpoint fails
             const pendingQI = mapped.filter((job: any) => job.status === 'QI' && job.qiStatus === 'pending')
             const forRelease = mapped.filter((job: any) => job.status === 'FR')
             const waitingParts = mapped.filter((job: any) => job.status === 'WP')
@@ -206,33 +207,67 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
             setFinishedUnclaimedJobs(finishedUnclaimed as any)
             setCarriedOverJobs(carriedOver as any)
           }
-          setIsSnapshot(true)
-          setLoading(false)
-          return
+        } catch {
+          // Final fallback to snapshot-derived queues
+          const pendingQI = mapped.filter((job: any) => job.status === 'QI' && job.qiStatus === 'pending')
+          const forRelease = mapped.filter((job: any) => job.status === 'FR')
+          const waitingParts = mapped.filter((job: any) => job.status === 'WP')
+          const forPlotting = mapped.filter((job: any) => job.status === 'UA')
+          const holdCustomer = mapped.filter((job: any) => job.status === 'HC')
+          const holdWarranty = mapped.filter((job: any) => job.status === 'HW')
+          const holdInsurance = mapped.filter((job: any) => job.status === 'HI')
+          const finishedUnclaimed = mapped.filter((job: any) => job.status === 'FU')
+          const carriedOver = mapped.filter((job: any) => job.carriedOver && !['FR','FU','CP'].includes(job.status))
+          setQiJobs(pendingQI as any)
+          setForReleaseJobs(forRelease as any)
+          setWaitingPartsJobs(waitingParts as any)
+          setForPlottingJobs(forPlotting as any)
+          setHoldCustomerJobs(holdCustomer as any)
+          setHoldWarrantyJobs(holdWarranty as any)
+          setHoldInsuranceJobs(holdInsurance as any)
+          setFinishedUnclaimedJobs(finishedUnclaimed as any)
+          setCarriedOverJobs(carriedOver as any)
         }
+        setIsSnapshot(true)
+        setLoading(false)
+        setRefreshing(false)
+        initialLoadRef.current = false
+        return
+      } else if (snapshotRes && snapshotRes.status === 404) {
+        snapshotStatusRef.current[dateStr] = 'missing'
+      }
       
       // If no snapshot found, proceed with live data fetch
       setIsSnapshot(false)
 
       // Fetch optimized data in parallel (live view)
       // Use optimized endpoint for status queues instead of fetching all jobs
-      const [jobOrdersResponse, techniciansResponse, carriedOverResponse, queuesResponse] = await Promise.all([
+      const [jobOrdersResponse, queuesResponse, techniciansResponse] = await Promise.all([
         fetch(`/api/job-orders?date=${dateStr}&limit=500`, { credentials: 'include' }), // date-specific for timetable (reduced limit)
-        fetch('/api/users', { credentials: 'include' }),
-        fetch(`/api/job-orders?carriedOver=true&limit=100`, { credentials: 'include' }), // Reduced limit for carry-over
-        fetch('/api/job-orders/queues/by-status?statuses=QI,FR,WP,UA,HC,HW,HI,FU,carriedOver&limit=100', { credentials: 'include' }) // Optimized queues endpoint
+        fetch('/api/job-orders/queues/by-status?statuses=QI,FR,WP,UA,HC,HW,HI,FU,carriedOver&limit=100', { credentials: 'include' }), // Optimized queues endpoint
+        techniciansLoadedRef.current
+          ? Promise.resolve(null as Response | null)
+          : fetch('/api/users', { credentials: 'include' })
       ])
 
       // Process responses
       const jobOrdersData = await jobOrdersResponse.json()
-      const techniciansData = await techniciansResponse.json()
-      const carriedOverData = await carriedOverResponse.json()
       
       // Parse optimized queues response
       let queues: Record<string, JobOrderWithDetails[]> = {}
       if (queuesResponse.ok) {
         const queuesData = await queuesResponse.json()
         queues = queuesData.queues || {}
+      }
+
+      if (techniciansResponse) {
+        if (techniciansResponse.ok) {
+          const techniciansData = await techniciansResponse.json()
+          setTechnicians(techniciansData.users?.filter((user: any) => user.role === 'technician') || [])
+          techniciansLoadedRef.current = true
+        } else {
+          setTechnicians([])
+        }
       }
 
       // Appointments are now handled by React Query above
@@ -250,13 +285,26 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
 
       // Filter timetable jobs (exclude statuses that should only appear in sections below)
       // Include jobs that are assigned to technicians and have proper time ranges
-      // Combine jobs from date-specific fetch and carry-over jobs that might be reassigned to this date
-      const allJobsForDate = [
-        ...(jobOrdersData.jobOrders || []),
-        ...(carriedOverData.jobOrders || []).filter((job: JobOrderWithDetails) => job.date === dateStr)
-      ]
-      
-      
+      const baseJobsForDate = jobOrdersData.jobOrders || []
+      const carryOverForTimetable = (carriedOver as JobOrderWithDetails[]).filter((job) => {
+        const jobDate = typeof job.date === 'string' ? job.date : new Date(job.date).toISOString().split('T')[0]
+        return jobDate === dateStr &&
+          job.assignedTechnician &&
+          job.timeRange?.start &&
+          job.timeRange?.end &&
+          job.timeRange.start !== '00:00' &&
+          job.timeRange.end !== '00:00'
+      })
+
+      const mergedJobsMap = new Map<string, JobOrderWithDetails>()
+      baseJobsForDate.forEach((job: JobOrderWithDetails) => mergedJobsMap.set(String(job._id), job))
+      carryOverForTimetable.forEach((job: JobOrderWithDetails) => {
+        const key = String(job._id)
+        if (!mergedJobsMap.has(key)) {
+          mergedJobsMap.set(key, job)
+        }
+      })
+      const allJobsForDate = Array.from(mergedJobsMap.values())
       
       // Keep all jobs on timetable but filter out jobs without proper time assignments
       const timetableJobs = allJobsForDate.filter((job: JobOrderWithDetails) => 
@@ -278,7 +326,6 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
 
       // Set all state
       setJobOrders(sortedJobs)
-      setTechnicians(techniciansData.users?.filter((user: any) => user.role === 'technician') || [])
       setQiJobs(pendingQI)
       setForReleaseJobs(forRelease)
       setWaitingPartsJobs(waitingParts)
@@ -291,12 +338,14 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
       setIsSnapshot(false)
 
       // Appointments are now handled by React Query above, no need to set state here
-      } catch (error) {
+      } catch {
       // Error fetching data - silently fail to avoid console noise
     } finally {
       setLoading(false)
+      setRefreshing(false)
+      initialLoadRef.current = false
     }
-  }, [date, dateStr, isHistoricalDate])
+  }, [dateStr])
 
   useEffect(() => {
     fetchData()
@@ -363,7 +412,7 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
             debouncedRefetch()
           }
         }
-      } catch (err) {
+      } catch {
         // Silently ignore errors in query cache subscription
         // This can happen if React Query internals change
       }
@@ -405,6 +454,7 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
     // State
     loading,
     updating,
+    refreshing,
     
     // Actions
     fetchData,
@@ -416,6 +466,7 @@ export function useWorkshopData(date: Date): UseWorkshopDataReturn {
     updateHoldCustomerJobs: setHoldCustomerJobs,
     updateHoldWarrantyJobs: setHoldWarrantyJobs,
     updateHoldInsuranceJobs: setHoldInsuranceJobs,
-    updateFinishedUnclaimedJobs: setFinishedUnclaimedJobs
+    updateFinishedUnclaimedJobs: setFinishedUnclaimedJobs,
+    updateCarriedOverJobs: setCarriedOverJobs
   }
 }

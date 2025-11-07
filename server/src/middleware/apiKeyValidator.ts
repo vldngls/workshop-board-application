@@ -5,14 +5,6 @@
 
 const { validateApiKey, getApiKeyFromSettings } = require('../utils/apiKeyValidator');
 
-// Cache for API key validation (30 seconds) to avoid excessive external API calls
-let apiKeyValidationCache: {
-  isValid: boolean;
-  timestamp: number;
-} | null = null;
-
-const API_KEY_CACHE_TTL = 30000; // 30 seconds
-
 /**
  * Middleware to validate API key before processing requests
  * Skips validation for public endpoints
@@ -48,23 +40,7 @@ async function apiKeyValidatorMiddleware(req: any, res: any, next: any) {
       });
     }
     
-    // Check cache first
-    const now = Date.now();
-    let isValid = false;
-
-    if (apiKeyValidationCache && (now - apiKeyValidationCache.timestamp) < API_KEY_CACHE_TTL) {
-      // Use cached value
-      isValid = apiKeyValidationCache.isValid;
-    } else {
-      // Cache miss or expired, validate API key
-      isValid = await validateApiKey(apiKey);
-
-      // Update cache
-      apiKeyValidationCache = {
-        isValid,
-        timestamp: now
-      };
-    }
+    const isValid = await validateApiKey(apiKey);
 
     if (!isValid) {
       return res.status(503).json({

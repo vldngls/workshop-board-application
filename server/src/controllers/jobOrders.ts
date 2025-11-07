@@ -936,7 +936,23 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
       carriedOver: jobOrder.carriedOver
     })
     
-    const updateData = parsed.data
+    const updateData: any = { ...parsed.data }
+
+    // Normalize date handling for conflict checks and updates
+    let targetDate: Date = jobOrder.date
+    if (updateData.date !== undefined) {
+      const parsedDate = new Date(updateData.date)
+      if (Number.isNaN(parsedDate.getTime())) {
+        return res.status(400).json({ error: 'Invalid date provided' })
+      }
+      targetDate = parsedDate
+      updateData.date = parsedDate
+    }
+
+    const targetDateStr = targetDate.toISOString().split('T')[0]
+    const dayStart = new Date(targetDateStr)
+    const dayEnd = new Date(dayStart)
+    dayEnd.setDate(dayEnd.getDate() + 1)
     
     console.log('📅 SERVER - Update data after validation:', JSON.stringify(updateData, null, 2))
     
@@ -1044,12 +1060,14 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
     // Check for conflicts with other job orders if technician is being updated
     if (updateData.assignedTechnician !== undefined && updateData.assignedTechnician !== null) {
       const timeRange = updateData.timeRange || jobOrder.timeRange
+      const conflictDateStart = dayStart
+      const conflictDateEnd = dayEnd
       const conflictingJob = await JobOrder.findOne({
         _id: { $ne: jobOrder._id },
         assignedTechnician: updateData.assignedTechnician,
         date: {
-          $gte: new Date(jobOrder.date.toISOString().split('T')[0]),
-          $lt: new Date(new Date(jobOrder.date).setDate(jobOrder.date.getDate() + 1))
+          $gte: conflictDateStart,
+          $lt: conflictDateEnd
         },
         $or: [
           {
@@ -1068,23 +1086,25 @@ router.put('/:id', verifyToken, requireRole(['administrator', 'job-controller'])
         _id: { $ne: jobOrder._id },
         assignedTechnician: updateData.assignedTechnician,
         date: {
-          $gte: new Date(jobOrder.date.toISOString().split('T')[0]),
-          $lt: new Date(new Date(jobOrder.date).setDate(jobOrder.date.getDate() + 1))
+          $gte: conflictDateStart,
+          $lt: conflictDateEnd
         }
       })
       
       // Calculate total hours for the day
       let totalHours = 0
       for (const job of existingJobs) {
-        const start = new Date(`${jobOrder.date.toISOString().split('T')[0]}T${job.timeRange.start}:00`)
-        const end = new Date(`${jobOrder.date.toISOString().split('T')[0]}T${job.timeRange.end}:00`)
+        const jobDateValue = job.date instanceof Date ? job.date : new Date(job.date)
+        const jobDateString = jobDateValue.toISOString().split('T')[0]
+        const start = new Date(`${jobDateString}T${job.timeRange.start}:00`)
+        const end = new Date(`${jobDateString}T${job.timeRange.end}:00`)
         const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
         totalHours += hours
       }
       
       // Add the current job hours (with updated time range if provided)
-      const currentJobStart = new Date(`${jobOrder.date.toISOString().split('T')[0]}T${timeRange.start}:00`)
-      const currentJobEnd = new Date(`${jobOrder.date.toISOString().split('T')[0]}T${timeRange.end}:00`)
+      const currentJobStart = new Date(`${targetDateStr}T${timeRange.start}:00`)
+      const currentJobEnd = new Date(`${targetDateStr}T${timeRange.end}:00`)
       const currentJobHours = (currentJobEnd.getTime() - currentJobStart.getTime()) / (1000 * 60 * 60)
       const totalWithCurrentJob = totalHours + currentJobHours
       

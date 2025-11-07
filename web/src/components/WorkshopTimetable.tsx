@@ -64,6 +64,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
     finishedUnclaimedJobs,
     loading,
     updating,
+    refreshing,
     fetchData,
     setUpdating,
     updateJobOrders,
@@ -74,12 +75,14 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
     updateHoldWarrantyJobs,
     updateHoldInsuranceJobs,
     updateFinishedUnclaimedJobs,
+    updateCarriedOverJobs,
     isSnapshot
   } = isHistorical && historicalJobOrders ? {
     ...workshopData,
     jobOrders: historicalJobOrders,
     loading: false,
-    updating: false
+    updating: false,
+    refreshing: false
   } : workshopData
 
   const readOnly = !!isSnapshot || !!isHistorical
@@ -301,6 +304,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
     updateSubletJobs: updateHoldCustomerJobs, // Using same function for now
     updateUnassignedJobs: updateHoldCustomerJobs, // Using same function for now
     updateFinishedUnclaimedJobs,
+    updateCarriedOverJobs,
     setSelectedJob,
     fetchData,
     onCloseModal: () => setShowModal(false) // Pass modal close callback
@@ -444,11 +448,8 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
       }
     }
     
-    // Small delay then refresh all data
-    setTimeout(() => {
-      fetchData()
-      refetchAvailableSlots()
-    }, 500)
+    fetchData().catch(() => {})
+    refetchAvailableSlots().catch(() => {})
     toast.success('Job order created from appointment!')
   }, [fetchData, date, updateJobOrders, queryClient, refetchAvailableSlots])
 
@@ -479,11 +480,8 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
       }
     }
     
-    // Small delay then refresh all data
-    setTimeout(() => {
-      fetchData()
-      refetchAvailableSlots()
-    }, 500)
+    fetchData().catch(() => {})
+    refetchAvailableSlots().catch(() => {})
     toast.success('Job order created!')
   }, [fetchData, refetchAvailableSlots, date, updateJobOrders])
 
@@ -525,10 +523,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
       
       setShowTechnicianModal(false)
       
-      // Small delay then refresh all data
-      setTimeout(() => {
-        fetchData()
-      }, 500)
+      fetchData().catch(() => {})
       toast.success('Technician reassigned successfully')
     } catch (error: any) {
       // Error reassigning technician
@@ -600,6 +595,15 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
 
       {/* Technician Hours Summary */}
       <TechnicianHoursSummary date={date} />
+
+      {!isHistorical && !isSnapshot && refreshing && (
+        <div className="flex justify-end">
+          <div className="inline-flex items-center gap-2 px-3 py-1 text-xs text-gray-600 bg-white/80 rounded-full shadow-sm">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            Syncing latest updates…
+          </div>
+        </div>
+      )}
 
       {/* Timetable Grid */}
       <TimetableGrid
@@ -754,10 +758,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
                 })
               }
             }
-            // Small delay then refresh all data
-            setTimeout(() => {
-              fetchData()
-            }, 500)
+            fetchData().catch(() => {})
           }}
         />
       )}
@@ -787,10 +788,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
                 })
               }
             }
-            // Small delay then refresh all data
-            setTimeout(() => {
-              fetchData()
-            }, 500)
+            fetchData().catch(() => {})
           }}
         />
       )}
@@ -841,14 +839,18 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
             setSelectedCarryOverJob(null)
           }}
           onSuccess={async (reassignedJob) => {
+            const newJob = reassignedJob?.jobOrder
+            const removedId = newJob?._id ?? selectedCarryOverJob?._id ?? null
+
             setShowCarryOverReassignModal(false)
             setSelectedCarryOverJob(null)
-            
-            // Note: carriedOverJobs will be updated when fetchData() completes
+
+            if (removedId) {
+              updateCarriedOverJobs(prev => prev.filter(job => job._id !== removedId))
+            }
             
             // If the reassigned job is for the current timetable date, add it optimistically
-            if (reassignedJob?.jobOrder) {
-              const newJob = reassignedJob.jobOrder
+            if (newJob) {
               // Convert date to string format for comparison (handle both string and Date objects)
               const reassignedDateStr = newJob.date 
                 ? (typeof newJob.date === 'string' ? newJob.date : new Date(newJob.date).toISOString().split('T')[0])
@@ -869,10 +871,8 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
               }
             }
             
-            // Small delay to ensure backend has processed, then refresh all data
-            setTimeout(() => {
-              fetchData()
-            }, 500)
+            fetchData().catch(() => {})
+            refetchAvailableSlots().catch(() => {})
           }}
         />
       )}

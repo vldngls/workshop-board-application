@@ -1,5 +1,10 @@
 const jwt = require('jsonwebtoken')
 
+let lastLoggedUserId: string | null = null
+let lastLoggedRole: string | null = null
+let lastLogTimestamp = 0
+const LOG_SILENCE_WINDOW = 5 * 60 * 1000 // 5 minutes
+
 interface JWTPayload {
   sub: string
   role: string
@@ -55,7 +60,19 @@ function verifyToken(req: any, res: any, next: any) {
       console.warn('[AUTH] Security validation error:', securityErr)
     }
     
-    console.log(`[AUTH] Token verified for userId: ${decoded.sub} (${decoded.role})`)
+    const now = Date.now()
+    const shouldLog =
+      decoded.sub !== lastLoggedUserId ||
+      decoded.role !== lastLoggedRole ||
+      now - lastLogTimestamp > LOG_SILENCE_WINDOW
+
+    if (shouldLog) {
+      console.log(`[AUTH] Token verified for userId: ${decoded.sub} (${decoded.role})`)
+      lastLoggedUserId = decoded.sub
+      lastLoggedRole = decoded.role
+      lastLogTimestamp = now
+    }
+
     next()
   } catch (err) {
     console.error('[AUTH] Token verification failed:', err instanceof Error ? err.message : 'Unknown error')

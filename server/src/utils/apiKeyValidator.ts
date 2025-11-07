@@ -3,6 +3,13 @@
  */
 
 const API_KEY_VALIDATOR_URL = process.env.API_KEY_VALIDATOR_URL || 'https://api-key-manager-one.vercel.app/api/validate'
+const API_KEY_VALIDATION_TTL = 30 * 60 * 1000 // 30 minutes
+
+let validationCache: {
+  apiKey: string
+  isValid: boolean
+  timestamp: number
+} | null = null
 
 interface ValidationResponse {
   valid: boolean
@@ -18,6 +25,16 @@ export async function validateApiKey(apiKey: string | undefined): Promise<boolea
   // API key is required by default - if missing, block access
   if (!apiKey) {
     return false
+  }
+
+  const now = Date.now()
+
+  if (
+    validationCache &&
+    validationCache.apiKey === apiKey &&
+    now - validationCache.timestamp < API_KEY_VALIDATION_TTL
+  ) {
+    return validationCache.isValid
   }
 
   try {
@@ -41,8 +58,22 @@ export async function validateApiKey(apiKey: string | undefined): Promise<boolea
     }
 
     const data = await response.json() as ValidationResponse | { valid?: boolean; message?: string }
-    return data.valid === true
+    const isValid = data.valid === true
+
+    validationCache = {
+      apiKey,
+      isValid,
+      timestamp: now
+    }
+
+    return isValid
   } catch (error: any) {
+    validationCache = {
+      apiKey,
+      isValid: false,
+      timestamp: now
+    }
+
     // If it's an abort (timeout), fail validation
     if (error.name === 'AbortError') {
       console.error('API key validation timeout')

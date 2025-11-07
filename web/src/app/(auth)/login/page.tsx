@@ -55,7 +55,6 @@ export default function LoginPage() {
         <div className="text-center mb-10 animate-fade-in">
           <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center mx-auto mb-6 border border-gray-200">
             <svg 
-              className="animate-float" 
               width="32" 
               height="32" 
               viewBox="0 0 24 24" 

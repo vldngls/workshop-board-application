@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import toast from 'react-hot-toast'
-import type { JobOrder, User } from '@/types/jobOrder'
+import type { JobOrder, User, JobStatus } from '@/types/jobOrder'
 
 interface JobOrderWithDetails extends JobOrder {
   assignedTechnician: User
@@ -23,6 +23,7 @@ interface UseJobActionsProps {
   updateSubletJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
   updateUnassignedJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
   updateFinishedUnclaimedJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
+  updateCarriedOverJobs: (updater: (prev: JobOrderWithDetails[]) => JobOrderWithDetails[]) => void
   setSelectedJob: (job: JobOrderWithDetails | null) => void
   fetchData: () => Promise<void>
   onCloseModal?: () => void
@@ -44,6 +45,7 @@ export function useJobActions({
   updateSubletJobs,
   updateUnassignedJobs,
   updateFinishedUnclaimedJobs,
+  updateCarriedOverJobs,
   setSelectedJob,
   fetchData,
   onCloseModal
@@ -159,6 +161,17 @@ export function useJobActions({
         const filtered = prev.filter(job => job._id !== jobId)
         return status === 'HI' ? [...filtered, updatedJob] : filtered
       })
+
+      updateCarriedOverJobs(prev => {
+        const filtered = prev.filter(job => job._id !== jobId)
+        const updatedStatus = updatedJob.status as JobStatus | undefined
+        const shouldRemainCarried =
+          updatedJob.carriedOver &&
+          updatedStatus &&
+          !(['FR', 'FU', 'CP'] as JobStatus[]).includes(updatedStatus)
+
+        return shouldRemainCarried ? [...filtered, updatedJob] : filtered
+      })
       
       updateHoldFordJobs(prev => {
         const filtered = prev.filter(job => job._id !== jobId)
@@ -192,7 +205,7 @@ export function useJobActions({
     } finally {
       setUpdating(false)
     }
-  }, [selectedJob, updateJobOrders, updateQiJobs, updateForReleaseJobs, updateWaitingPartsJobs, updateHoldCustomerJobs, updateHoldWarrantyJobs, updateHoldInsuranceJobs, updateFinishedUnclaimedJobs, setSelectedJob, fetchData, setUpdating])
+  }, [selectedJob, updateJobOrders, updateQiJobs, updateForReleaseJobs, updateWaitingPartsJobs, updateHoldCustomerJobs, updateHoldWarrantyJobs, updateHoldInsuranceJobs, updateFinishedUnclaimedJobs, updateCarriedOverJobs, setSelectedJob, fetchData, setUpdating])
 
   const updateTaskStatus = useCallback(async (jobId: string, taskIndex: number, status: 'Finished' | 'Unfinished') => {
     try {
