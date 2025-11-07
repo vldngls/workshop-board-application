@@ -78,8 +78,6 @@ out/
 dist
 */dist
 server/dist
-server/api
-server/api/*
 server/scripts/*.d.mts
 server/scripts/*.d.mts.map
 
