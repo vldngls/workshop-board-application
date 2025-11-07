@@ -19,7 +19,7 @@
   "author": "",
   "license": "ISC",
   "engines": {
-    "node": "22.x"
+    "node": ">=22 <25"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
