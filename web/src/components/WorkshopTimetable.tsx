@@ -10,6 +10,7 @@ import type { Appointment } from '@/types/appointment'
 import type { Role } from '@/types/auth'
 import type { JobOrderWithDetails } from '@/utils/timetableUtils'
 import { useWorkshopData } from '@/hooks/useWorkshopData'
+import type { WorkshopDataPayload } from '@/lib/workshopData'
 import { useJobActions } from '@/hooks/useJobActions'
 import { useUsers } from '@/hooks/useJobOrders'
 import { hasBreakTimeOverlap } from '@/utils/breakTimeUtils'
@@ -32,9 +33,10 @@ interface WorkshopTimetableProps {
   highlightJobId?: string
   isHistorical?: boolean
   historicalJobOrders?: JobOrderWithDetails[]
+  initialData?: WorkshopDataPayload
 }
 
-function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = false, historicalJobOrders }: WorkshopTimetableProps) {
+function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = false, historicalJobOrders, initialData }: WorkshopTimetableProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [userRole, setUserRole] = useState<Role | null>(null)
@@ -46,7 +48,7 @@ function WorkshopTimetable({ date, onDateChange, highlightJobId, isHistorical = 
   }, [meData])
 
   // Use custom hooks for data and actions
-  const workshopData = useWorkshopData(date)
+  const workshopData = useWorkshopData(date, initialData)
   
   // Override with historical data if in historical mode
   const {

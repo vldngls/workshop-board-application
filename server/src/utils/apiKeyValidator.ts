@@ -4,6 +4,7 @@
 
 const API_KEY_VALIDATOR_URL = process.env.API_KEY_VALIDATOR_URL || 'https://api-key-manager-one.vercel.app/api/validate'
 const API_KEY_VALIDATION_TTL = 30 * 60 * 1000 // 30 minutes
+const API_KEY_VALIDATION_GRACE_PERIOD = 5 * 60 * 1000 // 5 minutes grace after TTL when last validation succeeded
 
 let validationCache: {
   apiKey: string
@@ -37,6 +38,8 @@ export async function validateApiKey(apiKey: string | undefined): Promise<boolea
     return validationCache.isValid
   }
 
+  const previousCache = validationCache
+
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 2000) // 2 second timeout (reduced from 5s)
@@ -68,20 +71,36 @@ export async function validateApiKey(apiKey: string | undefined): Promise<boolea
 
     return isValid
   } catch (error: any) {
+    const hasGraceCache =
+      previousCache &&
+      previousCache.apiKey === apiKey &&
+      previousCache.isValid &&
+      now - previousCache.timestamp < API_KEY_VALIDATION_TTL + API_KEY_VALIDATION_GRACE_PERIOD
+
+    if (hasGraceCache) {
+      validationCache = previousCache
+
+      if (error.name === 'AbortError') {
+        console.warn('API key validation timeout, using cached result within grace period')
+      } else {
+        console.warn('API key validation error, using cached result within grace period:', error.message)
+      }
+
+      return true
+    }
+
     validationCache = {
       apiKey,
       isValid: false,
       timestamp: now
     }
 
-    // If it's an abort (timeout), fail validation
     if (error.name === 'AbortError') {
-      console.error('API key validation timeout')
+      console.error('API key validation timeout with no cached result')
       return false
     }
-    
-    // Network errors - be conservative and fail validation
-    console.error('API key validation error:', error.message)
+
+    console.error('API key validation error with no cached result:', error.message)
     return false
   }
 }

@@ -22,7 +22,20 @@ async function apiKeyValidatorMiddleware(req: any, res: any, next: any) {
     req.path === path || req.path.startsWith(path)
   );
 
+  const maintenanceAdminPaths = [
+    '/maintenance/settings',
+    '/maintenance/stats',
+  ];
+
+  const isMaintenanceAdminPath = maintenanceAdminPaths.some(path =>
+    req.path === path || req.path.startsWith(path)
+  );
+
   if (isPublicPath) {
+    return next();
+  }
+
+  if (isMaintenanceAdminPath) {
     return next();
   }
 

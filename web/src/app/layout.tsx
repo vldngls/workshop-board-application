@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import { QueryProvider } from "@/providers/QueryProvider";
 import BugReportButton from "@/components/BugReportButton";
-import MaintenanceMode from "@/components/MaintenanceMode";
+import MaintenanceNotice from "@/components/MaintenanceNotice";
+import { getSession } from "@/server/auth/session";
+import { getMaintenanceStatus } from "@/server/maintenance";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,19 +46,59 @@ export const viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headerStore = await headers();
+  const headerPath =
+    headerStore.get("x-route-path") ??
+    headerStore.get("x-invoke-path") ??
+    headerStore.get("x-matched-path") ??
+    headerStore.get("x-next-router-pathname") ??
+    headerStore.get("next-url") ??
+    headerStore.get("referer") ??
+    "";
+
+  const rawPath =
+    headerPath ||
+    "";
+  const normalizedPath = (() => {
+    try {
+      const path = new URL(rawPath, "http://localhost").pathname;
+      return path.replace(/\/\([^/]+\)/g, "");
+    } catch {
+      if (rawPath.startsWith("/")) {
+        return rawPath.replace(/\/\([^/]+\)/g, "");
+      }
+      return "/";
+    }
+  })();
+  const [maintenance, session] = await Promise.all([
+    getMaintenanceStatus(),
+    getSession(),
+  ]);
+
+  const isSuperAdmin = session?.role === "superadmin";
+  const allowMaintenanceBypass = normalizedPath.startsWith("/admin-login");
+  const showMaintenance =
+    maintenance.isUnderMaintenance && !isSuperAdmin && !allowMaintenanceBypass;
+
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} min-h-dvh bg-white text-neutral-900`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} min-h-dvh bg-white text-neutral-900`}
+      >
         <QueryProvider>
-          <MaintenanceMode>
+          {showMaintenance ? (
+            <MaintenanceNotice message={maintenance.maintenanceMessage} />
+          ) : (
+            <>
             {children}
             <BugReportButton />
-          </MaintenanceMode>
+            </>
+          )}
         </QueryProvider>
       </body>
     </html>

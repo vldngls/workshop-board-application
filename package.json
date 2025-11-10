@@ -3,8 +3,9 @@
   "private": true,
   "workspaces": ["server", "web"],
   "scripts": {
-    "init": "node workspace/scripts/run-setup.js",
-    "deploy": "node workspace/scripts/run-setup.js --mode network",
+    "init": "node workspace/scripts/run-setup.js --auto",
+    "init:interactive": "node workspace/scripts/run-setup.js",
+    "deploy": "node workspace/scripts/run-setup.js --auto --mode network --environment dealership",
     "dev": "concurrently --names \"SERVER,WEB\" --prefix-colors \"cyan,magenta\" \"npm run server:dev\" \"npm run web:dev\"",
     "build": "npm run server:build && npm run web:build",
     "start": "concurrently --names \"SERVER,WEB\" --prefix-colors \"cyan,magenta\" \"npm run server:start\" \"npm run web:start\"",

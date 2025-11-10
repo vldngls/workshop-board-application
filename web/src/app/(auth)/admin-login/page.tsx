@@ -1,11 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { useLogin, useLogout, useMe } from "@/hooks/useAuth"
+import { useLogin, useLogout } from "@/hooks/useAuth"
 
 export default function AdminLoginPage() {
-  const router = useRouter()
   const [emailOrUsername, setEmailOrUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -16,7 +14,6 @@ export default function AdminLoginPage() {
     setMounted(true)
   }, [])
 
-  const { refetch: refetchMe } = useMe()
   const login = useLogin()
   const logout = useLogout()
 
@@ -30,15 +27,20 @@ export default function AdminLoginPage() {
         ? { email: emailOrUsername, password }
         : { username: emailOrUsername, password }
 
-      await login.mutateAsync(loginData)
-      const refreshed = await refetchMe()
-      const role = refreshed.data?.user?.role
-      if (role === 'superadmin') {
-          router.push("/dashboard/maintenance")
-        } else {
-          setError('Only superadmin is allowed during maintenance')
-        await logout.mutateAsync()
+      const result = await login.mutateAsync(loginData)
+
+      if (!result.ok) {
+        setError(result.error ?? "Invalid credentials")
+        return
       }
+
+      if (result.role === 'superadmin') {
+        window.location.href = "/dashboard/maintenance"
+        return
+      }
+
+      setError('Only superadmin is allowed during maintenance')
+      await logout.mutateAsync().catch(() => undefined)
     } catch {
       setError("Network error - please try again")
     } finally {

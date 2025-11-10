@@ -4,6 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const { connectToMongo } = require('./config/mongo');
+const os = require('os');
 const authRouter = require('./controllers/auth');
 const usersRouter = require('./controllers/users');
 const jobOrdersRouter = require('./controllers/jobOrders');
@@ -126,6 +127,22 @@ app.get('/admin-only', requireRole(['administrator']), (_req, res) => {
   res.json({ secret: 'admin data' });
 });
 
+// Utility to determine local network IP (for logging)
+const getLocalAddress = () => {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    const iface = interfaces[name];
+    if (!iface) continue;
+    for (const details of iface) {
+      if (!details) continue;
+      if (details.family === 'IPv4' && !details.internal) {
+        return details.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+};
+
 // Start server
 const port = process.env.PORT ? Number(process.env.PORT) : 4000;
 const host = isDevelopment ? (process.env.HOST || '0.0.0.0') : 'localhost'; // Network access only in development
@@ -138,9 +155,10 @@ if (process.env.NODE_ENV !== 'production') {
   connectToMongo()
     .then(() => {
       app.listen(port, host, () => {
+        const networkAddress = host === '0.0.0.0' ? getLocalAddress() : host;
         console.log(`API listening on http://${host}:${port}`);
         console.log(`Local access: http://localhost:${port}`);
-        console.log(`Network access: http://[YOUR_IP]:${port}`);
+        console.log(`Network access: http://${networkAddress}:${port}`);
       });
     })
     .catch((err) => {

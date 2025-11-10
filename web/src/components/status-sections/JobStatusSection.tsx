@@ -1,18 +1,18 @@
-import { memo } from 'react'
+import { memo, type ReactNode } from 'react'
 import type { JobOrderWithDetails } from '@/utils/timetableUtils'
 
 interface JobStatusSectionProps {
   title: string
-  icon: React.ReactNode
+  icon: ReactNode
   jobs: JobOrderWithDetails[]
   bgColor: string
   borderColor: string
   textColor: string
   badgeColor: string
-  emptyIcon: React.ReactNode
+  emptyIcon: ReactNode
   emptyText: string
   onJobClick?: (job: JobOrderWithDetails) => void
-  actions?: React.ReactNode
+  actions?: ReactNode
   maxHeight?: string
 }
 
@@ -28,7 +28,7 @@ const JobStatusSection = memo(({
   emptyText,
   onJobClick,
   actions,
-  maxHeight = '300px'
+  maxHeight = '15rem'
 }: JobStatusSectionProps) => {
   const hasJobs = jobs.length > 0
 
@@ -50,7 +50,10 @@ const JobStatusSection = memo(({
           <p className="text-xs">{emptyText}</p>
         </div>
       ) : (
-        <div className={`space-y-1.5 max-h-[${maxHeight}] overflow-y-auto`}>
+        <div
+          className="space-y-1.5 overflow-y-auto pr-1"
+          style={{ maxHeight }}
+        >
           {jobs.map((job) => (
             <div 
               key={job._id} 

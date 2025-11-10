@@ -207,7 +207,7 @@ export default function MaintenancePage() {
 
   if (bugReportsQuery.isLoading || statsQuery.isLoading || settingsQuery.isLoading) {
     return (
-      <RoleGuard allowedRoles={['superadmin']}>
+      <RoleGuard allowedRoles={['superadmin']} fallbackPath="/admin-login">
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -219,7 +219,7 @@ export default function MaintenancePage() {
   }
 
   return (
-    <RoleGuard allowedRoles={['superadmin']}>
+    <RoleGuard allowedRoles={['superadmin']} fallbackPath="/admin-login">
       <div className="space-y-6">
         <div className="space-y-6">
           <div className="mb-8">

@@ -44,6 +44,8 @@ const JobStatusSections = memo(({
   onReassignCarryOver
 }: JobStatusSectionsProps) => {
   const { containerRef, handleMouseDown } = useDragScroll()
+  const queueMaxHeight = '13rem'
+
   return (
     <div className="floating-card p-8">
       <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -94,6 +96,7 @@ const JobStatusSections = memo(({
                 </button>
               </div>
             }
+            maxHeight={queueMaxHeight}
           />
 
           {/* For Release Section */}
@@ -133,6 +136,7 @@ const JobStatusSections = memo(({
                 </button>
               </div>
             }
+            maxHeight={queueMaxHeight}
           />
 
           {/* Finished Unclaimed Section */}
@@ -160,6 +164,7 @@ const JobStatusSections = memo(({
                 ✓ Complete
               </button>
             }
+            maxHeight={queueMaxHeight}
           />
 
           {/* Carry Over Section */}
@@ -189,6 +194,7 @@ const JobStatusSections = memo(({
                 </button>
               ) : undefined
             }
+            maxHeight={queueMaxHeight}
           />
 
           {/* Unassigned Section */}
@@ -203,6 +209,7 @@ const JobStatusSections = memo(({
             emptyIcon="✨"
             emptyText="No jobs for plotting"
             onJobClick={onJobClick}
+            maxHeight={queueMaxHeight}
           />
 
           {/* Waiting Parts Section */}
@@ -217,6 +224,7 @@ const JobStatusSections = memo(({
             emptyIcon={<FiPackage />}
             emptyText="No jobs waiting parts"
             onJobClick={onJobClick}
+            maxHeight={queueMaxHeight}
           />
 
           {/* Hold Customer Section */}
@@ -231,6 +239,7 @@ const JobStatusSections = memo(({
             emptyIcon={<FiCheckCircle />}
             emptyText="No jobs on hold"
             onJobClick={onJobClick}
+            maxHeight={queueMaxHeight}
           />
 
           {/* Hold Warranty Section */}
@@ -245,6 +254,7 @@ const JobStatusSections = memo(({
             emptyIcon={<FiCheckCircle />}
             emptyText="No jobs on hold"
             onJobClick={onJobClick}
+            maxHeight={queueMaxHeight}
           />
 
           {/* Hold Insurance Section */}
@@ -259,6 +269,7 @@ const JobStatusSections = memo(({
             emptyIcon={<FiCheckCircle />}
             emptyText="No jobs on hold"
             onJobClick={onJobClick}
+            maxHeight={queueMaxHeight}
           />
         </div>
       </div>

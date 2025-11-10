@@ -41,10 +41,18 @@ cd workshop-board-application
 chmod +x workspace/scripts/setup.sh
 ./workspace/scripts/setup.sh
 
-# Or use npm scripts:
+# Or use npm scripts (auto mode):
 npm run init
 
-# The script will prompt you to choose:
+# Optional interactive mode with prompts:
+npm run init:interactive
+
+# Override defaults (e.g. local only, enhanced seed data):
+npm run init -- --mode local --seed enhanced
+# Full dealership network setup in one go:
+npm run deploy
+
+# `npm run init:interactive` will prompt you to choose:
 # 1. Local Development (localhost only)
 # 2. Network Deployment (accessible from other devices)
 
@@ -52,9 +60,16 @@ npm run init
 npm run dev
 ```
 
-**Access Points:**
+**Access Points (local workstation):**
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:4000
+
+**Multi-device access:**
+- Choose **Network Deployment** during `npm run init` (or run `npm run deploy`)
+- Find your PC's IP (`ipconfig` on Windows, `ifconfig` / `ip addr` on macOS & Linux)
+- Share `http://<your-pc-ip>:3000` with other devices on the same LAN
+- Allow inbound traffic on ports **3000** (frontend) and **4000** (API) in your firewall/router
+- `npm run init` auto-generates `.env` files, secrets, and detects your IP (no manual edits required)
 
 ### Default Login Credentials (after seeding)
 - **Administrator**: `admin` / `test123456`

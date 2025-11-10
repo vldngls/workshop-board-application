@@ -5,7 +5,7 @@
  * Detects OS and runs the appropriate setup script
  */
 
-const { execSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -37,56 +37,6 @@ if (!fs.existsSync(normalizedScriptPath)) {
   process.exit(1);
 }
 
-// Helper function to extract mode value
-function getModeValue() {
-  const modeIndex = args.findIndex(arg => arg === '--mode' || arg === '-Mode' || arg === '--mode=' || arg === '-Mode=');
-  let modeValue = null;
-  
-  if (modeIndex !== -1) {
-    // Check if it's in format --mode=value
-    if (args[modeIndex].includes('=')) {
-      modeValue = args[modeIndex].split('=')[1];
-    } else if (args[modeIndex + 1] && !args[modeIndex + 1].startsWith('-')) {
-      modeValue = args[modeIndex + 1];
-    }
-  }
-  
-  return modeValue;
-}
-
-// Build command based on platform
-let command;
-let shell;
-
-if (isWindows) {
-  // Windows: Use PowerShell
-  const modeValue = getModeValue();
-  shell = true; // Use shell on Windows
-  
-  if (modeValue) {
-    command = `powershell.exe -ExecutionPolicy Bypass -NoProfile -File "${normalizedScriptPath}" -Mode "${modeValue}"`;
-  } else {
-    command = `powershell.exe -ExecutionPolicy Bypass -NoProfile -File "${normalizedScriptPath}"`;
-  }
-} else {
-  // Unix/Linux/macOS: Use bash
-  const modeValue = getModeValue();
-  shell = '/bin/bash';
-  
-  // Make script executable
-  try {
-    fs.chmodSync(normalizedScriptPath, '755');
-  } catch (err) {
-    // Ignore chmod errors, might already be executable
-  }
-  
-  if (modeValue) {
-    command = `"${normalizedScriptPath}" --mode "${modeValue}"`;
-  } else {
-    command = `"${normalizedScriptPath}"`;
-  }
-}
-
 // Display platform info
 console.log(`🚀 Running setup script...`);
 console.log(`📋 Platform: ${platform} (${isWindows ? 'Windows' : isMac ? 'macOS' : isLinux ? 'Linux' : 'Unix'})`);
@@ -96,35 +46,86 @@ if (args.length > 0) {
 }
 console.log('');
 
-// Run the command
-try {
-  if (isWindows) {
-    // On Windows, use execSync with shell option
-    execSync(command, {
-      stdio: 'inherit',
-      cwd: projectRoot,
-      env: process.env,
-      shell: true,
-      windowsVerbatimArguments: false
-    });
-  } else {
-    // On Unix/Linux/macOS, use bash explicitly
-    execSync(command, {
-      stdio: 'inherit',
-      cwd: projectRoot,
-      env: process.env,
-      shell: shell
-    });
+const windowsArgs = [];
+if (isWindows) {
+  for (let i = 0; i < args.length; i += 1) {
+    const current = args[i];
+    const next = args[i + 1];
+
+    const pushFlagWithValue = (flag, value, warningLabel) => {
+      if (value && !value.startsWith('-')) {
+        windowsArgs.push(flag, value);
+        return true;
+      }
+      console.warn(`⚠️  Ignoring ${warningLabel} flag without value`);
+      return false;
+    };
+
+    if (current === '--mode') {
+      if (pushFlagWithValue('-Mode', next, '--mode')) i += 1;
+    } else if (current.startsWith('--mode=')) {
+      windowsArgs.push('-Mode', current.split('=')[1]);
+    } else if (current === '--env' || current === '--environment') {
+      if (pushFlagWithValue('-Environment', next, '--env')) i += 1;
+    } else if (current.startsWith('--env=') || current.startsWith('--environment=')) {
+      windowsArgs.push('-Environment', current.split('=')[1]);
+    } else if (current === '--seed') {
+      if (pushFlagWithValue('-Seed', next, '--seed')) i += 1;
+    } else if (current.startsWith('--seed=')) {
+      windowsArgs.push('-Seed', current.split('=')[1]);
+    } else if (current === '--api-key') {
+      if (pushFlagWithValue('-ApiKey', next, '--api-key')) i += 1;
+    } else if (current.startsWith('--api-key=')) {
+      windowsArgs.push('-ApiKey', current.split('=')[1]);
+    } else if (current === '--auto') {
+      windowsArgs.push('-Auto');
+    } else if (current === '--skip-api-key') {
+      windowsArgs.push('-SkipApiKey');
+    } else {
+      windowsArgs.push(current);
+    }
   }
-} catch (error) {
+}
+
+let result;
+
+if (isWindows) {
+  // Windows: Use PowerShell
+  const command = 'powershell.exe';
+  const commandArgs = ['-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', normalizedScriptPath, ...windowsArgs];
+
+  result = spawnSync(command, commandArgs, {
+    stdio: 'inherit',
+    cwd: projectRoot,
+    env: process.env,
+    windowsVerbatimArguments: false
+  });
+} else {
+  // Unix/Linux/macOS: ensure script is executable and run directly
+  try {
+    fs.chmodSync(normalizedScriptPath, '755');
+  } catch (err) {
+    // Ignore chmod errors, might already be executable
+  }
+
+  result = spawnSync(normalizedScriptPath, args, {
+    stdio: 'inherit',
+    cwd: projectRoot,
+    env: process.env,
+    shell: false
+  });
+}
+
+if (result.error) {
+  console.error('\n❌ Setup script failed to start');
+  console.error(`   Error: ${result.error.message}`);
+  process.exit(result.status || 1);
+}
+
+if (result.status !== 0) {
   console.error('\n❌ Setup script failed');
-  if (error.status) {
-    console.error(`   Exit code: ${error.status}`);
-  }
-  if (error.message) {
-    console.error(`   Error: ${error.message}`);
-  }
-  process.exit(error.status || 1);
+  console.error(`   Exit code: ${result.status}`);
+  process.exit(result.status || 1);
 }
 
 

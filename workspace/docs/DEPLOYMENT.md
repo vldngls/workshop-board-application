@@ -37,14 +37,18 @@ chmod +x workspace/scripts/setup.sh
 ./workspace/scripts/setup.sh
 
 # Or use npm scripts:
-npm run init
+npm run init          # Non-interactive (auto defaults: development + network)
+npm run init:interactive  # Guided prompts
 
-# The script will prompt you to choose:
-# 1. Local Development (localhost only)
-# 2. Network Deployment (accessible from other devices)
+# Override defaults on the fly:
+# npm run init -- --mode local --seed enhanced --api-key YOUR_KEY
+# Preconfigured dealership network setup:
+# npm run deploy
 
 # Start development
 npm run dev
+
+> The development servers bind to `0.0.0.0`, so in network mode any device on the same LAN can reach the app at `http://<your-ip>:3000`.
 ```
 
 **Access Points:**
@@ -276,6 +280,33 @@ Ensure your firewall allows connections on:
 - Port 3000 (Frontend)
 - Port 4000 (Backend API)
 - Port 8081 (MongoDB Express - optional)
+
+**Platform tips**
+- Windows: Open *Windows Defender Firewall → Advanced Settings → Inbound Rules* and allow `node.exe` (or create rules for ports 3000/4000)
+- macOS: *System Settings → Network → Firewall → Options*; allow incoming connections for the Terminal app or Node.js
+- Linux: `sudo ufw allow 3000/tcp` and `sudo ufw allow 4000/tcp` (or the equivalent for your firewall tooling)
+
+### Non-interactive setup flags
+
+- `--auto` — skip prompts (defaults to development + network, skip seeding)
+- `--env <development|dealership|production>` — force environment
+- `--mode <local|network>` — choose binding strategy
+- `--seed <skip|basic|enhanced|comprehensive>` — seed database automatically
+- `--api-key <value>` — immediately apply an API key (pair with `--seed` as needed)
+- `--skip-api-key` — skip API key configuration step entirely
+
+Examples:
+
+```bash
+# Development laptop, local-only, enhanced seed data
+npm run init -- --mode local --seed enhanced
+
+# Dealership PC ready for LAN access (auto IP detection, random secrets)
+npm run deploy
+
+# Production prep (still generates placeholder env files you can edit)
+npm run init -- --env production --mode network --auto
+```
 
 ---
 

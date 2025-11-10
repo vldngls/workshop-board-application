@@ -32,14 +32,16 @@ export async function POST(req: NextRequest) {
     }
 
     const res = NextResponse.json({ ok: true, role })
-    const isProduction = process.env.NODE_ENV === 'production'
+    const isHttps =
+      req.headers.get('x-forwarded-proto') === 'https' ||
+      req.nextUrl.protocol === 'https:'
     
     // Encrypt and store JWT token securely
     const encrypted = await encryptToken(token)
     res.cookies.set("token", encrypted, {
       httpOnly: true,
       sameSite: "lax",
-      secure: isProduction,
+      secure: isHttps,
       path: "/",
       maxAge: 60 * 60 * 8, // 8 hours to match access token expiration
     })
