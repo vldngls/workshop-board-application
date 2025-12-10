@@ -5,6 +5,8 @@ interface MaintenanceSettingsDoc {
   isUnderMaintenance: boolean
   maintenanceMessage: string
   apiKey?: string // API key for validation (stored encrypted/hashed in production)
+  lastApiKeyValidationAt?: Date // Timestamp of last API key validation attempt
+  lastApiKeyValidationSuccess?: boolean // Whether last validation was successful
   enabledBy: any // mongoose.Types.ObjectId
   enabledByName: string
   enabledByEmail: string
@@ -28,6 +30,16 @@ const maintenanceSettingsSchema = new Schema({
   },
   apiKey: {
     type: String,
+    required: false,
+    default: null
+  },
+  lastApiKeyValidationAt: {
+    type: Date,
+    required: false,
+    default: null
+  },
+  lastApiKeyValidationSuccess: {
+    type: Boolean,
     required: false,
     default: null
   },

@@ -39,7 +39,8 @@ router.get('/public', async (req, res) => {
         // Use cached value
         isValid = publicApiKeyValidationCache.isValid;
       } else {
-        // Cache miss or expired, validate API key (with shorter timeout)
+        // Cache miss or expired, validate API key
+        // validateApiKey now handles database-backed grace period internally
         try {
           isValid = await validateApiKey(settings.apiKey);
           // Update cache
@@ -48,11 +49,30 @@ router.get('/public', async (req, res) => {
             timestamp: now
           };
         } catch (error) {
-          // If validation fails (timeout, network error), use cached value if available
-          if (publicApiKeyValidationCache) {
+          // If validation fails, check database for last successful validation
+          // This handles cold starts where external validation might fail
+          if (
+            settings.lastApiKeyValidationSuccess === true &&
+            settings.lastApiKeyValidationAt
+          ) {
+            const lastValidationTime = new Date(settings.lastApiKeyValidationAt).getTime();
+            const timeSinceValidation = now - lastValidationTime;
+            const GRACE_PERIOD = 60 * 60 * 1000; // 60 minutes
+            
+            if (timeSinceValidation < (30 * 60 * 1000) + GRACE_PERIOD) {
+              // Use database-backed grace period
+              isValid = true;
+              publicApiKeyValidationCache = {
+                isValid: true,
+                timestamp: now
+              };
+            } else {
+              isValid = false;
+            }
+          } else if (publicApiKeyValidationCache) {
+            // Fallback to in-memory cache if available
             isValid = publicApiKeyValidationCache.isValid;
           } else {
-            // No cache available, fail validation
             isValid = false;
           }
         }
