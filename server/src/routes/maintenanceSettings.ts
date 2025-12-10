@@ -52,8 +52,8 @@ router.get('/public', async (req, res) => {
           // If validation fails, check database for last successful validation
           // This handles cold starts where external validation might fail
           if (
-            settings.lastApiKeyValidationSuccess === true &&
-            settings.lastApiKeyValidationAt
+            settings?.lastApiKeyValidationSuccess === true &&
+            settings?.lastApiKeyValidationAt
           ) {
             const lastValidationTime = new Date(settings.lastApiKeyValidationAt).getTime();
             const timeSinceValidation = now - lastValidationTime;
