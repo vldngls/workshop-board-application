@@ -65,7 +65,14 @@ export const getJobAtTime = (
 ): JobOrderWithDetails | null => {
   return jobOrders.find(job => {
     // Don't show jobs without assigned technician
-    if (!job.assignedTechnician || job.assignedTechnician._id !== technicianId) return false
+    if (!job.assignedTechnician) return false
+    
+    // Handle both populated object and string ID cases
+    const assignedTechId = typeof job.assignedTechnician === 'string' 
+      ? String(job.assignedTechnician) 
+      : String(job.assignedTechnician._id || job.assignedTechnician)
+    
+    if (assignedTechId !== String(technicianId)) return false
     
     const jobStart = parseTime(job.timeRange.start)
     const jobEnd = parseTime(job.timeRange.end)
@@ -82,7 +89,14 @@ export const getAppointmentAtTime = (
   appointments: Appointment[]
 ): Appointment | null => {
   return appointments.find(appt => {
-    if (!appt.assignedTechnician || appt.assignedTechnician._id !== technicianId) return false
+    if (!appt.assignedTechnician) return false
+    
+    // Handle both populated object and string ID cases
+    const assignedTechId = typeof appt.assignedTechnician === 'string' 
+      ? String(appt.assignedTechnician) 
+      : String(appt.assignedTechnician._id || appt.assignedTechnician)
+    
+    if (assignedTechId !== String(technicianId)) return false
     
     const apptStart = parseTime(appt.timeRange.start)
     const apptEnd = parseTime(appt.timeRange.end)
